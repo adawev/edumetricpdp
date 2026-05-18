@@ -79,9 +79,30 @@ status = gpa < 80 ? NOT_GRANTED
 ## Kontekst (jamoa)
 
 - Hackathon: **Unicorn Hackathon**, 2026-05-18 14:00, PDP University
-- Jamoa 3–5 kishi, bitta repo, noldan, vibe coding ok
-- MVP fokus: auth + 3 rol + score + yutuq workflow + public rating
-- Demo golden path: login → score → yutuq → admin approve → ball yangilandi → reytingda ko'rinadi
+- Jamoa: 5 kishi
+  - 1 designer
+  - 3 developer (har biri 1 rol: student / mentor / admin panel)
+  - **Diyor (men)** — PM, umumiy owner, public rating sahifasi, grant engine (score formula + status logic)
+- MVP fokus: auth + 3 rol + score + yutuq workflow + public rating + integration API
+- Demo golden path: login → score → yutuq qo'shildi → admin approve → ball yangilandi → reytingda ko'rinadi
+
+## MVP qarorlari (muhokama qilingan)
+
+- **Public rating**: to'liq ism + guruh + ball (anonim emas).
+- **Integration API**: API key auth + Swagger + 2 endpoint (`POST /api/integrations/attendance`, `POST /api/integrations/grades`). Bulk array qabul qiladi.
+- **Interview bosqichi**: MVP'da YO'Q. Nizomda bor, lekin vaqt tejash uchun tashlanadi.
+- **Score formula**: nizom bo'yicha aniq (docs/GRANT_NIZOM.md). GPA<80 qattiq filtr.
+- **Seed data**: demo uchun majburiy — 10–20 talaba, 2 mentor, 1 admin, API key namuna.
+
+## Mas'uliyat taqsimoti
+
+| Kim | Nima |
+|---|---|
+| Diyor (PM) | Repo owner, grant engine, public rating, integration API, code review |
+| Designer | shadcn/ui asosida ekranlar, demo screenshot'lar |
+| Dev 1 | Student panel (dashboard, profil, yutuq kiritish, feedback ko'rish) |
+| Dev 2 | Mentor panel (guruh, davomat, feedback, intizom) |
+| Dev 3 | Admin panel (talabalar, approve/reject, jarima, grant qaror, reyting) |
 
 ## Workflow
 
