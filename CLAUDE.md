@@ -72,7 +72,16 @@ status = gpa < 80 ? NOT_GRANTED
 
 ## To'liq spec
 
-Batafsil model'lar, API endpointlar, sahifalar, docker-compose va boshqasi uchun: [edumetric_claude_code_prompt.md](../../edumetric_claude_code_prompt.md) (WSL `~/edumetric_claude_code_prompt.md`).
+- [docs/GRANT_NIZOM.md](docs/GRANT_NIZOM.md) — rasmiy grant nizomi, aniq ball qiymatlari (source of truth)
+- [docs/HACKATHON.md](docs/HACKATHON.md) — Unicorn Hackathon (2026-05-18) qoidalari, talablari, baholash signallari
+- Boshlang'ich prompt: WSL `~/edumetric_claude_code_prompt.md`
+
+## Kontekst (jamoa)
+
+- Hackathon: **Unicorn Hackathon**, 2026-05-18 14:00, PDP University
+- Jamoa 3–5 kishi, bitta repo, noldan, vibe coding ok
+- MVP fokus: auth + 3 rol + score + yutuq workflow + public rating
+- Demo golden path: login → score → yutuq → admin approve → ball yangilandi → reytingda ko'rinadi
 
 ## Workflow
 
