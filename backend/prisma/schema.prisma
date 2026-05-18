@@ -1,0 +1,171 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  STUDENT
+  MENTOR
+  ADMIN
+}
+
+enum GrantStatus {
+  GRANTED
+  NOT_GRANTED
+  PENDING
+  UNKNOWN
+}
+
+enum AchievementType {
+  CERTIFICATE
+  HACKATHON
+  STARTUP
+  EMPLOYMENT
+  MENTORING
+  LANGUAGE
+  COURSE
+  VOLUNTEER
+  OTHER
+}
+
+enum AchievementStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PenaltyType {
+  LIGHT
+  MEDIUM
+  HEAVY
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  EXCUSED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  role      Role     @default(STUDENT)
+  createdAt DateTime @default(now())
+  student   Student?
+  mentor    Mentor?
+}
+
+model Group {
+  id       String    @id @default(uuid())
+  name     String    @unique
+  course   Int       @default(1)
+  mentorId String?
+  mentor   Mentor?   @relation(fields: [mentorId], references: [id])
+  students Student[]
+}
+
+model Mentor {
+  id        String     @id @default(uuid())
+  userId    String     @unique
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName  String
+  groups    Group[]
+  feedbacks Feedback[]
+}
+
+model Student {
+  id               String        @id @default(uuid())
+  userId           String        @unique
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName         String
+  groupId          String
+  group            Group         @relation(fields: [groupId], references: [id])
+  gpa              Float         @default(0)
+  attendance       Float         @default(0)
+  projectScore     Float         @default(0)
+  activityScore    Float         @default(0)
+  tutorScore       Float         @default(0)
+  disciplineScore  Float         @default(0)
+  employmentBonus  Float         @default(0)
+  grantScore       Float         @default(0)
+  grantStatus      GrantStatus   @default(UNKNOWN)
+  achievements     Achievement[]
+  penalties        Penalty[]
+  feedbacks        Feedback[]
+  activityLogs     ActivityLog[]
+  attendances      AttendanceRecord[]
+  createdAt        DateTime      @default(now())
+}
+
+model Achievement {
+  id          String            @id @default(uuid())
+  studentId   String
+  student     Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  type        AchievementType
+  title       String
+  description String?
+  fileUrl     String?
+  ball        Float             @default(0)
+  status      AchievementStatus @default(PENDING)
+  rejectReason String?
+  createdAt   DateTime          @default(now())
+  reviewedAt  DateTime?
+}
+
+model Penalty {
+  id          String      @id @default(uuid())
+  studentId   String
+  student     Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  type        PenaltyType
+  ball        Float
+  reason      String
+  recovered   Float       @default(0)
+  recoveryTask String?
+  recoveryDone Boolean    @default(false)
+  createdAt   DateTime    @default(now())
+}
+
+model Feedback {
+  id        String   @id @default(uuid())
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  mentorId  String
+  mentor    Mentor   @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  text      String
+  score     Int
+  createdAt DateTime @default(now())
+}
+
+model AttendanceRecord {
+  id        String           @id @default(uuid())
+  studentId String
+  student   Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  date      DateTime
+  status    AttendanceStatus
+  createdAt DateTime         @default(now())
+
+  @@unique([studentId, date])
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  action    String
+  meta      Json?
+  createdAt DateTime @default(now())
+}
+
+model ApiKey {
+  id        String   @id @default(uuid())
+  name      String
+  key       String   @unique
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  lastUsed  DateTime?
+}
