@@ -11,4 +11,12 @@ build/
 coverage/
 .next/
 .cache/
-prisma/migrations/dev/
+
+# Yarn (Berry)
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+.pnp.*
