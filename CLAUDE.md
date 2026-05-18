@@ -74,6 +74,7 @@ status = gpa < 80 ? NOT_GRANTED
 
 - [docs/GRANT_NIZOM.md](docs/GRANT_NIZOM.md) — rasmiy grant nizomi, aniq ball qiymatlari (source of truth)
 - [docs/HACKATHON.md](docs/HACKATHON.md) — Unicorn Hackathon (2026-05-18) qoidalari, talablari, baholash signallari
+- [docs/DESIGN_BRIEF.md](docs/DESIGN_BRIEF.md) — designer uchun to'liq sahifa va komponent specifikatsiyasi
 - Boshlang'ich prompt: WSL `~/edumetric_claude_code_prompt.md`
 
 ## Kontekst (jamoa)
