@@ -77,7 +77,12 @@ async function main() {
     const att = (attendance / 100) * 20;
     const base = academic + att + projectScore + activityScore + tutorScore + disciplineScore;
     const total = Math.min(base + employmentBonus, 110);
-    const status = gpa < 80 ? 'NOT_GRANTED' : total >= 80 ? 'PENDING' : 'NOT_GRANTED';
+
+    let status: 'PENDING' | 'NOT_GRANTED' = 'PENDING';
+    let reason: 'OK' | 'ACADEMIC_FAIL' | 'LOW_SCORE' = 'OK';
+    let risk: 'LOW' | 'MEDIUM' | 'HIGH' = 'LOW';
+    if (gpa < 80) { status = 'NOT_GRANTED'; reason = 'ACADEMIC_FAIL'; risk = 'HIGH'; }
+    else if (total < 80) { status = 'NOT_GRANTED'; reason = 'LOW_SCORE'; risk = total < 60 ? 'HIGH' : 'MEDIUM'; }
 
     await prisma.student.create({
       data: {
@@ -93,6 +98,8 @@ async function main() {
         employmentBonus,
         grantScore: total,
         grantStatus: status,
+        grantReason: reason,
+        riskLevel: risk,
       },
     });
   }

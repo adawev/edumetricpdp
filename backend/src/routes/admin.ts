@@ -4,6 +4,7 @@ import { randomBytes } from 'crypto';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { recalcStudent } from '../services/studentScore.js';
+import { calculateGrantScore } from '../services/grantEngine.js';
 
 export const adminRouter = Router();
 adminRouter.use(requireAuth, requireRole('ADMIN'));
@@ -115,10 +116,37 @@ adminRouter.post('/grants/:id/revoke', async (req, res) => {
 });
 
 adminRouter.get('/rating', async (_req, res) => {
-  res.json(await prisma.student.findMany({
-    include: { group: true },
+  const students = await prisma.student.findMany({
+    include: { group: true, penalties: true },
     orderBy: { grantScore: 'desc' },
-  }));
+  });
+  const rows = students.map((s, i) => {
+    const penaltyTotal = s.penalties.reduce((a, p) => a + p.ball, 0);
+    const recoveryTotal = s.penalties.reduce((a, p) => a + p.recovered, 0);
+    const breakdown = calculateGrantScore({
+      gpa: s.gpa,
+      attendance: s.attendance,
+      projectScore: s.projectScore,
+      activityScore: s.activityScore,
+      tutorScore: s.tutorScore,
+      disciplineScore: s.disciplineScore,
+      penaltyTotal,
+      recoveryTotal,
+      employmentBonus: s.employmentBonus,
+      paymentOverdue: s.paymentOverdue,
+    });
+    return {
+      rank: i + 1,
+      id: s.id,
+      fullName: s.fullName,
+      group: s.group.name,
+      grantStatus: s.grantStatus,
+      grantReason: s.grantReason,
+      riskLevel: s.riskLevel,
+      breakdown,
+    };
+  });
+  res.json(rows);
 });
 
 adminRouter.get('/api-keys', async (_req, res) => {

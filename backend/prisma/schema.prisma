@@ -20,6 +20,20 @@ enum GrantStatus {
   UNKNOWN
 }
 
+enum GrantReason {
+  OK                  // hech qanday muammo yo'q
+  ACADEMIC_FAIL       // GPA < 80
+  LOW_SCORE           // umumiy ball < 80
+  PAYMENT_OVERDUE     // to'lov kechikkan
+  GRANTED_OK          // grant berildi
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
 enum AchievementType {
   CERTIFICATE
   HACKATHON
@@ -94,6 +108,10 @@ model Student {
   employmentBonus  Float         @default(0)
   grantScore       Float         @default(0)
   grantStatus      GrantStatus   @default(UNKNOWN)
+  grantReason      GrantReason   @default(OK)
+  riskLevel        RiskLevel     @default(LOW)
+  paymentOverdue   Boolean       @default(false)
+  lmsData          Json?
   achievements     Achievement[]
   penalties        Penalty[]
   feedbacks        Feedback[]

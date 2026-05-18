@@ -1,5 +1,5 @@
 import { prisma } from '../lib/prisma.js';
-import { calculateGrantScore, getGrantStatus } from './grantEngine.js';
+import { calculateGrantScore, getGrantDecision } from './grantEngine.js';
 
 export async function recalcStudent(studentId: string) {
   const student = await prisma.student.findUnique({
@@ -21,13 +21,19 @@ export async function recalcStudent(studentId: string) {
     penaltyTotal,
     recoveryTotal,
     employmentBonus: student.employmentBonus,
+    paymentOverdue: student.paymentOverdue,
   };
 
   const breakdown = calculateGrantScore(input);
-  const status = getGrantStatus(input);
+  const decision = getGrantDecision(input, student.grantStatus);
 
   return prisma.student.update({
     where: { id: studentId },
-    data: { grantScore: breakdown.total, grantStatus: status },
+    data: {
+      grantScore: breakdown.total,
+      grantStatus: decision.status,
+      grantReason: decision.reason,
+      riskLevel: decision.risk,
+    },
   });
 }

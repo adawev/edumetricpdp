@@ -17,6 +17,8 @@ publicRouter.get('/rating', async (req, res) => {
     group: s.group.name,
     grantScore: Math.round(s.grantScore * 10) / 10,
     grantStatus: s.grantStatus,
+    grantReason: s.grantReason,
+    riskLevel: s.riskLevel,
   })));
 });
 
