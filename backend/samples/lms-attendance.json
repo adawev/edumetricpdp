@@ -1,0 +1,38 @@
+{
+  "status": "success",
+  "message": "Talaba davomati muvaffaqiyatli yuklandi",
+  "student": {
+    "id": "REPLACE_WITH_STUDENT_UUID",
+    "first_name": "Asilbek",
+    "last_name": "Toshpulatov",
+    "group": "SE-101"
+  },
+  "attendance_summary": {
+    "total_lessons": 120,
+    "attended": 108,
+    "absent": 12,
+    "attendance_percentage": 90.0
+  },
+  "subjects": [
+    {
+      "subject_id": "SUB-101",
+      "subject_name": "Ma'lumotlar strukturasi va algoritmlar",
+      "teacher": "D. Eshmuradov",
+      "subject_summary": { "total": 30, "attended": 28, "absent": 2, "percentage": 93.3 },
+      "logs": [
+        { "date": "2026-05-12", "time": "09:00", "status": "attended", "reason": null },
+        { "date": "2026-05-14", "time": "09:00", "status": "absent", "reason": "Kasalligi sababli (Ma'lumotnoma bor)" }
+      ]
+    },
+    {
+      "subject_id": "SUB-102",
+      "subject_name": "Ma'lumotlar bazasi tizimlari",
+      "teacher": "N. Aliyeva",
+      "subject_summary": { "total": 24, "attended": 20, "absent": 4, "percentage": 83.3 },
+      "logs": [
+        { "date": "2026-05-11", "time": "11:00", "status": "attended", "reason": null },
+        { "date": "2026-05-13", "time": "11:00", "status": "absent", "reason": "Sababsiz" }
+      ]
+    }
+  ]
+}

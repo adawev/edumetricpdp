@@ -1,0 +1,6 @@
+{
+  "records": [
+    { "studentId": "REPLACE_ID_A", "gpa": 88.5, "projectScore": 13.2 },
+    { "studentId": "REPLACE_ID_B", "gpa": 72.0 }
+  ]
+}
