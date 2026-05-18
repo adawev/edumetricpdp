@@ -27,7 +27,7 @@ EduMetricPDP/
 ## Rollar
 
 - **Student** — profil, score, yutuq kiritish, feedback ko'rish, reyting
-- **Mentor** — guruh ko'rish, davomat, intizom, feedback
+- **Mentor** — guruh ko'rish, feedback yozish, intizom bahosi (davomat/baholar LMS'dan keladi, mentor kiritmaydi)
 - **Admin** — talabalar/guruhlar, yutuq approve, jarima, grant qaror, reyting
 - **Guest** — loginsiz umumiy reyting (`/public/rating`)
 
@@ -43,6 +43,21 @@ EduMetricPDP/
 | Intizom | 10 |
 
 Bonus/jarima: Penalty -20, Recovery +10, Employment +10.
+
+## Tizim arxitekturasi (MUHIM)
+
+EduMetric **faqat grant CRM**. Davomat va baholar bu yerda kiritilmaydi.
+
+| Ma'lumot | Manba | Endpoint |
+|---|---|---|
+| Davomat (attendance) | LMS (tashqi tizim) | `POST /api/integrations/attendance` (API key) |
+| Baholar / GPA / projectScore | LMS | `POST /api/integrations/grades` (API key) |
+| Yutuqlar | Talaba kiritadi → Admin approve | `POST /api/students/me/achievements` |
+| Feedback | Mentor yozadi | `POST /api/mentor/feedback` |
+| Intizom bahosi | Mentor qo'yadi | `POST /api/mentor/discipline` |
+| Penalty/Recovery | Admin boshqaradi | `POST /api/admin/penalties` |
+
+Mentor **davomat kiritmaydi**, **baho qo'ymaydi**. Bular LMS'dan keladi.
 
 ## Grant qoidalari (qattiq)
 
@@ -102,7 +117,7 @@ status = gpa < 80 ? NOT_GRANTED
 | Diyor (PM) | Repo owner, grant engine, public rating, integration API, code review |
 | Designer | shadcn/ui asosida ekranlar, demo screenshot'lar |
 | Dev 1 | Student panel (dashboard, profil, yutuq kiritish, feedback ko'rish) |
-| Dev 2 | Mentor panel (guruh, davomat, feedback, intizom) |
+| Dev 2 | Mentor panel (guruh, feedback, intizom bahosi) |
 | Dev 3 | Admin panel (talabalar, approve/reject, jarima, grant qaror, reyting) |
 
 ## Workflow

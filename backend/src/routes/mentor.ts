@@ -7,6 +7,10 @@ import { recalcStudent } from '../services/studentScore.js';
 export const mentorRouter = Router();
 mentorRouter.use(requireAuth, requireRole('MENTOR'));
 
+// NOTE: davomat va baholar mentor tomonidan kiritilmaydi —
+// ular LMS'dan /api/integrations/{attendance,grades} orqali keladi.
+// Mentor faqat feedback + intizom bahosini kiritadi.
+
 async function getMentorId(userId: string) {
   const m = await prisma.mentor.findUnique({ where: { userId } });
   return m?.id ?? null;
@@ -20,35 +24,6 @@ mentorRouter.get('/students', async (req, res) => {
     include: { students: { orderBy: { grantScore: 'desc' } } },
   });
   res.json(groups);
-});
-
-const attendanceSchema = z.object({
-  date: z.string().datetime(),
-  records: z.array(z.object({
-    studentId: z.string().uuid(),
-    status: z.enum(['PRESENT', 'ABSENT', 'EXCUSED']),
-  })),
-});
-
-mentorRouter.post('/attendance', async (req, res) => {
-  const parsed = attendanceSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: 'Invalid input', detail: parsed.error });
-
-  const date = new Date(parsed.data.date);
-  for (const r of parsed.data.records) {
-    await prisma.attendanceRecord.upsert({
-      where: { studentId_date: { studentId: r.studentId, date } },
-      update: { status: r.status },
-      create: { studentId: r.studentId, date, status: r.status },
-    });
-
-    const all = await prisma.attendanceRecord.findMany({ where: { studentId: r.studentId } });
-    const present = all.filter(a => a.status === 'PRESENT' || a.status === 'EXCUSED').length;
-    const attendancePct = all.length ? (present / all.length) * 100 : 0;
-    await prisma.student.update({ where: { id: r.studentId }, data: { attendance: attendancePct } });
-    await recalcStudent(r.studentId);
-  }
-  res.json({ ok: true });
 });
 
 const feedbackSchema = z.object({

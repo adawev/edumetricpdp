@@ -93,12 +93,7 @@
 - Filter: status, qidiruv
 - Talaba qatoriga bosilganda Sheet (yon panel) ochiladi — qisqa profil + tezkor amallar
 
-#### 9. `/mentor/attendance` — Davomat kiritish
-- Sana picker yuqorida
-- Talabalar ro'yxati, har qatorda **toggle** (Bor / Yo'q / Sababli) — segmented control
-- "Saqlash" tugma pastda fixed
-
-#### 10. `/mentor/feedback` — Feedback yozish
+#### 9. `/mentor/feedback` — Feedback yozish
 - Talaba tanlash (Select / qidiruv)
 - Matn maydoni (textarea, 500 char limit)
 - Score 1–5 (yulduzcha picker)
