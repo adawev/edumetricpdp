@@ -3,9 +3,26 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { T } from '@/lib/theme';
 import { PublicChrome } from '@/components/em/PublicChrome';
-import { Card, Input, Select, Skeleton, Avatar } from '@/components/em/Primitives';
+import { Card, Input, Select, Skeleton, Avatar, Tabs } from '@/components/em/Primitives';
 import { Icons } from '@/components/em/Icons';
-import { BadgeRowMark, type BadgeMini, type BadgeRarity } from '@/components/em/Badges';
+import { BadgeRowMark, type BadgeMini } from '@/components/em/Badges';
+
+type Period = 'week' | 'month' | 'all';
+const PERIOD_LABEL: Record<Period, string> = {
+  week: 'Bu hafta',
+  month: 'Bu oy',
+  all: 'Hammasi',
+};
+
+function fmtRelative(s?: string | null): string {
+  if (!s) return '';
+  const d = new Date(s);
+  const diff = Math.round((Date.now() - d.getTime()) / 60000); // daqiqa
+  if (diff < 1) return 'hozir';
+  if (diff < 60) return `${diff} daqiqa oldin`;
+  if (diff < 60 * 24) return `${Math.round(diff / 60)} soat oldin`;
+  return `${Math.round(diff / (60 * 24))} kun oldin`;
+}
 
 type Row = {
   rank: number; id: string; fullName: string; group: string;

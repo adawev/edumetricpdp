@@ -4,7 +4,13 @@ import LoginPage from './pages/LoginPage';
 import PublicRatingPage from './pages/PublicRatingPage';
 import PublicAboutPage from './pages/PublicAboutPage';
 import PublicBadgesPage from './pages/PublicBadgesPage';
+import StudentLayout from './components/layout/StudentLayout';
 import StudentDashboard from './pages/student/Dashboard';
+import StudentProfile from './pages/student/Profile';
+import StudentAchievements from './pages/student/Achievements';
+import StudentFeedbacks from './pages/student/Feedbacks';
+import StudentRating from './pages/student/Rating';
+import StudentPublicProfile from './pages/student/PublicProfile';
 import MentorDashboard from './pages/mentor/Dashboard';
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminStudents from './pages/admin/Students';
@@ -14,17 +20,24 @@ import AdminGrants from './pages/admin/Grants';
 import AdminRating from './pages/admin/Rating';
 import AdminApiKeys from './pages/admin/ApiKeys';
 
-function RoleRoute({ role, children }: { role: Role; children: React.ReactNode }) {
+function RequireRole({ role }: { role: Role }) {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
   if (user.role !== role) return <Navigate to={defaultRouteFor(user.role)} replace />;
-  return <>{children}</>;
+  return <StudentLayout />;
 }
 
 function defaultRouteFor(role: Role) {
   if (role === 'STUDENT') return '/student/dashboard';
   if (role === 'MENTOR') return '/mentor/dashboard';
   return '/admin/dashboard';
+}
+
+function RoleRoute({ role, children }: { role: Role; children: React.ReactNode }) {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role !== role) return <Navigate to={defaultRouteFor(user.role)} replace />;
+  return <>{children}</>;
 }
 
 function Home() {
@@ -45,8 +58,16 @@ export default function App() {
       <Route path="/public/about" element={<PublicAboutPage />} />
       <Route path="/public/badges" element={<PublicBadgesPage />} />
 
-      {/* Student */}
-      <Route path="/student/dashboard" element={<RoleRoute role="STUDENT"><StudentDashboard /></RoleRoute>} />
+      {/* Student panel — nested layout */}
+      <Route path="/student" element={<RequireRole role="STUDENT" />}>
+        <Route path="dashboard"    element={<StudentDashboard />} />
+        <Route path="profile"      element={<StudentProfile />} />
+        <Route path="achievements" element={<StudentAchievements />} />
+        <Route path="feedbacks"    element={<StudentFeedbacks />} />
+        <Route path="rating"       element={<StudentRating />} />
+        <Route path=":studentId"   element={<StudentPublicProfile />} />
+        <Route index element={<Navigate to="dashboard" replace />} />
+      </Route>
 
       {/* Mentor */}
       <Route path="/mentor/dashboard" element={<RoleRoute role="MENTOR"><MentorDashboard /></RoleRoute>} />
