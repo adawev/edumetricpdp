@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
@@ -14,7 +14,18 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
   const setAuth = useAuth(s => s.setAuth);
+  const user = useAuth(s => s.user);
   const navigate = useNavigate();
+
+  // Allaqachon login bo'lgan bo'lsa, panelga yo'naltirish (back tugmasi orqali qaytib kelganda ham)
+  useEffect(() => {
+    if (user) {
+      const path = user.role === 'STUDENT' ? '/student/dashboard'
+                 : user.role === 'MENTOR'  ? '/mentor/dashboard'
+                 : '/admin/dashboard';
+      navigate(path, { replace: true });
+    }
+  }, [user, navigate]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();

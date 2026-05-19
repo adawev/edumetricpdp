@@ -1,7 +1,9 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { T } from '@/lib/theme';
+import { useAuth } from '@/lib/auth';
 import { PublicChrome } from '@/components/em/PublicChrome';
 import { Card, Input, Select, Skeleton, Avatar, Tabs, Pagination, usePagination } from '@/components/em/Primitives';
 import { Icons } from '@/components/em/Icons';
@@ -43,6 +45,14 @@ export default function PublicRatingPage() {
   const [period, setPeriod] = useState<Period>('all');
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [skeletonDelay, setSkeletonDelay] = useState(true);
+  const navigate = useNavigate();
+  const user = useAuth(s => s.user);
+
+  // Row click: login bo'lsa → public profil sahifasi; mehmon esa login modal
+  const handleRowClick = (id?: string) => {
+    if (user && id) navigate(`/student/${id}`);
+    else setShowLoginModal(true);
+  };
 
   useEffect(() => {
     const t = setTimeout(() => setSkeletonDelay(false), 500);
@@ -130,10 +140,10 @@ export default function PublicRatingPage() {
             </>
           ) : (
             <>
-              {!hasFilter && top3.length === 3 && <Top3Podium rows={top3} period={period} onClick={() => setShowLoginModal(true)} />}
+              {!hasFilter && top3.length === 3 && <Top3Podium rows={top3} period={period} onClick={handleRowClick} />}
               {rest.length === 0 ? <PublicEmptyState /> : (
                 <Card padding={0}>
-                  <RatingTable rows={pag.pageItems} startIndex={baseRank + pag.startIndex} period={period} onRowClick={() => setShowLoginModal(true)} />
+                  <RatingTable rows={pag.pageItems} startIndex={baseRank + pag.startIndex} period={period} onRowClick={handleRowClick} />
                   <Pagination page={pag.page} pageCount={pag.pageCount} onChange={pag.setPage} total={pag.total} pageSize={pag.pageSize} />
                 </Card>
               )}
@@ -154,7 +164,7 @@ export default function PublicRatingPage() {
   );
 }
 
-function Top3Podium({ rows, period, onClick }: { rows: Row[]; period: Period; onClick: () => void }) {
+function Top3Podium({ rows, period, onClick }: { rows: Row[]; period: Period; onClick: (id?: string) => void }) {
   const showPeriodBall = period !== 'all';
   // Olympic podium order: #2 chap, #1 markaz (katta), #3 o'ng
   const order: { stu: Row; place: 1 | 2 | 3 }[] = [
@@ -201,7 +211,7 @@ function Top3Podium({ rows, period, onClick }: { rows: Row[]; period: Period; on
         const iconSize = isCenter ? 54 : 44;
 
         return (
-          <div key={stu.id} onClick={onClick} style={{
+          <div key={stu.id} onClick={() => onClick(stu.id)} style={{
             background: st.bg, border: `2px solid ${st.border}`, borderRadius: 16,
             padding, position: 'relative', overflow: 'hidden',
             transform: isCenter ? 'translateY(-12px)' : 'none',
@@ -316,7 +326,7 @@ function ActivityBar({ value, max }: { value: number; max: number }) {
   );
 }
 
-function RatingTable({ rows, startIndex, period, onRowClick }: { rows: Row[]; startIndex: number; period: Period; onRowClick: () => void }) {
+function RatingTable({ rows, startIndex, period, onRowClick }: { rows: Row[]; startIndex: number; period: Period; onRowClick: (id?: string) => void }) {
   const maxActivity = Math.max(1, ...rows.map(r => r.weeklyActivity ?? 0));
   const showPeriodBall = period !== 'all';
   return (
@@ -343,7 +353,7 @@ function RatingTable({ rows, startIndex, period, onRowClick }: { rows: Row[]; st
           {rows.map((stu, i) => {
             const rank = startIndex + i;
             return (
-              <tr key={stu.id} onClick={onRowClick}
+              <tr key={stu.id} onClick={() => onRowClick(stu.id)}
                 title={stu.lastRecalc ? `Yangilangan: ${fmtRelative(stu.lastRecalc)}` : ''}
                 style={{
                   borderBottom: i < rows.length - 1 ? `1px solid ${T.border}` : 'none',

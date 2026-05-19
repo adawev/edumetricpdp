@@ -1,15 +1,26 @@
 import type { ReactNode } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { T } from '@/lib/theme';
+import { useAuth } from '@/lib/auth';
 import { BrandMark, BrandWord, Button, Dialog } from './Primitives';
 import { Icons } from './Icons';
 
 export function PublicChrome({ children, loginModal }: { children: ReactNode; loginModal?: { open: boolean; onClose: () => void } }) {
   const navigate = useNavigate();
   const loc = useLocation();
+  const user = useAuth(s => s.user);
   const active = loc.pathname.includes('about') ? 'about'
                : loc.pathname.includes('badges') ? 'badges'
                : 'rating';
+
+  // Login bo'lganlar uchun panel marshruti
+  const panelPath = user?.role === 'STUDENT' ? '/student/dashboard'
+                  : user?.role === 'MENTOR'  ? '/mentor/dashboard'
+                  : user?.role === 'ADMIN'   ? '/admin/dashboard'
+                  : null;
+
+  // Login bo'lgan foydalanuvchi uchun login modal'ni ko'rsatmaslik
+  const effectiveLoginModal = user ? undefined : loginModal;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: T.bg }}>
@@ -41,9 +52,15 @@ export function PublicChrome({ children, loginModal }: { children: ReactNode; lo
             })}
           </nav>
         </div>
-        <Button variant="primary" size="sm" iconRight={<Icons.arrowRight size={13} />} onClick={() => navigate('/login')}>
-          Kirish
-        </Button>
+        {user && panelPath ? (
+          <Button variant="primary" size="sm" iconRight={<Icons.arrowRight size={13} />} onClick={() => navigate(panelPath)}>
+            Mening panelim
+          </Button>
+        ) : (
+          <Button variant="primary" size="sm" iconRight={<Icons.arrowRight size={13} />} onClick={() => navigate('/login')}>
+            Kirish
+          </Button>
+        )}
       </header>
 
       <main style={{ flex: 1 }}>
@@ -51,14 +68,14 @@ export function PublicChrome({ children, loginModal }: { children: ReactNode; lo
         <PublicFooter />
       </main>
 
-      {loginModal && (
-        <Dialog open={loginModal.open} onClose={loginModal.onClose}
+      {effectiveLoginModal && (
+        <Dialog open={effectiveLoginModal.open} onClose={effectiveLoginModal.onClose}
           title="Profilni ko'rish uchun kiring"
           description="Talaba profillari va batafsil ma'lumotlar faqat ro'yxatdan o'tgan foydalanuvchilarga ochiq."
           size="sm"
           footer={<>
-            <Button variant="outline" onClick={loginModal.onClose}>Bekor qilish</Button>
-            <Button variant="primary" onClick={() => { loginModal.onClose(); navigate('/login'); }} iconRight={<Icons.arrowRight size={13} />}>
+            <Button variant="outline" onClick={effectiveLoginModal.onClose}>Bekor qilish</Button>
+            <Button variant="primary" onClick={() => { effectiveLoginModal.onClose(); navigate('/login'); }} iconRight={<Icons.arrowRight size={13} />}>
               Kirish sahifasiga o'tish
             </Button>
           </>}>
