@@ -120,7 +120,7 @@ export default function StudentLayout() {
             border: 0, background: 'transparent', cursor: 'pointer',
             color: T.textMuted, padding: 4, borderRadius: 6, display: 'flex',
           }}>
-            <Icons.fileText size={16} stroke={T.textMuted} />
+            <Icons.bolt size={16} stroke={T.textMuted} />
           </button>
           <div style={{ flex: 1 }} />
           {user && (
