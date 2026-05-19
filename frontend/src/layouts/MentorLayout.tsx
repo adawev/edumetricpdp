@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import * as Dialog from '@radix-ui/react-dialog';
-import { LayoutDashboard, Users, MessageSquare, LogOut, GraduationCap, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Users, MessageSquare, LogOut, GraduationCap, Menu } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 

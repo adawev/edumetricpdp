@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Users, TrendingUp, AlertTriangle, CalendarCheck, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { api } from '@/lib/api';
 import { ErrorState } from '@/components/States';
+import { statusBadge, riskBadge, type GrantStatus, type GrantReason, type RiskLevel } from '@/lib/grantLabels';
 
 type Student = {
   id: string;
@@ -11,8 +12,9 @@ type Student = {
   gpa: number;
   attendance: number;
   grantScore: number;
-  grantStatus: 'GRANTED' | 'NOT_GRANTED' | 'PENDING' | 'UNKNOWN';
-  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+  grantStatus: GrantStatus;
+  grantReason: GrantReason;
+  riskLevel: RiskLevel;
 };
 
 type Group = {
@@ -20,32 +22,6 @@ type Group = {
   name: string;
   course: number;
   students: Student[];
-};
-
-const statusBadge: Record<string, string> = {
-  GRANTED: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-  PENDING: 'bg-amber-100 text-amber-700 border-amber-200',
-  NOT_GRANTED: 'bg-red-100 text-red-700 border-red-200',
-  UNKNOWN: 'bg-slate-100 text-slate-600 border-slate-200',
-};
-
-const statusText: Record<string, string> = {
-  GRANTED: 'Grant berildi',
-  PENDING: 'Kutilmoqda',
-  NOT_GRANTED: 'Grant yo\'q',
-  UNKNOWN: 'Aniqlanmagan',
-};
-
-const riskBadge: Record<string, string> = {
-  LOW: 'bg-emerald-500 text-white',
-  MEDIUM: 'bg-amber-500 text-white',
-  HIGH: 'bg-red-500 text-white',
-};
-
-const riskText: Record<string, string> = {
-  LOW: 'Past',
-  MEDIUM: 'O\'rta',
-  HIGH: 'Yuqori',
 };
 
 function KpiCard({ icon: Icon, label, value, hint, tone = 'default' }: {
@@ -76,6 +52,8 @@ function KpiCard({ icon: Icon, label, value, hint, tone = 'default' }: {
 }
 
 function StudentRow({ student, rank, onClick }: { student: Student; rank: number; onClick: () => void }) {
+  const status = statusBadge(student.grantStatus, student.grantReason);
+  const risk = riskBadge(student.riskLevel);
   return (
     <tr
       onClick={onClick}
@@ -87,13 +65,13 @@ function StudentRow({ student, rank, onClick }: { student: Student; rank: number
       <td className="px-4 py-3 text-right tabular-nums">{student.attendance.toFixed(0)}%</td>
       <td className="px-4 py-3 text-right font-semibold tabular-nums">{student.grantScore.toFixed(0)}</td>
       <td className="px-4 py-3">
-        <span className={`inline-flex px-2 py-1 rounded-md text-xs font-medium border ${statusBadge[student.grantStatus]}`}>
-          {statusText[student.grantStatus]}
+        <span className={`inline-flex px-2 py-1 rounded-md text-xs font-medium border ${status.cls}`}>
+          {status.text}
         </span>
       </td>
       <td className="px-4 py-3">
-        <span className={`inline-flex px-2 py-1 rounded-md text-xs font-medium ${riskBadge[student.riskLevel]}`}>
-          {riskText[student.riskLevel]}
+        <span className={`inline-flex px-2 py-1 rounded-md text-xs font-medium ${risk.cls}`}>
+          {risk.text}
         </span>
       </td>
     </tr>

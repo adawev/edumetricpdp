@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { Sheet } from '@/components/Sheet';
 import { TableSkeleton, ErrorState } from '@/components/States';
+import { statusBadge, riskBadge, type GrantStatus, type GrantReason, type RiskLevel } from '@/lib/grantLabels';
 
 type Student = {
   id: string;
@@ -19,8 +20,9 @@ type Student = {
   disciplineScore: number;
   employmentBonus: number;
   grantScore: number;
-  grantStatus: 'GRANTED' | 'NOT_GRANTED' | 'PENDING' | 'UNKNOWN';
-  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+  grantStatus: GrantStatus;
+  grantReason: GrantReason;
+  riskLevel: RiskLevel;
 };
 
 type Group = {
@@ -30,37 +32,11 @@ type Group = {
   students: Student[];
 };
 
-const statusBadge: Record<string, string> = {
-  GRANTED: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-  PENDING: 'bg-amber-100 text-amber-700 border-amber-200',
-  NOT_GRANTED: 'bg-red-100 text-red-700 border-red-200',
-  UNKNOWN: 'bg-slate-100 text-slate-600 border-slate-200',
-};
-
-const statusText: Record<string, string> = {
-  GRANTED: 'Grant berildi',
-  PENDING: 'Kutilmoqda',
-  NOT_GRANTED: 'Grant yo\'q',
-  UNKNOWN: 'Aniqlanmagan',
-};
-
-const riskBadge: Record<string, string> = {
-  LOW: 'bg-emerald-500 text-white',
-  MEDIUM: 'bg-amber-500 text-white',
-  HIGH: 'bg-red-500 text-white',
-};
-
-const riskText: Record<string, string> = {
-  LOW: 'Past',
-  MEDIUM: 'O\'rta',
-  HIGH: 'Yuqori',
-};
-
 const STATUS_OPTIONS = [
   { value: 'ALL', label: 'Barcha holatlar' },
   { value: 'GRANTED', label: 'Grant berildi' },
   { value: 'PENDING', label: 'Kutilmoqda' },
-  { value: 'NOT_GRANTED', label: 'Grant yo\'q' },
+  { value: 'NOT_GRANTED', label: "Grant yo'q" },
 ];
 
 type ScoreBreakdown = { label: string; value: number; max: number; cls: string };
@@ -133,8 +109,11 @@ function StudentDetailSheet({
   const isValid = !isNaN(parsed) && parsed >= 0 && parsed <= 10;
   const isDirty = isValid && parsed.toFixed(1) !== student.disciplineScore.toFixed(1);
 
+  const status = statusBadge(student.grantStatus, student.grantReason);
+  const risk = riskBadge(student.riskLevel);
+
   return (
-    <Sheet open={open} onOpenChange={v => !v && onClose()} title={student.fullName} description={`${groupName} · ${statusText[student.grantStatus]}`}>
+    <Sheet open={open} onOpenChange={v => !v && onClose()} title={student.fullName} description={`${groupName} · ${status.text}`}>
       <div className="p-6 space-y-6">
         <div className="grid grid-cols-3 gap-3">
           <div className="rounded-lg border bg-slate-50 p-3">
@@ -152,11 +131,11 @@ function StudentDetailSheet({
         </div>
 
         <div className="flex items-center gap-2 pt-2">
-          <span className={`inline-flex px-2 py-1 rounded-md text-xs font-medium border ${statusBadge[student.grantStatus]}`}>
-            {statusText[student.grantStatus]}
+          <span className={`inline-flex px-2 py-1 rounded-md text-xs font-medium border ${status.cls}`}>
+            {status.text}
           </span>
-          <span className={`inline-flex px-2 py-1 rounded-md text-xs font-medium ${riskBadge[student.riskLevel]}`}>
-            Risk: {riskText[student.riskLevel]}
+          <span className={`inline-flex px-2 py-1 rounded-md text-xs font-medium ${risk.cls}`}>
+            Risk: {risk.text}
           </span>
         </div>
 
@@ -340,33 +319,37 @@ export default function MentorStudents() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((s, i) => (
-                  <tr
-                    key={s.id}
-                    onClick={() => setSelectedId(s.id)}
-                    className="border-t hover:bg-slate-50 transition-colors cursor-pointer"
-                  >
-                    <td className="px-4 py-3 text-muted-foreground tabular-nums">{i + 1}</td>
-                    <td className="px-4 py-3 font-medium">{s.fullName}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{groupNameById.get(s.groupId) ?? '—'}</td>
-                    <td className="px-4 py-3 text-right tabular-nums">{s.gpa.toFixed(0)}%</td>
-                    <td className="px-4 py-3 text-right tabular-nums">{s.attendance.toFixed(0)}%</td>
-                    <td className="px-4 py-3 text-right font-semibold tabular-nums">{s.grantScore.toFixed(0)}</td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex px-2 py-1 rounded-md text-xs font-medium border ${statusBadge[s.grantStatus]}`}>
-                        {statusText[s.grantStatus]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex px-2 py-1 rounded-md text-xs font-medium ${riskBadge[s.riskLevel]}`}>
-                        {riskText[s.riskLevel]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      <ChevronRight className="w-4 h-4" />
-                    </td>
-                  </tr>
-                ))}
+                {filtered.map((s, i) => {
+                  const st = statusBadge(s.grantStatus, s.grantReason);
+                  const rk = riskBadge(s.riskLevel);
+                  return (
+                    <tr
+                      key={s.id}
+                      onClick={() => setSelectedId(s.id)}
+                      className="border-t hover:bg-slate-50 transition-colors cursor-pointer"
+                    >
+                      <td className="px-4 py-3 text-muted-foreground tabular-nums">{i + 1}</td>
+                      <td className="px-4 py-3 font-medium">{s.fullName}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{groupNameById.get(s.groupId) ?? '—'}</td>
+                      <td className="px-4 py-3 text-right tabular-nums">{s.gpa.toFixed(0)}%</td>
+                      <td className="px-4 py-3 text-right tabular-nums">{s.attendance.toFixed(0)}%</td>
+                      <td className="px-4 py-3 text-right font-semibold tabular-nums">{s.grantScore.toFixed(0)}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex px-2 py-1 rounded-md text-xs font-medium border ${st.cls}`}>
+                          {st.text}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex px-2 py-1 rounded-md text-xs font-medium ${rk.cls}`}>
+                          {rk.text}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        <ChevronRight className="w-4 h-4" />
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
