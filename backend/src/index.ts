@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
 import swaggerUi from 'swagger-ui-express';
 import { authRouter } from './routes/auth.js';
 import { studentRouter } from './routes/student.js';
@@ -15,6 +16,9 @@ app.use(cors());
 app.use(express.json({ limit: '2mb' }));
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
+
+// Yuklangan fayllar
+app.use('/uploads', express.static(path.resolve(process.cwd(), 'uploads')));
 
 app.use('/api/auth', authRouter);
 app.use('/api/students', studentRouter);

@@ -11,6 +11,7 @@ build/
 coverage/
 .next/
 .cache/
+uploads/
 
 # Yarn (Berry) — apply to any depth
 **/.yarn/*

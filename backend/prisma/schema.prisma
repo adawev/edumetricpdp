@@ -112,6 +112,9 @@ model Student {
   riskLevel        RiskLevel     @default(LOW)
   paymentOverdue   Boolean       @default(false)
   lmsData          Json?
+  // Tyutor bahosi — 5 yo'nalish (har biri 0-1, sum = tutorScore max 5)
+  tutorEval        Json?         // { culture, activity, softSkills, discipline, dormitory, by, at }
+  pinnedBadge      String?       // tanlangan badge slug — reytingda ko'rinadi
   achievements     Achievement[]
   penalties        Penalty[]
   feedbacks        Feedback[]
