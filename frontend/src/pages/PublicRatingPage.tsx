@@ -150,11 +150,7 @@ function Top3Podium({ rows, onClick }: { rows: Row[]; onClick: () => void }) {
             </div>
             <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               <HolatBadge status={stu.grantStatus} />
-              {stu.badges?.length > 0 && (
-                <span style={{ display: 'inline-flex', gap: 3, marginLeft: 'auto' }}>
-                  {stu.badges.slice(0, 3).map(b => <span key={b.slug} title={b.name} style={{ fontSize: 16 }}>{b.icon}</span>)}
-                </span>
-              )}
+              <BadgeChips badges={stu.badges} max={3} size={26} />
             </div>
           </div>
         );
