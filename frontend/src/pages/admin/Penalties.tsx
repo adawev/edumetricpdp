@@ -112,10 +112,10 @@ export default function AdminPenalties() {
 
   function openRecovery(p: Penalty) {
     setRecTarget(p);
-    setRecAmount(Math.floor(p.ball * 0.5));
+    setRecAmount(Math.ceil(p.ball * 0.5));
   }
 
-  const maxRecovery = recTarget ? Math.min(Math.floor(recTarget.ball * 0.5), 10) : 0;
+  const maxRecovery = recTarget ? Math.min(Math.ceil(recTarget.ball * 0.5), 10) : 0;
 
   return (
     <AdminLayout>
