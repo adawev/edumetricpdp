@@ -7,6 +7,12 @@ import PublicBadgesPage from './pages/PublicBadgesPage';
 import StudentDashboard from './pages/student/Dashboard';
 import MentorDashboard from './pages/mentor/Dashboard';
 import AdminDashboard from './pages/admin/Dashboard';
+import AdminStudents from './pages/admin/Students';
+import AdminAchievements from './pages/admin/Achievements';
+import AdminPenalties from './pages/admin/Penalties';
+import AdminGrants from './pages/admin/Grants';
+import AdminRating from './pages/admin/Rating';
+import AdminApiKeys from './pages/admin/ApiKeys';
 
 function RoleRoute({ role, children }: { role: Role; children: React.ReactNode }) {
   const { user } = useAuth();
@@ -26,6 +32,10 @@ function Home() {
   return <Navigate to={user ? defaultRouteFor(user.role) : '/public/rating'} replace />;
 }
 
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  return <RoleRoute role="ADMIN">{children}</RoleRoute>;
+}
+
 export default function App() {
   return (
     <Routes>
@@ -34,9 +44,22 @@ export default function App() {
       <Route path="/public/rating" element={<PublicRatingPage />} />
       <Route path="/public/about" element={<PublicAboutPage />} />
       <Route path="/public/badges" element={<PublicBadgesPage />} />
+
+      {/* Student */}
       <Route path="/student/dashboard" element={<RoleRoute role="STUDENT"><StudentDashboard /></RoleRoute>} />
+
+      {/* Mentor */}
       <Route path="/mentor/dashboard" element={<RoleRoute role="MENTOR"><MentorDashboard /></RoleRoute>} />
-      <Route path="/admin/dashboard" element={<RoleRoute role="ADMIN"><AdminDashboard /></RoleRoute>} />
+
+      {/* Admin */}
+      <Route path="/admin/dashboard"     element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+      <Route path="/admin/students"      element={<AdminRoute><AdminStudents /></AdminRoute>} />
+      <Route path="/admin/achievements"  element={<AdminRoute><AdminAchievements /></AdminRoute>} />
+      <Route path="/admin/penalties"     element={<AdminRoute><AdminPenalties /></AdminRoute>} />
+      <Route path="/admin/grants"        element={<AdminRoute><AdminGrants /></AdminRoute>} />
+      <Route path="/admin/rating"        element={<AdminRoute><AdminRating /></AdminRoute>} />
+      <Route path="/admin/integrations"  element={<AdminRoute><AdminApiKeys /></AdminRoute>} />
+
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
