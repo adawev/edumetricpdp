@@ -25,7 +25,10 @@ function fmt(d: string) {
 }
 
 function copyText(text: string, label = 'Nusxalandi') {
-  navigator.clipboard.writeText(text).then(() => toast.success(label));
+  navigator.clipboard.writeText(text).then(
+    () => toast.success(label),
+    () => toast.error('Nusxa olishda xatolik'),
+  );
 }
 
 export default function AdminApiKeys() {

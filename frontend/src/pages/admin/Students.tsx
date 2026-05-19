@@ -190,7 +190,7 @@ export default function AdminStudents() {
                       <td className="px-4 py-3 text-muted-foreground">{s.group?.name}</td>
                       <td className="px-4 py-3 text-right tabular-nums">
                         <span className={s.gpa < 80 ? 'text-red-600 font-semibold' : ''}>
-                          {s.gpa}%
+                          {s.gpa.toFixed(1)}%
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right font-semibold tabular-nums">
@@ -234,8 +234,8 @@ export default function AdminStudents() {
 function StudentDetail({ student: s, onClose }: { student: Student; onClose: () => void }) {
   const bd = calcBreakdown(s);
   const breakdownRows = [
-    { label: 'Akademik (GPA)',   value: bd.academic,   max: 40,  raw: `${s.gpa}%` },
-    { label: 'Davomat',          value: bd.attendance, max: 20,  raw: `${s.attendance}%` },
+    { label: 'Akademik (GPA)',   value: bd.academic,   max: 40,  raw: `${s.gpa.toFixed(1)}%` },
+    { label: 'Davomat',          value: bd.attendance, max: 20,  raw: `${s.attendance.toFixed(1)}%` },
     { label: 'Loyihalar',        value: bd.projects,   max: 15,  raw: String(s.projectScore) },
     { label: 'Faollik',          value: bd.activity,   max: 10,  raw: String(s.activityScore) },
     { label: 'Tyutor bahosi',    value: bd.tutor,      max: 5,   raw: String(s.tutorScore) },
@@ -316,6 +316,15 @@ function StudentDetail({ student: s, onClose }: { student: Student; onClose: () 
               <span className="font-semibold text-emerald-600">+{s.employmentBonus}</span>
             </div>
           )}
+          {(() => {
+            const penaltyNet = Math.round((base + Math.min(s.employmentBonus, 10) - s.grantScore) * 10) / 10;
+            return penaltyNet > 0.05 ? (
+              <div className="flex items-center justify-between text-sm mt-1">
+                <span className="text-red-600">Net jarima</span>
+                <span className="font-semibold text-red-600">−{penaltyNet}</span>
+              </div>
+            ) : null;
+          })()}
           {s.paymentOverdue && (
             <div className="mt-2 text-xs text-red-600 bg-red-50 rounded-md px-3 py-2">
               To'lov muddati o'tgan — grant berilmaydi

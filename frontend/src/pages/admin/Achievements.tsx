@@ -215,11 +215,11 @@ function TabTrigger({ value, label, count }: { value: string; label: string; cou
   return (
     <Tabs.Trigger
       value={value}
-      className="flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium text-slate-500 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm transition-all"
+      className="group flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium text-slate-500 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm transition-all"
     >
       {label}
       {count > 0 && (
-        <span className="bg-slate-200 data-[state=active]:bg-slate-900 data-[state=active]:text-white text-xs font-semibold px-1.5 py-0.5 rounded-full tabular-nums">
+        <span className="bg-slate-200 group-data-[state=active]:bg-slate-900 group-data-[state=active]:text-white text-xs font-semibold px-1.5 py-0.5 rounded-full tabular-nums">
           {count}
         </span>
       )}
