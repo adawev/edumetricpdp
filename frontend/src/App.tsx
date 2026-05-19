@@ -6,6 +6,7 @@ import StudentDashboard from './pages/student/Dashboard';
 import MentorLayout from './layouts/MentorLayout';
 import MentorDashboard from './pages/mentor/Dashboard';
 import MentorStudents from './pages/mentor/Students';
+import MentorFeedback from './pages/mentor/Feedback';
 import AdminDashboard from './pages/admin/Dashboard';
 
 function RoleRoute({ role, children }: { role: Role; children: React.ReactNode }) {
@@ -24,15 +25,6 @@ function defaultRouteFor(role: Role) {
 function Home() {
   const { user } = useAuth();
   return <Navigate to={user ? defaultRouteFor(user.role) : '/public/rating'} replace />;
-}
-
-function Placeholder({ title }: { title: string }) {
-  return (
-    <div className="p-8">
-      <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-      <p className="text-sm text-muted-foreground mt-2">Bu sahifa keyingi phase'da qo'shiladi.</p>
-    </div>
-  );
 }
 
 export default function App() {
@@ -54,7 +46,7 @@ export default function App() {
         <Route index element={<Navigate to="/mentor/dashboard" replace />} />
         <Route path="dashboard" element={<MentorDashboard />} />
         <Route path="students" element={<MentorStudents />} />
-        <Route path="feedback" element={<Placeholder title="Feedback" />} />
+        <Route path="feedback" element={<MentorFeedback />} />
       </Route>
 
       <Route path="/admin/dashboard" element={<RoleRoute role="ADMIN"><AdminDashboard /></RoleRoute>} />

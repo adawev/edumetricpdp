@@ -26,6 +26,39 @@ mentorRouter.get('/students', async (req, res) => {
   res.json(groups);
 });
 
+mentorRouter.get('/feedbacks', async (req, res) => {
+  const studentId = typeof req.query.studentId === 'string' ? req.query.studentId : null;
+  if (!studentId) return res.status(400).json({ error: 'studentId is required' });
+
+  const mentorId = await getMentorId(req.user!.userId);
+  if (!mentorId) return res.status(404).json({ error: 'Mentor not found' });
+
+  const student = await prisma.student.findUnique({
+    where: { id: studentId },
+    include: { group: true },
+  });
+  if (!student || student.group.mentorId !== mentorId) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  const feedbacks = await prisma.feedback.findMany({
+    where: { studentId },
+    orderBy: { createdAt: 'desc' },
+    include: { mentor: { select: { fullName: true } } },
+  });
+
+  res.json(
+    feedbacks.map(f => ({
+      id: f.id,
+      text: f.text,
+      score: f.score,
+      createdAt: f.createdAt,
+      mentorName: f.mentor.fullName,
+      isMine: f.mentorId === mentorId,
+    })),
+  );
+});
+
 const feedbackSchema = z.object({
   studentId: z.string().uuid(),
   text: z.string().min(3),
