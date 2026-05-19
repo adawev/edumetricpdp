@@ -1,8 +1,24 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { BADGE_CATALOG, computeBadgesForStudent } from '../services/badges.js';
+import { verifyToken } from '../lib/auth.js';
 
 export const publicRouter = Router();
+
+// Token bor-yo'qligini optional tekshirish
+function isAuthed(req: any): boolean {
+  const h = req.headers.authorization;
+  if (!h?.startsWith('Bearer ')) return false;
+  try { verifyToken(h.slice(7)); return true; }
+  catch { return false; }
+}
+
+// Ismni anonimlash: "Akmal Karimov" → "A. K."
+function anonymize(fullName: string, rank: number): string {
+  const parts = fullName.split(' ').filter(Boolean);
+  if (parts.length >= 2) return `${parts[0][0]}. ${parts[1][0]}.`;
+  return `Talaba #${rank}`;
+}
 
 // Badge katalogi — loginsiz ochiq, talabalar qanday qilib olishni ko'radi
 publicRouter.get('/badges/catalog', (_req, res) => {
@@ -11,6 +27,7 @@ publicRouter.get('/badges/catalog', (_req, res) => {
 
 publicRouter.get('/rating', async (req, res) => {
   const groupId = req.query.groupId as string | undefined;
+  const authed = isAuthed(req);
   const students = await prisma.student.findMany({
     where: groupId ? { groupId } : undefined,
     include: {
@@ -34,10 +51,12 @@ publicRouter.get('/rating', async (req, res) => {
       .filter(a => a.reviewedAt && a.reviewedAt > weekAgo)
       .reduce((sum, a) => sum + a.ball, 0);
 
+    const isAnonymized = !authed && !s.profilePublic;
     return {
       rank: i + 1,
       id: s.id,
-      fullName: s.fullName,
+      fullName: isAnonymized ? anonymize(s.fullName, i + 1) : s.fullName,
+      isAnonymized,
       group: s.group.name,
       grantScore: Math.round(s.grantScore * 10) / 10,
       grantStatus: s.grantStatus,

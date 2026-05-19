@@ -29,6 +29,7 @@ type Row = {
   grantScore: number; grantStatus: string; grantReason: string; riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
   weeklyActivity?: number;
   lastRecalc?: string;
+  isAnonymized?: boolean;
   badge: BadgeMini | null;
   badgeCount: number;
 };
@@ -338,7 +339,17 @@ function RatingTable({ rows, startIndex, onRowClick }: { rows: Row[]; startIndex
                       <BadgeRowMark badge={stu.badge} count={stu.badgeCount} size={22} />
                     </span>
                     <Avatar name={stu.fullName} size={30} />
-                    <span style={{ fontWeight: 500 }}>{stu.fullName}</span>
+                    <span style={{
+                      fontWeight: 500,
+                      color: stu.isAnonymized ? T.textMuted : T.text,
+                      fontStyle: stu.isAnonymized ? 'italic' : 'normal',
+                    }}>{stu.fullName}</span>
+                    {stu.isAnonymized && (
+                      <span title="Talaba o'z profilini yopiq qilgan" style={{
+                        fontSize: 9.5, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+                        background: T.bgSubtle, color: T.textSubtle, letterSpacing: '.05em',
+                      }}>ANONIM</span>
+                    )}
                   </div>
                 </td>
                 <td className="em-hov" style={{ padding: '12px 16px', color: T.textMuted }}>{stu.group}</td>

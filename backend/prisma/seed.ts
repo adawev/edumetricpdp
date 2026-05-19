@@ -209,6 +209,8 @@ async function main() {
         grantStatus: dec.status,
         grantReason: dec.reason,
         riskLevel: dec.risk,
+        // TOP/CANDIDATE talabalar ismi mehmonga ko'rinadi, qolganlari anonim
+        profilePublic: spec.scenario === 'TOP_GRANTED' || spec.scenario === 'CANDIDATE',
       },
     });
 

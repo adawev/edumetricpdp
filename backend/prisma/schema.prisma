@@ -115,7 +115,8 @@ model Student {
   // Tyutor bahosi — 5 yo'nalish (har biri 0-1, sum = tutorScore max 5)
   tutorEval        Json?         // { culture, activity, softSkills, discipline, dormitory, by, at }
   pinnedBadge      String?       // tanlangan badge slug — reytingda ko'rinadi
-  lastRecalc       DateTime      @default(now()) // oxirgi ball qayta hisoblash vaqti
+  profilePublic    Boolean       @default(false)  // mehmonga ism ko'rsatiladimi (default — yo'q)
+  lastRecalc       DateTime      @default(now())  // oxirgi ball qayta hisoblash vaqti
   achievements     Achievement[]
   penalties        Penalty[]
   feedbacks        Feedback[]
