@@ -58,6 +58,14 @@ adminRouter.patch('/achievements/:id', async (req, res) => {
   res.json(updated);
 });
 
+adminRouter.get('/penalties', async (_req, res) => {
+  const penalties = await prisma.penalty.findMany({
+    include: { student: { include: { group: true } } },
+    orderBy: { createdAt: 'desc' },
+  });
+  res.json(penalties);
+});
+
 const penaltySchema = z.object({
   studentId: z.string().uuid(),
   type: z.enum(['LIGHT', 'MEDIUM', 'HEAVY']),
