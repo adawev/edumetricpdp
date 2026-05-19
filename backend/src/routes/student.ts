@@ -5,6 +5,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 import { recalcStudent } from '../services/studentScore.js';
 import { calculateGrantScore } from '../services/grantEngine.js';
 import { upload } from '../lib/upload.js';
+import { computeBadgesForStudent } from '../services/badges.js';
 
 export const studentRouter = Router();
 
@@ -141,7 +142,15 @@ studentRouter.get('/:id/public', async (req, res) => {
       ball: a.ball,
       createdAt: a.createdAt,
     })),
+    badges: await computeBadgesForStudent(student.id),
   });
+});
+
+// Talabaning shaxsiy badge'lari
+studentRouter.get('/me/badges', requireRole('STUDENT'), async (req, res) => {
+  const me = await prisma.student.findUnique({ where: { userId: req.user!.userId } });
+  if (!me) return res.status(404).json({ error: 'Student not found' });
+  res.json(await computeBadgesForStudent(me.id));
 });
 
 studentRouter.get('/me/feedbacks', requireRole('STUDENT'), async (req, res) => {
