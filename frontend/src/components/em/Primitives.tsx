@@ -154,6 +154,59 @@ export const Avatar = ({ name, color, size = 32 }: { name: string; color?: strin
   );
 };
 
+// ===== Tabs =====
+type TabItem = { id: string; label: string; count?: number };
+export const Tabs = ({ value, onChange, items, style }: { value: string; onChange: (v: string) => void; items: TabItem[]; style?: CSSProperties }) => (
+  <div role="tablist" style={{
+    display: 'inline-flex', padding: 3, borderRadius: 9,
+    background: T.bgSubtle, gap: 2, ...style,
+  }}>
+    {items.map(it => {
+      const isActive = it.id === value;
+      return (
+        <button key={it.id} role="tab" aria-selected={isActive} onClick={() => onChange(it.id)} style={{
+          padding: '6px 12px', borderRadius: 7, border: 0,
+          background: isActive ? T.white : 'transparent',
+          color: isActive ? T.text : T.textMuted,
+          fontWeight: isActive ? 500 : 400, fontSize: 12.5,
+          cursor: 'pointer', transition: 'all .12s', fontFamily: 'inherit',
+          boxShadow: isActive ? '0 1px 2px rgba(15,23,42,.04)' : 'none',
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+        }}>
+          {it.label}
+          {it.count != null && (
+            <span style={{
+              fontSize: 10.5, padding: '0 5px', borderRadius: 999,
+              background: T.bgSubtle, color: T.textMuted,
+              fontVariantNumeric: 'tabular-nums', minWidth: 16, height: 16,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            }}>{it.count}</span>
+          )}
+        </button>
+      );
+    })}
+  </div>
+);
+
+// ===== Tooltip (light, hover only, no portal) =====
+export const Tooltip = ({ children, content }: { children: ReactNode; content: string }) => {
+  const [show, setShow] = useState(false);
+  return (
+    <span style={{ position: 'relative', display: 'inline-flex' }}
+      onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
+      {children}
+      {show && (
+        <span style={{
+          position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)',
+          marginBottom: 6, padding: '5px 8px', background: T.slate900, color: '#fff',
+          fontSize: 11.5, borderRadius: 6, whiteSpace: 'nowrap', zIndex: 100, pointerEvents: 'none',
+          boxShadow: '0 4px 12px rgba(15,23,42,.2)',
+        }}>{content}</span>
+      )}
+    </span>
+  );
+};
+
 // ===== Skeleton =====
 export const Skeleton = ({ h = 14, r = 6, w = '100%' as string | number, style }: { h?: number; r?: number; w?: string | number; style?: CSSProperties }) => (
   <div className="em-skel" style={{ width: w, height: h, borderRadius: r, ...style }} />

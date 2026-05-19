@@ -5,10 +5,12 @@ import { T } from '@/lib/theme';
 import { PublicChrome } from '@/components/em/PublicChrome';
 import { Card, Input, Select, Skeleton, Avatar } from '@/components/em/Primitives';
 import { Icons } from '@/components/em/Icons';
+import { BadgeChips, type BadgeMini } from '@/components/em/Badges';
 
 type Row = {
   rank: number; id: string; fullName: string; group: string;
   grantScore: number; grantStatus: string; grantReason: string; riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+  badges: BadgeMini[];
 };
 type Group = { id: string; name: string; course: number };
 
@@ -146,8 +148,13 @@ function Top3Podium({ rows, onClick }: { rows: Row[]; onClick: () => void }) {
               </div>
               <div style={{ fontSize: 12.5, color: T.textMuted, fontWeight: 500 }}>ball</div>
             </div>
-            <div style={{ marginTop: 14 }}>
+            <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               <HolatBadge status={stu.grantStatus} />
+              {stu.badges?.length > 0 && (
+                <span style={{ display: 'inline-flex', gap: 3, marginLeft: 'auto' }}>
+                  {stu.badges.slice(0, 3).map(b => <span key={b.slug} title={b.name} style={{ fontSize: 16 }}>{b.icon}</span>)}
+                </span>
+              )}
             </div>
           </div>
         );
@@ -210,6 +217,7 @@ function RatingTable({ rows, startIndex, onRowClick }: { rows: Row[]; startIndex
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <Avatar name={stu.fullName} size={30} />
                     <span style={{ fontWeight: 500 }}>{stu.fullName}</span>
+                    <BadgeChips badges={stu.badges} max={3} />
                   </div>
                 </td>
                 <td className="em-hov" style={{ padding: '12px 16px', color: T.textMuted }}>{stu.group}</td>

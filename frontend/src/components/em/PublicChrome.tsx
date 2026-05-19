@@ -7,7 +7,9 @@ import { Icons } from './Icons';
 export function PublicChrome({ children, loginModal }: { children: ReactNode; loginModal?: { open: boolean; onClose: () => void } }) {
   const navigate = useNavigate();
   const loc = useLocation();
-  const active = loc.pathname.includes('about') ? 'about' : 'rating';
+  const active = loc.pathname.includes('about') ? 'about'
+               : loc.pathname.includes('badges') ? 'badges'
+               : 'rating';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: T.bg }}>
@@ -24,7 +26,8 @@ export function PublicChrome({ children, loginModal }: { children: ReactNode; lo
           </Link>
           <nav style={{ display: 'flex', gap: 4 }}>
             {[{ id: 'rating', label: 'Reyting', path: '/public/rating' },
-              { id: 'about',  label: 'Grant haqida', path: '/public/about' }].map(item => {
+              { id: 'about',  label: 'Grant haqida', path: '/public/about' },
+              { id: 'badges', label: "Badge'lar", path: '/public/badges' }].map(item => {
               const isActive = active === item.id;
               return (
                 <Link key={item.id} to={item.path} style={{
