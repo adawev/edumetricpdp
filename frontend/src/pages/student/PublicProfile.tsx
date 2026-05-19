@@ -163,8 +163,7 @@ export default function StudentPublicProfile() {
         }}>
           <StatCell label="Grant ball" value={`${data.grantScore}`} accent={T.text} border />
           <StatCell label="Universitetda" value={`#${data.rank.university}`}
-            sub={`/ ${data.rank.total} talaba`} border />
-          <StatCell label="Davomat bonusi" value="—" />
+            sub={`/ ${data.rank.total} talaba`} />
         </div>
       </Card>
 

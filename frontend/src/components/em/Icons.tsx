@@ -42,4 +42,5 @@ export const Icons = {
   star:       (p: P) => <Svg {...p}><polygon points="12 2 15 9 22 9.5 16.5 14.5 18.5 22 12 18 5.5 22 7.5 14.5 2 9.5 9 9"/></Svg>,
   files:      (p: P) => <Svg {...p}><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h6M10 12h4M10 16h4"/></Svg>,
   sparkles:   (p: P) => <Svg {...p}><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/></Svg>,
+  menu:       (p: P) => <Svg {...p}><path d="M4 6h16M4 12h16M4 18h16"/></Svg>,
 };

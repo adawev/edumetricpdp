@@ -14,13 +14,6 @@ import StudentPublicProfile from './pages/student/PublicProfile';
 import MentorDashboard from './pages/mentor/Dashboard';
 import AdminDashboard from './pages/admin/Dashboard';
 
-function RequireRole({ role }: { role: Role }) {
-  const { user } = useAuth();
-  if (!user) return <Navigate to="/login" replace />;
-  if (user.role !== role) return <Navigate to={defaultRouteFor(user.role)} replace />;
-  return <StudentLayout />;
-}
-
 function defaultRouteFor(role: Role) {
   if (role === 'STUDENT') return '/student/dashboard';
   if (role === 'MENTOR') return '/mentor/dashboard';
@@ -31,6 +24,12 @@ function RoleRoute({ role, children }: { role: Role; children: React.ReactNode }
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
   if (user.role !== role) return <Navigate to={defaultRouteFor(user.role)} replace />;
+  return <>{children}</>;
+}
+
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
 
@@ -48,16 +47,18 @@ export default function App() {
       <Route path="/public/about" element={<PublicAboutPage />} />
       <Route path="/public/badges" element={<PublicBadgesPage />} />
 
-      {/* Student panel — nested layout */}
-      <Route path="/student" element={<RequireRole role="STUDENT" />}>
+      {/* Student panel — nested layout, STUDENT only */}
+      <Route path="/student" element={<RoleRoute role="STUDENT"><StudentLayout /></RoleRoute>}>
         <Route path="dashboard"    element={<StudentDashboard />} />
         <Route path="profile"      element={<StudentProfile />} />
         <Route path="achievements" element={<StudentAchievements />} />
         <Route path="feedbacks"    element={<StudentFeedbacks />} />
         <Route path="rating"       element={<StudentRating />} />
-        <Route path=":studentId"   element={<StudentPublicProfile />} />
         <Route index element={<Navigate to="dashboard" replace />} />
       </Route>
+
+      {/* Public student profile — any authenticated role */}
+      <Route path="/student/:studentId" element={<RequireAuth><StudentPublicProfile /></RequireAuth>} />
 
       <Route path="/mentor/dashboard" element={<RoleRoute role="MENTOR"><MentorDashboard /></RoleRoute>} />
       <Route path="/admin/dashboard"  element={<RoleRoute role="ADMIN"><AdminDashboard /></RoleRoute>} />
