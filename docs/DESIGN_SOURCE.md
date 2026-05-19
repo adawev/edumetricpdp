@@ -2,10 +2,16 @@
 
 Designer tomonidan tayyorlangan to'liq UI mockup. **Har bir dev shu dizaynga qarab implement qiladi.**
 
-## URL
+## URL'lar
 
+**Asosiy (login bo'lganlar uchun: student / mentor / admin)**
 ```
 https://api.anthropic.com/v1/design/h/kWwooD0J5AMehLnm4RE7WQ?open_file=index.html
+```
+
+**Mehmon sahifalari (loginsiz: public rating, about)**
+```
+https://api.anthropic.com/v1/design/h/mYxjEClkcjHYxT2Gl6Wsmg?open_file=index.html
 ```
 
 ## Qanday foydalanasiz
@@ -43,7 +49,7 @@ Mavjud kodga moslang:
 | **Dev 1** (student) | `/student/dashboard`, `/student/profile`, `/student/achievements`, `/student/feedbacks`, `/student/rating`, `/student/:id` (public profil) |
 | **Dev 2** (mentor) | `/mentor/dashboard`, `/mentor/students`, `/mentor/feedback`, `/mentor/discipline` |
 | **Dev 3** (admin) | `/admin/dashboard`, `/admin/rating` (spreadsheet + select), `/admin/grants` (Grant qarori), `/admin/achievements`, `/admin/penalties`, `/admin/api-keys` |
-| **Diyor (PM)** | `/login`, `/public/rating`, integration, code review |
+| **Diyor (PM)** | `/login`, `/public/rating`, `/public/about`, integration, code review |
 
 ### 4) Qoidalar
 
