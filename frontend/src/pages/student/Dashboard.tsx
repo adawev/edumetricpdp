@@ -118,7 +118,7 @@ export default function StudentDashboard() {
           <span style={{ fontWeight: 600, color: sc.fg, fontSize: 14 }}>
             {STATUS_LABEL[status]}
           </span>
-          {student.grantReason && (
+          {student.grantReason && status !== 'GRANTED' && (
             <span style={{ fontSize: 13, color: sc.fg, opacity: 0.8, marginLeft: 10 }}>
               — {GRANT_REASON_LABEL_SHORT[student.grantReason] ?? student.grantReason}
             </span>
@@ -209,24 +209,24 @@ export default function StudentDashboard() {
             </div>
           </div>
           {/* Penalties/bonuses row */}
-          {(breakdown.penaltyDeducted > 0 || breakdown.recoveryAdded > 0 || breakdown.employmentAdded > 0) && (
+          {(breakdown.penalty > 0 || breakdown.recovery > 0 || breakdown.employment > 0) && (
             <div style={{
               marginTop: 14, paddingTop: 14, borderTop: `1px solid ${T.border}`,
               display: 'flex', gap: 12, flexWrap: 'wrap',
             }}>
-              {breakdown.penaltyDeducted > 0 && (
+              {breakdown.penalty > 0 && (
                 <span style={{ fontSize: 11.5, color: T.redText, fontWeight: 500 }}>
-                  Jarima: −{breakdown.penaltyDeducted.toFixed(1)}
+                  Jarima: −{breakdown.penalty.toFixed(1)}
                 </span>
               )}
-              {breakdown.recoveryAdded > 0 && (
+              {breakdown.recovery > 0 && (
                 <span style={{ fontSize: 11.5, color: T.emeraldText, fontWeight: 500 }}>
-                  Reabilitatsiya: +{breakdown.recoveryAdded.toFixed(1)}
+                  Reabilitatsiya: +{breakdown.recovery.toFixed(1)}
                 </span>
               )}
-              {breakdown.employmentAdded > 0 && (
+              {breakdown.employment > 0 && (
                 <span style={{ fontSize: 11.5, color: T.blueText, fontWeight: 500 }}>
-                  Ish: +{breakdown.employmentAdded.toFixed(1)}
+                  Ish: +{breakdown.employment.toFixed(1)}
                 </span>
               )}
             </div>
@@ -235,11 +235,15 @@ export default function StudentDashboard() {
 
         {/* Line chart — growth */}
         <Card padding={20} style={{ flex: 1, minWidth: 240 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: T.text, marginBottom: 4 }}>
-            6 oylik dinamika
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: T.text }}>6 oylik dinamika</span>
+            <span style={{
+              fontSize: 10, padding: '2px 7px', borderRadius: 999,
+              background: T.amberBg, color: T.amberText, fontWeight: 500,
+            }}>Demo</span>
           </div>
           <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 16 }}>
-            Ball o'zgarishi (taxminiy)
+            Haqiqiy tarix mavjud bo'lganda almashtiriladi
           </div>
           <ResponsiveContainer width="100%" height={160}>
             <LineChart data={growthData} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>

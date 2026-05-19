@@ -14,9 +14,9 @@ export interface ScoreBreakdown {
   tutor: number;
   discipline: number;
   base: number;
-  penaltyDeducted: number;
-  recoveryAdded: number;
-  employmentAdded: number;
+  penalty: number;
+  recovery: number;
+  employment: number;
   total: number;
 }
 

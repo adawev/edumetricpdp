@@ -172,12 +172,12 @@ export default function StudentProfile() {
               ))}
               <div style={{ fontSize: 13, color: T.text, marginTop: 8, display: 'flex', justifyContent: 'space-between' }}>
                 <span>Jami jarima:</span>
-                <span style={{ fontWeight: 600, color: T.red }}>−{breakdown.penaltyDeducted.toFixed(1)}</span>
+                <span style={{ fontWeight: 600, color: T.red }}>−{breakdown.penalty.toFixed(1)}</span>
               </div>
-              {breakdown.recoveryAdded > 0 && (
+              {breakdown.recovery > 0 && (
                 <div style={{ fontSize: 13, color: T.text, marginTop: 4, display: 'flex', justifyContent: 'space-between' }}>
                   <span>Reabilitatsiya qaytarildi:</span>
-                  <span style={{ fontWeight: 600, color: T.emerald }}>+{breakdown.recoveryAdded.toFixed(1)}</span>
+                  <span style={{ fontWeight: 600, color: T.emerald }}>+{breakdown.recovery.toFixed(1)}</span>
                 </div>
               )}
             </div>

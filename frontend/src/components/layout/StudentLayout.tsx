@@ -134,7 +134,7 @@ export default function StudentLayout() {
             border: 0, background: 'transparent', cursor: 'pointer',
             color: T.textMuted, padding: 4, borderRadius: 6, display: 'flex',
           }}>
-            <Icons.bolt size={16} stroke={T.textMuted} />
+            <Icons.menu size={16} stroke={T.textMuted} />
           </button>
           <span style={{ fontSize: 15, fontWeight: 600, color: T.text, letterSpacing: '-0.01em' }}>
             {pageTitle}
