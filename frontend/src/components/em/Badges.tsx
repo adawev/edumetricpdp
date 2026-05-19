@@ -174,15 +174,15 @@ export function BadgeMedal({ badge, size = 56, earned = true, style }: { badge: 
 // =====================================================================
 // Single badge chip for rating row — faqat 1 ta, lekin yorqin
 // =====================================================================
-export function BadgeRowMark({ badge, count }: { badge: BadgeMini | null; count?: number }) {
+export function BadgeRowMark({ badge, count, size = 22 }: { badge: BadgeMini | null; count?: number; size?: number }) {
   if (!badge) {
     if (count && count > 0) {
       return (
         <Tooltip content={`${count} ta badge — profilda ko'rsatish uchun tanlang`}>
           <span style={{
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            width: 22, height: 22, marginLeft: 8,
-            fontSize: 10.5, fontWeight: 700, color: T.textMuted,
+            width: size, height: size,
+            fontSize: 10, fontWeight: 700, color: T.textMuted,
             background: T.bgSubtle, border: `1px solid ${T.border}`, borderRadius: 999,
           }}>+{count}</span>
         </Tooltip>
@@ -192,8 +192,8 @@ export function BadgeRowMark({ badge, count }: { badge: BadgeMini | null; count?
   }
   return (
     <Tooltip content={`${badge.name} · ${BADGE_RARITY_LABEL[badge.rarity]}${count && count > 1 ? ` · jami ${count} badge` : ''}`}>
-      <span style={{ display: 'inline-block', marginLeft: 8, cursor: 'help' }}>
-        <BadgeMedal badge={badge} size={26} />
+      <span style={{ display: 'inline-block', cursor: 'help' }}>
+        <BadgeMedal badge={badge} size={size} />
       </span>
     </Tooltip>
   );

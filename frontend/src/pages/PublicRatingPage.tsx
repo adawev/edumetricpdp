@@ -114,44 +114,115 @@ export default function PublicRatingPage() {
 }
 
 function Top3Podium({ rows, onClick }: { rows: Row[]; onClick: () => void }) {
-  const styles = [
-    { bg: 'linear-gradient(180deg, #fef3c7 0%, #fde68a 100%)', border: '#f59e0b', placeColor: '#a16207',
-      icon: <Icons.trophy size={26} stroke="#a16207" strokeWidth={2.2} /> },
-    { bg: 'linear-gradient(180deg, #f1f5f9 0%, #e2e8f0 100%)', border: '#94a3b8', placeColor: '#475569',
-      icon: <Icons.medal size={26} stroke="#475569" strokeWidth={2.2} /> },
-    { bg: 'linear-gradient(180deg, #ffedd5 0%, #fed7aa 100%)', border: '#ea580c', placeColor: '#9a3412',
-      icon: <Icons.award size={26} stroke="#9a3412" strokeWidth={2.2} /> },
+  // Olympic podium order: #2 chap, #1 markaz (katta), #3 o'ng
+  const order: { stu: Row; place: 1 | 2 | 3 }[] = [
+    { stu: rows[1], place: 2 },
+    { stu: rows[0], place: 1 },
+    { stu: rows[2], place: 3 },
   ];
+  const styles: Record<1 | 2 | 3, { bg: string; border: string; placeColor: string; iconBg: string; icon: JSX.Element; ribbon: string }> = {
+    1: {
+      bg: 'linear-gradient(180deg, #fef3c7 0%, #fde68a 100%)',
+      border: '#f59e0b', placeColor: '#a16207',
+      iconBg: 'linear-gradient(135deg, #fbbf24 0%, #d97706 100%)',
+      icon: <Icons.trophy size={28} stroke="#fff" strokeWidth={2.4} />,
+      ribbon: '#a16207',
+    },
+    2: {
+      bg: 'linear-gradient(180deg, #f1f5f9 0%, #e2e8f0 100%)',
+      border: '#94a3b8', placeColor: '#475569',
+      iconBg: 'linear-gradient(135deg, #cbd5e1 0%, #64748b 100%)',
+      icon: <Icons.medal size={24} stroke="#fff" strokeWidth={2.4} />,
+      ribbon: '#475569',
+    },
+    3: {
+      bg: 'linear-gradient(180deg, #ffedd5 0%, #fed7aa 100%)',
+      border: '#ea580c', placeColor: '#9a3412',
+      iconBg: 'linear-gradient(135deg, #fb923c 0%, #c2410c 100%)',
+      icon: <Icons.award size={24} stroke="#fff" strokeWidth={2.4} />,
+      ribbon: '#9a3412',
+    },
+  };
+
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 28 }}>
-      {rows.map((stu, i) => {
-        const st = styles[i];
+    <div style={{
+      display: 'grid', gridTemplateColumns: '1fr 1.15fr 1fr', gap: 14, marginBottom: 28,
+      alignItems: 'end',
+    }}>
+      {order.map(({ stu, place }, i) => {
+        const st = styles[place];
+        const isCenter = place === 1;
+        const padding = isCenter ? 26 : 20;
+        const placeFontSize = isCenter ? 52 : 38;
+        const nameFontSize = isCenter ? 19 : 16;
+        const scoreFontSize = isCenter ? 42 : 30;
+        const iconSize = isCenter ? 54 : 44;
+
         return (
           <div key={stu.id} onClick={onClick} style={{
-            background: st.bg, border: `2px solid ${st.border}`, borderRadius: 14,
-            padding: 22, animation: 'em-slide-up 0.55s cubic-bezier(.2,.7,.3,1) backwards',
+            background: st.bg, border: `2px solid ${st.border}`, borderRadius: 16,
+            padding, position: 'relative', overflow: 'hidden',
+            transform: isCenter ? 'translateY(-12px)' : 'none',
+            boxShadow: isCenter
+              ? `0 16px 40px ${st.border}55, 0 2px 8px rgba(15,23,42,.06)`
+              : '0 4px 12px rgba(15,23,42,.06)',
+            animation: 'em-slide-up 0.55s cubic-bezier(.2,.7,.3,1) backwards',
             animationDelay: `${0.06 + i * 0.09}s`, cursor: 'pointer',
-            transition: 'transform .15s, box-shadow .15s',
+            transition: 'transform .2s, box-shadow .2s',
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 10px 28px rgba(15,23,42,.12)'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div style={{ fontSize: 38, fontWeight: 800, letterSpacing: '-0.045em', color: st.placeColor, lineHeight: 0.9, fontVariantNumeric: 'tabular-nums' }}>#{i + 1}</div>
-              <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(255,255,255,.55)', display: 'grid', placeItems: 'center', border: '1px solid rgba(255,255,255,.55)' }}>{st.icon}</div>
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = isCenter ? 'translateY(-18px)' : 'translateY(-6px)';
+            e.currentTarget.style.boxShadow = isCenter
+              ? `0 24px 50px ${st.border}77, 0 2px 8px rgba(15,23,42,.08)`
+              : '0 12px 28px rgba(15,23,42,.14)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = isCenter ? 'translateY(-12px)' : 'none';
+            e.currentTarget.style.boxShadow = isCenter
+              ? `0 16px 40px ${st.border}55, 0 2px 8px rgba(15,23,42,.06)`
+              : '0 4px 12px rgba(15,23,42,.06)';
+          }}>
+            {/* Crown ribbon for #1 */}
+            {isCenter && (
+              <span style={{
+                position: 'absolute', top: -1, left: '50%', transform: 'translateX(-50%)',
+                background: st.ribbon, color: '#fff', fontSize: 10, fontWeight: 800,
+                padding: '4px 14px 5px', borderRadius: '0 0 8px 8px',
+                letterSpacing: '.12em', boxShadow: '0 2px 6px rgba(0,0,0,.18)',
+              }}>👑 GRAND PRIX</span>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: isCenter ? 12 : 0 }}>
+              <div style={{
+                fontSize: placeFontSize, fontWeight: 800, letterSpacing: '-0.05em',
+                color: st.placeColor, lineHeight: 0.85, fontVariantNumeric: 'tabular-nums',
+              }}>#{place}</div>
+              <div style={{
+                width: iconSize, height: iconSize, borderRadius: 14,
+                background: st.iconBg,
+                display: 'grid', placeItems: 'center',
+                boxShadow: `0 6px 16px ${st.border}88, inset 0 -2px 5px rgba(0,0,0,.15), inset 0 2px 5px rgba(255,255,255,.4)`,
+              }}>{st.icon}</div>
             </div>
-            <div style={{ marginTop: 22 }}>
-              <div style={{ fontSize: 17, fontWeight: 600, letterSpacing: '-0.015em', color: T.text, lineHeight: 1.3 }}>{stu.fullName}</div>
+
+            <div style={{ marginTop: isCenter ? 22 : 18 }}>
+              <div style={{ fontSize: nameFontSize, fontWeight: 700, letterSpacing: '-0.02em', color: T.text, lineHeight: 1.25 }}>
+                {stu.fullName}
+              </div>
               <div style={{ fontSize: 12.5, color: T.textMuted, marginTop: 4 }}>{stu.group}</div>
             </div>
-            <div style={{ marginTop: 18, display: 'flex', alignItems: 'baseline', gap: 6 }}>
-              <div style={{ fontSize: 34, fontWeight: 700, letterSpacing: '-0.035em', color: T.text, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
-                {stu.grantScore.toFixed(1)}
-              </div>
-              <div style={{ fontSize: 12.5, color: T.textMuted, fontWeight: 500 }}>ball</div>
+
+            <div style={{ marginTop: isCenter ? 20 : 16, display: 'flex', alignItems: 'baseline', gap: 6 }}>
+              <div style={{
+                fontSize: scoreFontSize, fontWeight: 800, letterSpacing: '-0.04em',
+                color: T.text, fontVariantNumeric: 'tabular-nums', lineHeight: 1,
+              }}>{stu.grantScore.toFixed(1)}</div>
+              <div style={{ fontSize: 13, color: T.textMuted, fontWeight: 500 }}>ball</div>
             </div>
-            <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+
+            <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <HolatBadge status={stu.grantStatus} />
-              <BadgeRowMark badge={stu.badge} count={stu.badgeCount} />
+              <BadgeRowMark badge={stu.badge} count={stu.badgeCount} size={isCenter ? 32 : 26} />
             </div>
           </div>
         );
@@ -212,9 +283,12 @@ function RatingTable({ rows, startIndex, onRowClick }: { rows: Row[]; startIndex
                 <td className="em-hov" style={{ padding: '12px 16px', textAlign: 'center', color: T.textMuted, fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>{rank}</td>
                 <td className="em-hov" style={{ padding: '12px 16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {/* Badge: avatardan oldin, kichik */}
+                    <span style={{ width: 22, display: 'inline-flex', justifyContent: 'center' }}>
+                      <BadgeRowMark badge={stu.badge} count={stu.badgeCount} size={22} />
+                    </span>
                     <Avatar name={stu.fullName} size={30} />
                     <span style={{ fontWeight: 500 }}>{stu.fullName}</span>
-                    <BadgeRowMark badge={stu.badge} count={stu.badgeCount} />
                   </div>
                 </td>
                 <td className="em-hov" style={{ padding: '12px 16px', color: T.textMuted }}>{stu.group}</td>
