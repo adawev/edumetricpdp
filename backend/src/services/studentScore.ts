@@ -34,6 +34,7 @@ export async function recalcStudent(studentId: string) {
       grantStatus: decision.status,
       grantReason: decision.reason,
       riskLevel: decision.risk,
+      lastRecalc: new Date(),
     },
   });
 }

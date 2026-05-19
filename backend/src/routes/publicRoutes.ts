@@ -44,6 +44,7 @@ publicRouter.get('/rating', async (req, res) => {
       grantReason: s.grantReason,
       riskLevel: s.riskLevel,
       weeklyActivity: Math.round(weeklyActivity * 10) / 10,
+      lastRecalc: s.lastRecalc,
       badge: pinned ? {
         slug: pinned.slug, name: pinned.name, icon: pinned.icon, color: pinned.color, rarity: pinned.rarity,
       } : null,

@@ -28,6 +28,7 @@ type Row = {
   rank: number; id: string; fullName: string; group: string;
   grantScore: number; grantStatus: string; grantReason: string; riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
   weeklyActivity?: number;
+  lastRecalc?: string;
   badge: BadgeMini | null;
   badgeCount: number;
 };
@@ -123,7 +124,12 @@ export default function PublicRatingPage() {
           )}
 
           <div style={{ marginTop: 24, marginBottom: 24, fontSize: 12, color: T.textSubtle, textAlign: 'center' }}>
-            Reyting har 24 soatda yangilanadi · Avtomatik hisoblash
+            {(() => {
+              const lastUpdated = filtered[0]?.lastRecalc;
+              return lastUpdated
+                ? `Oxirgi yangilanish: ${fmtRelative(lastUpdated)} · Avtomatik hisoblash`
+                : 'Reyting har o\'zgarishda avtomatik yangilanadi';
+            })()}
           </div>
         </div>
       </div>
@@ -316,10 +322,12 @@ function RatingTable({ rows, startIndex, onRowClick }: { rows: Row[]; startIndex
           {rows.map((stu, i) => {
             const rank = startIndex + i;
             return (
-              <tr key={stu.id} onClick={onRowClick} style={{
-                borderBottom: i < rows.length - 1 ? `1px solid ${T.border}` : 'none',
-                transition: 'background .12s', cursor: 'pointer',
-              }}
+              <tr key={stu.id} onClick={onRowClick}
+                title={stu.lastRecalc ? `Yangilangan: ${fmtRelative(stu.lastRecalc)}` : ''}
+                style={{
+                  borderBottom: i < rows.length - 1 ? `1px solid ${T.border}` : 'none',
+                  transition: 'background .12s', cursor: 'pointer',
+                }}
               onMouseEnter={(e) => { e.currentTarget.querySelectorAll<HTMLTableCellElement>('td.em-hov').forEach(td => td.style.background = T.bgSubtle); }}
               onMouseLeave={(e) => { e.currentTarget.querySelectorAll<HTMLTableCellElement>('td.em-hov').forEach(td => td.style.background = ''); }}>
                 <td className="em-hov" style={{ padding: '12px 16px', textAlign: 'center', color: T.textMuted, fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>{rank}</td>
