@@ -16,6 +16,7 @@ const NAV: NavItem[] = [
   { label: 'Profil',       path: '/student/profile',      icon: Icons.user },
   { label: 'Yutuqlar',     path: '/student/achievements', icon: Icons.award },
   { label: 'Feedbacklar',  path: '/student/feedbacks',    icon: Icons.fileText },
+  { label: 'Reyting',      path: '/student/rating',       icon: Icons.trophy },
 ];
 
 const PAGE_TITLES: Record<string, string> = {
@@ -23,6 +24,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/student/profile':      'Profilim',
   '/student/achievements': 'Yutuqlarim',
   '/student/feedbacks':    'Mentor Feedbacklari',
+  '/student/rating':       'Mening reytingim',
 };
 
 export default function StudentLayout() {

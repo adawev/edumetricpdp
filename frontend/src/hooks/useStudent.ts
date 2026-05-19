@@ -1,6 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import type { StudentMeResponse, Achievement, Feedback, Rankings, AchievementType } from '@/types/student';
+import type {
+  StudentMeResponse, Achievement, Feedback, Rankings, AchievementType,
+  StudentPublicProfile, PublicRatingRow,
+} from '@/types/student';
 
 export function useStudentMe() {
   return useQuery<StudentMeResponse>({
@@ -36,6 +39,22 @@ export interface CreateAchievementInput {
   description?: string;
   file?: File;
   fileUrl?: string;
+}
+
+export function usePublicRating() {
+  return useQuery<PublicRatingRow[]>({
+    queryKey: ['public', 'rating'],
+    queryFn: () => api.get('/public/rating').then(r => r.data),
+    staleTime: 30_000,
+  });
+}
+
+export function useStudentPublic(studentId: string) {
+  return useQuery<StudentPublicProfile>({
+    queryKey: ['student', 'public', studentId],
+    queryFn: () => api.get(`/students/${studentId}/public`).then(r => r.data),
+    enabled: !!studentId,
+  });
 }
 
 export function useCreateAchievement() {

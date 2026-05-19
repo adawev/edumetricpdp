@@ -9,6 +9,8 @@ import StudentDashboard from './pages/student/Dashboard';
 import StudentProfile from './pages/student/Profile';
 import StudentAchievements from './pages/student/Achievements';
 import StudentFeedbacks from './pages/student/Feedbacks';
+import StudentRating from './pages/student/Rating';
+import StudentPublicProfile from './pages/student/PublicProfile';
 import MentorDashboard from './pages/mentor/Dashboard';
 import AdminDashboard from './pages/admin/Dashboard';
 
@@ -52,6 +54,8 @@ export default function App() {
         <Route path="profile"      element={<StudentProfile />} />
         <Route path="achievements" element={<StudentAchievements />} />
         <Route path="feedbacks"    element={<StudentFeedbacks />} />
+        <Route path="rating"       element={<StudentRating />} />
+        <Route path=":studentId"   element={<StudentPublicProfile />} />
         <Route index element={<Navigate to="dashboard" replace />} />
       </Route>
 

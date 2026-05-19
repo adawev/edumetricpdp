@@ -100,3 +100,53 @@ export interface Rankings {
   course: RankInfo;
   university: RankInfo;
 }
+
+export type BadgeRarity = 'common' | 'rare' | 'epic' | 'legendary';
+
+export interface StudentBadge {
+  slug: string;
+  name: string;
+  icon: string;
+  color: string;
+  rarity: BadgeRarity;
+  category: string;
+  description: string;
+  howToEarn: string;
+}
+
+export interface PublicAchievement {
+  id: string;
+  type: AchievementType;
+  title: string;
+  description?: string | null;
+  fileUrl?: string | null;
+  ball: number;
+  createdAt: string;
+}
+
+export interface StudentPublicProfile {
+  id: string;
+  fullName: string;
+  group: string;
+  course: number;
+  grantScore: number;
+  grantStatus: GrantStatus;
+  grantReason: GrantReason;
+  riskLevel: RiskLevel;
+  rank: { university: number; total: number };
+  achievements: PublicAchievement[];
+  badges: StudentBadge[];
+}
+
+export interface PublicRatingRow {
+  rank: number;
+  id: string;
+  fullName: string;
+  group: string;
+  grantScore: number;
+  grantStatus: GrantStatus;
+  grantReason: GrantReason;
+  riskLevel: RiskLevel;
+  badge: { slug: string; name: string; icon: string; color: string; rarity: BadgeRarity } | null;
+  badgeCount: number;
+}
