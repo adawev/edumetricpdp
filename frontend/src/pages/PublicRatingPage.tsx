@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { T, GRANT_REASON_LABEL_SHORT, RISK_LABEL_SHORT, RISK_COLOR } from '@/lib/theme';
+import { T } from '@/lib/theme';
 import { PublicChrome } from '@/components/em/PublicChrome';
 import { Card, Input, Select, Skeleton, Avatar } from '@/components/em/Primitives';
 import { Icons } from '@/components/em/Icons';
@@ -147,7 +147,7 @@ function Top3Podium({ rows, onClick }: { rows: Row[]; onClick: () => void }) {
               <div style={{ fontSize: 12.5, color: T.textMuted, fontWeight: 500 }}>ball</div>
             </div>
             <div style={{ marginTop: 14 }}>
-              <HolatBadge reason={stu.grantReason} status={stu.grantStatus} />
+              <HolatBadge status={stu.grantStatus} />
             </div>
           </div>
         );
@@ -156,24 +156,21 @@ function Top3Podium({ rows, onClick }: { rows: Row[]; onClick: () => void }) {
   );
 }
 
-function HolatBadge({ reason, status }: { reason: string; status?: string }) {
-  const isPending = status === 'PENDING';
-  const map: Record<string, { bg: string; fg: string; bd: string }> = {
-    GRANTED_OK:      { bg: T.emeraldBg, fg: T.emeraldText, bd: '#a7f3d0' },
-    OK:              isPending ? { bg: T.amberBg, fg: T.amberText, bd: '#fde68a' } : { bg: T.emeraldBg, fg: T.emeraldText, bd: '#a7f3d0' },
-    ACADEMIC_FAIL:   { bg: T.redBg, fg: T.redText, bd: '#fecaca' },
-    LOW_SCORE:       { bg: T.redBg, fg: T.redText, bd: '#fecaca' },
-    PAYMENT_OVERDUE: { bg: T.redBg, fg: T.redText, bd: '#fecaca' },
+function HolatBadge({ status }: { status: string }) {
+  // Mehmon ko'rinishi: faqat 3 ta yorqin holat — sabab YO'Q
+  const map: Record<string, { bg: string; fg: string; bd: string; label: string }> = {
+    GRANTED:     { bg: T.emeraldBg, fg: T.emeraldText, bd: '#a7f3d0', label: 'Grant' },
+    PENDING:     { bg: T.amberBg,   fg: T.amberText,   bd: '#fde68a', label: 'Kutilmoqda' },
+    NOT_GRANTED: { bg: T.bgSubtle,  fg: T.text,        bd: T.border,  label: 'Kontrakt' },
   };
-  const c = map[reason] || { bg: T.bgSubtle, fg: T.text, bd: T.border };
-  const label = isPending && reason === 'OK' ? 'Kutilmoqda' : (GRANT_REASON_LABEL_SHORT[reason] || '—');
+  const c = map[status] || map.NOT_GRANTED;
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 5,
       padding: '4px 10px', borderRadius: 999,
       background: c.bg, color: c.fg, border: `1px solid ${c.bd}`,
       fontSize: 11.5, fontWeight: 600, whiteSpace: 'nowrap', letterSpacing: '.01em',
-    }}>{label}</span>
+    }}>{c.label}</span>
   );
 }
 
@@ -186,10 +183,9 @@ function RatingTable({ rows, startIndex, onRowClick }: { rows: Row[]; startIndex
             {[
               { l: '#', a: 'center', w: 56 },
               { l: 'Ism', a: 'left' },
-              { l: 'Guruh', a: 'left', w: 120 },
-              { l: 'Ball', a: 'right', w: 90 },
-              { l: 'Holat', a: 'left', w: 170 },
-              { l: 'Risk', a: 'left', w: 120 },
+              { l: 'Guruh', a: 'left', w: 140 },
+              { l: 'Ball', a: 'right', w: 110 },
+              { l: 'Holat', a: 'left', w: 160 },
             ].map((h, i) => (
               <th key={i} style={{
                 textAlign: h.a as any, padding: '11px 16px', fontSize: 11.5,
@@ -202,7 +198,6 @@ function RatingTable({ rows, startIndex, onRowClick }: { rows: Row[]; startIndex
         <tbody>
           {rows.map((stu, i) => {
             const rank = startIndex + i;
-            const risk = RISK_COLOR[stu.riskLevel];
             return (
               <tr key={stu.id} onClick={onRowClick} style={{
                 borderBottom: i < rows.length - 1 ? `1px solid ${T.border}` : 'none',
@@ -222,19 +217,7 @@ function RatingTable({ rows, startIndex, onRowClick }: { rows: Row[]; startIndex
                   {stu.grantScore.toFixed(1)}
                 </td>
                 <td className="em-hov" style={{ padding: '12px 16px' }}>
-                  <HolatBadge reason={stu.grantReason} status={stu.grantStatus} />
-                </td>
-                <td style={{
-                  padding: '10px 14px', background: risk.bg, color: risk.fg,
-                  fontSize: 12, fontWeight: 600, letterSpacing: '.02em',
-                  borderBottom: i < rows.length - 1 ? '1px solid rgba(0,0,0,.08)' : 'none',
-                }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                    {stu.riskLevel === 'HIGH' && <Icons.alert size={12} />}
-                    {stu.riskLevel === 'MEDIUM' && <Icons.clock size={12} />}
-                    {stu.riskLevel === 'LOW' && <Icons.check size={12} strokeWidth={2.5} />}
-                    {RISK_LABEL_SHORT[stu.riskLevel]}
-                  </span>
+                  <HolatBadge status={stu.grantStatus} />
                 </td>
               </tr>
             );
