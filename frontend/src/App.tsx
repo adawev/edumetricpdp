@@ -5,6 +5,7 @@ import PublicRatingPage from './pages/PublicRatingPage';
 import StudentDashboard from './pages/student/Dashboard';
 import MentorLayout from './layouts/MentorLayout';
 import MentorDashboard from './pages/mentor/Dashboard';
+import MentorStudents from './pages/mentor/Students';
 import AdminDashboard from './pages/admin/Dashboard';
 
 function RoleRoute({ role, children }: { role: Role; children: React.ReactNode }) {
@@ -52,7 +53,7 @@ export default function App() {
       >
         <Route index element={<Navigate to="/mentor/dashboard" replace />} />
         <Route path="dashboard" element={<MentorDashboard />} />
-        <Route path="students" element={<Placeholder title="Talabalar" />} />
+        <Route path="students" element={<MentorStudents />} />
         <Route path="feedback" element={<Placeholder title="Feedback" />} />
       </Route>
 
