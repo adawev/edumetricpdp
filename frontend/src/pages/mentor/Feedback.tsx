@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom';
 import { Star, Send, MessageSquare, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
+import { ErrorState } from '@/components/States';
 
 type Student = { id: string; fullName: string; groupId: string };
 type Group = { id: string; name: string; course: number; students: Student[] };
@@ -90,7 +91,7 @@ export default function MentorFeedback() {
     if (preselectedId && !studentId) setStudentId(preselectedId);
   }, [preselectedId]);
 
-  const { data: history, isLoading: historyLoading } = useQuery({
+  const { data: history, isLoading: historyLoading, isError: historyError, refetch: refetchHistory } = useQuery({
     queryKey: ['mentor-feedbacks', studentId],
     queryFn: async () =>
       (await api.get<FeedbackItem[]>('/mentor/feedbacks', { params: { studentId } })).data,
@@ -203,14 +204,20 @@ export default function MentorFeedback() {
             </div>
           )}
 
-          {!historyLoading && history && history.length === 0 && (
+          {historyError && (
+            <div className="p-4">
+              <ErrorState onRetry={() => refetchHistory()} />
+            </div>
+          )}
+
+          {!historyLoading && !historyError && history && history.length === 0 && (
             <div className="text-center py-12">
               <MessageSquare className="w-8 h-8 mx-auto text-muted-foreground" />
               <p className="mt-2 text-sm text-muted-foreground">Hozircha feedback yo'q</p>
             </div>
           )}
 
-          {!historyLoading && history && history.length > 0 && (
+          {!historyLoading && !historyError && history && history.length > 0 && (
             <div className="divide-y">
               {history.map(item => (
                 <div key={item.id} className="p-5 flex gap-4">

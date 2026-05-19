@@ -1,10 +1,11 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, Filter, ChevronRight, MessageSquare, Save, BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { Sheet } from '@/components/Sheet';
+import { TableSkeleton, ErrorState } from '@/components/States';
 
 type Student = {
   id: string;
@@ -219,15 +220,29 @@ function StudentDetailSheet({
 }
 
 export default function MentorStudents() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['mentor-students'],
     queryFn: async () => (await api.get<Group[]>('/mentor/students')).data,
   });
 
+  const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [groupFilter, setGroupFilter] = useState<string>('ALL');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const id = searchParams.get('student');
+    if (id) setSelectedId(id);
+  }, [searchParams]);
+
+  function closeSheet() {
+    setSelectedId(null);
+    if (searchParams.has('student')) {
+      searchParams.delete('student');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }
 
   const groupNameById = useMemo(() => {
     const m = new Map<string, string>();
@@ -295,11 +310,11 @@ export default function MentorStudents() {
         )}
       </div>
 
-      {isLoading && (
-        <div className="h-96 rounded-xl bg-slate-100 animate-pulse" />
-      )}
+      {isLoading && <TableSkeleton rows={8} cols={7} />}
 
-      {!isLoading && filtered.length === 0 && (
+      {isError && <ErrorState onRetry={() => refetch()} />}
+
+      {!isLoading && !isError && filtered.length === 0 && (
         <div className="text-center py-20 border-2 border-dashed rounded-xl bg-white">
           <Search className="w-10 h-10 mx-auto text-muted-foreground" />
           <p className="mt-3 font-medium">Talaba topilmadi</p>
@@ -362,7 +377,7 @@ export default function MentorStudents() {
         student={selected}
         groupName={selected ? (groupNameById.get(selected.groupId) ?? '') : ''}
         open={!!selectedId}
-        onClose={() => setSelectedId(null)}
+        onClose={closeSheet}
       />
     </div>
   );

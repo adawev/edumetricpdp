@@ -1,7 +1,9 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { Users, TrendingUp, AlertTriangle, CalendarCheck, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { api } from '@/lib/api';
+import { ErrorState } from '@/components/States';
 
 type Student = {
   id: string;
@@ -73,9 +75,12 @@ function KpiCard({ icon: Icon, label, value, hint, tone = 'default' }: {
   );
 }
 
-function StudentRow({ student, rank }: { student: Student; rank: number }) {
+function StudentRow({ student, rank, onClick }: { student: Student; rank: number; onClick: () => void }) {
   return (
-    <tr className="border-t hover:bg-slate-50 transition-colors">
+    <tr
+      onClick={onClick}
+      className="border-t hover:bg-slate-50 transition-colors cursor-pointer"
+    >
       <td className="px-4 py-3 text-muted-foreground tabular-nums w-12">{rank}</td>
       <td className="px-4 py-3 font-medium">{student.fullName}</td>
       <td className="px-4 py-3 text-right tabular-nums">{student.gpa.toFixed(0)}%</td>
@@ -96,10 +101,13 @@ function StudentRow({ student, rank }: { student: Student; rank: number }) {
 }
 
 export default function MentorDashboard() {
-  const { data, isLoading } = useQuery({
+  const navigate = useNavigate();
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['mentor-students'],
     queryFn: async () => (await api.get<Group[]>('/mentor/students')).data,
   });
+
+  const openStudent = (id: string) => navigate(`/mentor/students?student=${id}`);
 
   const stats = useMemo(() => {
     const all = (data ?? []).flatMap(g => g.students);
@@ -128,13 +136,15 @@ export default function MentorDashboard() {
         <p className="text-sm text-muted-foreground mt-1">Guruhlaringiz va talabalar holati</p>
       </div>
 
+      {isError && <ErrorState onRetry={() => refetch()} />}
+
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[0, 1, 2, 3].map(i => (
             <div key={i} className="h-28 rounded-xl bg-slate-100 animate-pulse" />
           ))}
         </div>
-      ) : (
+      ) : !isError && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard icon={Users} label="Talabalar soni" value={stats.total} />
           <KpiCard
@@ -159,7 +169,7 @@ export default function MentorDashboard() {
         </div>
       )}
 
-      {!isLoading && stats.total === 0 && (
+      {!isLoading && !isError && stats.total === 0 && (
         <div className="text-center py-20 border-2 border-dashed rounded-xl bg-white">
           <Users className="w-10 h-10 mx-auto text-muted-foreground" />
           <p className="mt-3 font-medium">Talabalar yo'q</p>
@@ -188,7 +198,7 @@ export default function MentorDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {stats.top5.map((s, i) => <StudentRow key={s.id} student={s} rank={i + 1} />)}
+                  {stats.top5.map((s, i) => <StudentRow key={s.id} student={s} rank={i + 1} onClick={() => openStudent(s.id)} />)}
                 </tbody>
               </table>
             </div>
@@ -213,7 +223,7 @@ export default function MentorDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {stats.bottom5.map((s, i) => <StudentRow key={s.id} student={s} rank={stats.total - i} />)}
+                  {stats.bottom5.map((s, i) => <StudentRow key={s.id} student={s} rank={stats.total - i} onClick={() => openStudent(s.id)} />)}
                 </tbody>
               </table>
             </div>
