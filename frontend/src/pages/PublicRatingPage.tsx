@@ -27,6 +27,7 @@ function fmtRelative(s?: string | null): string {
 type Row = {
   rank: number; id: string; fullName: string; group: string;
   grantScore: number; grantStatus: string; grantReason: string; riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+  weeklyActivity?: number;
   badge: BadgeMini | null;
   badgeCount: number;
 };
@@ -238,7 +239,6 @@ function Top3Podium({ rows, onClick }: { rows: Row[]; onClick: () => void }) {
             </div>
 
             <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <HolatBadge status={stu.grantStatus} />
               <BadgeRowMark badge={stu.badge} count={stu.badgeCount} size={isCenter ? 32 : 26} />
             </div>
           </div>
@@ -248,14 +248,14 @@ function Top3Podium({ rows, onClick }: { rows: Row[]; onClick: () => void }) {
   );
 }
 
+// HolatBadge — faqat ijobiy holatlar (GRANTED/PENDING). Kontrakt yashirilgan.
 function HolatBadge({ status }: { status: string }) {
-  // Mehmon ko'rinishi: faqat 3 ta yorqin holat — sabab YO'Q
   const map: Record<string, { bg: string; fg: string; bd: string; label: string }> = {
-    GRANTED:     { bg: T.emeraldBg, fg: T.emeraldText, bd: '#a7f3d0', label: 'Grant' },
-    PENDING:     { bg: T.amberBg,   fg: T.amberText,   bd: '#fde68a', label: 'Kutilmoqda' },
-    NOT_GRANTED: { bg: T.bgSubtle,  fg: T.text,        bd: T.border,  label: 'Kontrakt' },
+    GRANTED: { bg: T.emeraldBg, fg: T.emeraldText, bd: '#a7f3d0', label: 'Grant' },
+    PENDING: { bg: T.amberBg,   fg: T.amberText,   bd: '#fde68a', label: 'Kutilmoqda' },
   };
-  const c = map[status] || map.NOT_GRANTED;
+  const c = map[status];
+  if (!c) return <span style={{ color: T.textSubtle, fontSize: 12 }}>—</span>;
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 5,
@@ -266,7 +266,32 @@ function HolatBadge({ status }: { status: string }) {
   );
 }
 
+// Faollik chizig'i — oxirgi 7 kunda olingan ballarning vizual ko'rsatkichi
+function ActivityBar({ value, max }: { value: number; max: number }) {
+  if (!value) return <span style={{ color: T.textSubtle, fontSize: 11.5 }}>—</span>;
+  const pct = Math.min(100, (value / max) * 100);
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{
+        flex: 1, height: 6, background: T.bgSubtle, borderRadius: 999,
+        overflow: 'hidden', minWidth: 60, maxWidth: 90,
+      }}>
+        <div style={{
+          width: `${pct}%`, height: '100%',
+          background: 'linear-gradient(90deg, #10b981 0%, #059669 100%)',
+          borderRadius: 999, transition: 'width .3s ease',
+        }} />
+      </div>
+      <span style={{
+        fontSize: 11.5, fontWeight: 600, color: T.emeraldText,
+        fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+      }}>+{value.toFixed(1)}</span>
+    </div>
+  );
+}
+
 function RatingTable({ rows, startIndex, onRowClick }: { rows: Row[]; startIndex: number; onRowClick: () => void }) {
+  const maxActivity = Math.max(1, ...rows.map(r => r.weeklyActivity ?? 0));
   return (
     <div style={{ overflowX: 'auto' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 720 }}>
@@ -276,8 +301,8 @@ function RatingTable({ rows, startIndex, onRowClick }: { rows: Row[]; startIndex
               { l: '#', a: 'center', w: 56 },
               { l: 'Ism', a: 'left' },
               { l: 'Guruh', a: 'left', w: 140 },
-              { l: 'Ball', a: 'right', w: 110 },
-              { l: 'Holat', a: 'left', w: 160 },
+              { l: 'Faollik', a: 'left', w: 130 },
+              { l: 'Ball', a: 'right', w: 100 },
             ].map((h, i) => (
               <th key={i} style={{
                 textAlign: h.a as any, padding: '11px 16px', fontSize: 11.5,
@@ -309,11 +334,11 @@ function RatingTable({ rows, startIndex, onRowClick }: { rows: Row[]; startIndex
                   </div>
                 </td>
                 <td className="em-hov" style={{ padding: '12px 16px', color: T.textMuted }}>{stu.group}</td>
+                <td className="em-hov" style={{ padding: '12px 16px' }}>
+                  <ActivityBar value={stu.weeklyActivity ?? 0} max={maxActivity} />
+                </td>
                 <td className="em-hov" style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontSize: 14, letterSpacing: '-0.01em' }}>
                   {stu.grantScore.toFixed(1)}
-                </td>
-                <td className="em-hov" style={{ padding: '12px 16px' }}>
-                  <HolatBadge status={stu.grantStatus} />
                 </td>
               </tr>
             );

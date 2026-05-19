@@ -36,6 +36,53 @@ const STUDENTS: StudentSpec[] = [
   { name: 'Dilnoza Tursunova',      scenario: 'RANDOM' },
 ];
 
+// --- Katta hajmli talabalar generatori (har xil statistikali ~200 ta) ---
+const FIRST_M = [
+  'Diyor','Akmal','Bekzod','Sardor','Asilbek','Otabek','Nodir','Jasur','Sherzod','Doniyor',
+  'Murod','Ulug\'bek','Javohir','Ibrohim','Shoxruh','Aziz','Olim','Bahodir','Rustam','Davron',
+  'Farrux','Anvar','Komil','Mansur','Nurbek','Oybek','Qaxramon','Sanjar','Shavkat','Sirojiddin',
+  'Temur','Umid','Xurshid','Yusuf','Zafar','Ali','Vali','Hasan','Husan','Ravshan',
+  'Bobur','Eldor','Erkin','Islom','Karim','Lochin','Mirjalol','Sherali','Toxir','Zoxid',
+];
+const FIRST_F = [
+  'Madina','Aziza','Shaxnoza','Dilnoza','Nilufar','Gulnoza','Mohira','Sevinch','Zarina','Malika',
+  'Marjona','Feruza','Lola','Mehribon','Munisa','Sabina','Saodat','Yulduz','Charos','Diyora',
+  'Nargiza','Komila','Shahzoda','Robiya','Iroda','Dilfuza','Maftuna','Nodira','Aygul','Mavluda',
+];
+const LAST = [
+  'Karimov','Tursunov','Yusupov','Aliyev','Saidov','Nazarov','Rasulov','Mirzayev','Toirov','Aliev',
+  'Egamberdiyev','Xolmatov','Adashev','Sodiqov','Ergashev','Ismoilov','Jabborov','Qodirov','Mamatov','Otaboev',
+  'Rahimov','Salimov','Tashkentov','Umarov','Xudayberganov','Yo\'ldoshev','Zokirov','Bobomurodov','Choriyev','Davlatov',
+];
+
+function makeRandomStudents(n: number): StudentSpec[] {
+  const out: StudentSpec[] = [];
+  const scenarios: Scenario[] = [
+    'TOP_GRANTED','TOP_GRANTED',
+    'CANDIDATE','CANDIDATE','CANDIDATE','CANDIDATE','CANDIDATE',
+    'ACADEMIC_FAIL','ACADEMIC_FAIL',
+    'LOW_SCORE','LOW_SCORE',
+    'PAYMENT_OVERDUE',
+    'WITH_PENALTY','WITH_PENALTY',
+    'RANDOM','RANDOM','RANDOM','RANDOM','RANDOM','RANDOM',
+  ];
+  const used = new Set<string>();
+  for (let i = 0; i < n; i++) {
+    const female = Math.random() < 0.35;
+    const first = female ? FIRST_F[Math.floor(Math.random()*FIRST_F.length)] : FIRST_M[Math.floor(Math.random()*FIRST_M.length)];
+    const last = LAST[Math.floor(Math.random()*LAST.length)] + (female ? 'a' : '');
+    let name = `${first} ${last}`;
+    let suffix = 2;
+    while (used.has(name)) { name = `${first} ${last} ${suffix++}`; }
+    used.add(name);
+    const sc = scenarios[Math.floor(Math.random()*scenarios.length)];
+    out.push({ name, scenario: sc });
+  }
+  return out;
+}
+
+STUDENTS.push(...makeRandomStudents(200));
+
 type ScoreFields = {
   gpa: number;
   attendance: number;
@@ -104,6 +151,21 @@ async function main() {
   const g2 = await prisma.group.create({ data: { name: 'SE-102', course: 1, mentorId: mentor1.id } });
   const g3 = await prisma.group.create({ data: { name: 'IT-201', course: 2, mentorId: mentor2.id } });
   const groups = [g1, g2, g3];
+  // Qo'shimcha guruhlar — talabalar yetarli bo'lganda taqsimlash uchun
+  const extraGroupSpecs = [
+    { name: 'SE-103', course: 1, mentorId: mentor1.id },
+    { name: 'SE-104', course: 1, mentorId: mentor2.id },
+    { name: 'IT-202', course: 2, mentorId: mentor2.id },
+    { name: 'IT-203', course: 2, mentorId: mentor1.id },
+    { name: 'CS-301', course: 3, mentorId: mentor1.id },
+    { name: 'CS-302', course: 3, mentorId: mentor2.id },
+    { name: 'DS-401', course: 4, mentorId: mentor2.id },
+    { name: 'DS-402', course: 4, mentorId: mentor1.id },
+  ];
+  for (const spec of extraGroupSpecs) {
+    const g = await prisma.group.create({ data: spec });
+    groups.push(g);
+  }
 
   for (let i = 0; i < STUDENTS.length; i++) {
     const spec = STUDENTS[i];
@@ -205,6 +267,35 @@ async function main() {
       }
     } else if (spec.scenario === 'ACADEMIC_FAIL') {
       await prisma.achievement.create({ data: { studentId: student.id, type: 'CERTIFICATE', title: 'IELTS 7.0', ball: 5, status: 'PENDING' } });
+    } else {
+      // Qolgan senariylar uchun 0-3 ta tasodifiy yutuq
+      const pool: { type: any; title: string; ball: number }[] = [
+        { type: 'CERTIFICATE', title: 'CS50 sertifikati', ball: 2 },
+        { type: 'CERTIFICATE', title: 'AWS CCP', ball: 3 },
+        { type: 'LANGUAGE', title: 'IELTS 6.5', ball: 3 },
+        { type: 'LANGUAGE', title: 'CEFR B2', ball: 2 },
+        { type: 'HACKATHON', title: 'PDP Hackathon — finalist', ball: 4 },
+        { type: 'HACKATHON', title: 'Ideathon ishtirokchi', ball: 2 },
+        { type: 'COURSE', title: 'Coursera ML', ball: 2 },
+        { type: 'VOLUNTEER', title: 'Open Day ko\'ngillisi', ball: 1 },
+        { type: 'MENTORING', title: 'Junior talabaga yordam', ball: 2 },
+        { type: 'STARTUP', title: 'Pet-project MVP', ball: 3 },
+      ];
+      const cnt = Math.floor(Math.random() * 4); // 0..3
+      const shuffled = pool.slice().sort(() => Math.random() - 0.5).slice(0, cnt);
+      for (const a of shuffled) {
+        const approved = Math.random() < 0.7;
+        await prisma.achievement.create({
+          data: {
+            studentId: student.id,
+            type: a.type,
+            title: a.title,
+            ball: a.ball,
+            status: approved ? 'APPROVED' : (Math.random() < 0.5 ? 'PENDING' : 'REJECTED'),
+            reviewedAt: approved ? new Date() : null,
+          },
+        });
+      }
     }
   }
 

@@ -15,7 +15,7 @@ export type BadgeDef = {
   description: string;
   howToEarn: string;
 };
-export type EarnedBadge = BadgeDef & { earnedAt?: string };
+export type EarnedBadge = BadgeDef & { earnedAt?: string; evidence?: string };
 export type BadgeMini = { slug: string; name: string; icon: string; color: string; rarity: BadgeRarity };
 
 const fmtDate = (s?: string) => {
