@@ -1,7 +1,102 @@
-import { useEffect, useState, forwardRef } from 'react';
+import { useEffect, useMemo, useState, forwardRef } from 'react';
 import type { CSSProperties, ReactNode, InputHTMLAttributes } from 'react';
 import { T } from '@/lib/theme';
 import { Icons } from './Icons';
+
+// ===== usePagination hook =====
+export function usePagination<T>(items: T[], pageSize: number, deps: unknown[] = []) {
+  const [page, setPage] = useState(1);
+  const total = items.length;
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+
+  useEffect(() => { setPage(1); /* reset on filter change */
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+
+  useEffect(() => {
+    if (page > pageCount) setPage(pageCount);
+  }, [page, pageCount]);
+
+  const pageItems = useMemo(
+    () => items.slice((page - 1) * pageSize, page * pageSize),
+    [items, page, pageSize]
+  );
+
+  return {
+    page, setPage, pageCount, pageSize, total,
+    pageItems,
+    startIndex: (page - 1) * pageSize,
+  };
+}
+
+// ===== Pagination component =====
+type PaginationProps = {
+  page: number;
+  pageCount: number;
+  onChange: (p: number) => void;
+  total?: number;
+  pageSize?: number;
+  style?: CSSProperties;
+};
+export const Pagination = ({ page, pageCount, onChange, total, pageSize, style }: PaginationProps) => {
+  if (pageCount <= 1) return null;
+
+  const go = (p: number) => onChange(Math.max(1, Math.min(pageCount, p)));
+
+  // Build compact page list: 1 … p-1 p p+1 … last
+  const pages: (number | '…')[] = [];
+  const push = (v: number | '…') => { if (pages[pages.length - 1] !== v) pages.push(v); };
+  for (let i = 1; i <= pageCount; i++) {
+    if (i === 1 || i === pageCount || (i >= page - 1 && i <= page + 1)) push(i);
+    else if (i < page - 1 || i > page + 1) push('…');
+  }
+
+  const btn = (active: boolean, disabled: boolean): CSSProperties => ({
+    minWidth: 32, height: 32, padding: '0 8px', borderRadius: 8,
+    border: `1px solid ${active ? T.slate900 : T.border}`,
+    background: active ? T.slate900 : T.white,
+    color: active ? '#fff' : (disabled ? T.textSubtle : T.text),
+    fontSize: 12.5, fontWeight: active ? 600 : 500,
+    fontVariantNumeric: 'tabular-nums',
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    opacity: disabled ? 0.45 : 1,
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+    fontFamily: 'inherit', transition: 'background .12s, border-color .12s',
+  });
+
+  const showSummary = typeof total === 'number' && typeof pageSize === 'number';
+  const from = showSummary ? (total === 0 ? 0 : (page - 1) * pageSize! + 1) : 0;
+  const to = showSummary ? Math.min(total!, page * pageSize!) : 0;
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      gap: 12, flexWrap: 'wrap', padding: '12px 16px',
+      borderTop: `1px solid ${T.border}`, background: T.white,
+      ...style,
+    }}>
+      {showSummary ? (
+        <div style={{ fontSize: 12, color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}>
+          <span style={{ fontWeight: 600, color: T.text }}>{from}–{to}</span> / {total}
+        </div>
+      ) : <span />}
+
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+        <button onClick={() => go(page - 1)} disabled={page <= 1} style={btn(false, page <= 1)} aria-label="Oldingi">
+          <Icons.chevronLeft size={14} />
+        </button>
+        {pages.map((p, i) => p === '…' ? (
+          <span key={`e${i}`} style={{ padding: '0 4px', color: T.textSubtle, fontSize: 13 }}>…</span>
+        ) : (
+          <button key={p} onClick={() => go(p)} style={btn(p === page, false)}>{p}</button>
+        ))}
+        <button onClick={() => go(page + 1)} disabled={page >= pageCount} style={btn(false, page >= pageCount)} aria-label="Keyingi">
+          <Icons.chevronRight size={14} />
+        </button>
+      </div>
+    </div>
+  );
+};
 
 // ===== BrandMark + BrandWord =====
 export const BrandMark = ({ size = 28 }: { size?: number }) => (

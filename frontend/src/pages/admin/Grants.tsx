@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { BadgeCheck, XCircle, Trophy, Users, TrendingUp } from 'lucide-react';
 import { api } from '@/lib/api';
 import AdminLayout from './AdminLayout';
+import { Pagination, usePagination } from '@/components/em/Primitives';
 
 type Student = {
   id: string;
@@ -69,6 +70,9 @@ export default function AdminGrants() {
   const isBusy = grantMutation.isPending || revokeMutation.isPending;
   const total  = pending.length + granted.length;
 
+  const pagPending = usePagination(pending, 15);
+  const pagGranted = usePagination(granted, 15);
+
   return (
     <AdminLayout>
       <div className="p-6 space-y-5">
@@ -126,11 +130,11 @@ export default function AdminGrants() {
               empty={pending.length === 0}
               emptyText="Kutilayotgan kandidat yo'q"
             >
-              {pending.map((s, i) => (
+              {pagPending.pageItems.map((s, i) => (
                 <StudentCard
                   key={s.id}
                   student={s}
-                  rank={i + 1}
+                  rank={pagPending.startIndex + i + 1}
                   action={
                     <button
                       onClick={() => grantMutation.mutate(s.id)}
@@ -143,6 +147,7 @@ export default function AdminGrants() {
                   }
                 />
               ))}
+              <Pagination page={pagPending.page} pageCount={pagPending.pageCount} onChange={pagPending.setPage} total={pagPending.total} pageSize={pagPending.pageSize} style={{ border: 0, padding: '8px 0 0', background: 'transparent' }} />
             </Column>
 
             {/* O'ng — Grant berilganlar */}
@@ -153,11 +158,11 @@ export default function AdminGrants() {
               empty={granted.length === 0}
               emptyText="Hali grant berilmagan"
             >
-              {granted.map((s, i) => (
+              {pagGranted.pageItems.map((s, i) => (
                 <StudentCard
                   key={s.id}
                   student={s}
-                  rank={i + 1}
+                  rank={pagGranted.startIndex + i + 1}
                   granted
                   action={
                     <button
@@ -171,6 +176,7 @@ export default function AdminGrants() {
                   }
                 />
               ))}
+              <Pagination page={pagGranted.page} pageCount={pagGranted.pageCount} onChange={pagGranted.setPage} total={pagGranted.total} pageSize={pagGranted.pageSize} style={{ border: 0, padding: '8px 0 0', background: 'transparent' }} />
             </Column>
           </div>
         )}

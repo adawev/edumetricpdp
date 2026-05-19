@@ -27,6 +27,7 @@ publicRouter.get('/badges/catalog', (_req, res) => {
 
 publicRouter.get('/rating', async (req, res) => {
   const groupId = req.query.groupId as string | undefined;
+  const period = (req.query.period as string | undefined) ?? 'all'; // 'week' | 'month' | 'all'
   const authed = isAuthed(req);
   const students = await prisma.student.findMany({
     where: groupId ? { groupId } : undefined,
@@ -37,11 +38,13 @@ publicRouter.get('/rating', async (req, res) => {
     orderBy: { grantScore: 'desc' },
   });
 
-  // So'nggi 7 kunda olingan ball — faollik chizig'i uchun
-  const weekAgo = new Date(Date.now() - 7 * 86400000);
+  const now = Date.now();
+  const weekAgo  = new Date(now - 7  * 86400000);
+  const monthAgo = new Date(now - 30 * 86400000);
+  const periodCutoff = period === 'week' ? weekAgo : period === 'month' ? monthAgo : null;
 
   const rarityRank: Record<string, number> = { legendary: 0, epic: 1, rare: 2, common: 3 };
-  const rows = await Promise.all(students.map(async (s, i) => {
+  let rows = await Promise.all(students.map(async (s) => {
     const earned = await computeBadgesForStudent(s.id);
     let pinned = s.pinnedBadge ? earned.find(b => b.slug === s.pinnedBadge) : undefined;
     if (!pinned && earned.length) {
@@ -51,14 +54,19 @@ publicRouter.get('/rating', async (req, res) => {
       .filter(a => a.reviewedAt && a.reviewedAt > weekAgo)
       .reduce((sum, a) => sum + a.ball, 0);
 
+    // Period-bo'yicha ball (so'nggi 7 yoki 30 kun) — yutuqlar yig'indisi
+    const periodBall = periodCutoff
+      ? s.achievements.filter(a => a.reviewedAt && a.reviewedAt > periodCutoff).reduce((sum, a) => sum + a.ball, 0)
+      : s.grantScore;
+
     const isAnonymized = !authed && !s.profilePublic;
     return {
-      rank: i + 1,
       id: s.id,
-      fullName: isAnonymized ? anonymize(s.fullName, i + 1) : s.fullName,
+      fullName: isAnonymized ? anonymize(s.fullName, 0) : s.fullName,
       isAnonymized,
       group: s.group.name,
       grantScore: Math.round(s.grantScore * 10) / 10,
+      periodBall: Math.round(periodBall * 10) / 10,
       grantStatus: s.grantStatus,
       grantReason: s.grantReason,
       riskLevel: s.riskLevel,
@@ -70,7 +78,11 @@ publicRouter.get('/rating', async (req, res) => {
       badgeCount: earned.length,
     };
   }));
-  res.json(rows);
+
+  // Period bo'yicha qayta saralash
+  rows.sort((a, b) => b.periodBall - a.periodBall);
+  const withRank = rows.map((r, i) => ({ rank: i + 1, ...r }));
+  res.json(withRank);
 });
 
 publicRouter.get('/groups', async (_req, res) => {

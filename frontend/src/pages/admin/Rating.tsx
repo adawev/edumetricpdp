@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Download, Search, Trophy, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import AdminLayout from './AdminLayout';
+import { Pagination, usePagination } from '@/components/em/Primitives';
 
 type Breakdown = {
   academic: number;
@@ -108,6 +109,7 @@ export default function AdminRating() {
   }, [rows, search, group, status]);
 
   const hasFilter = search || group || status;
+  const pag = usePagination(filtered, 25, [search, group, status]);
 
   return (
     <AdminLayout>
@@ -207,7 +209,7 @@ export default function AdminRating() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map(row => {
+                  {pag.pageItems.map(row => {
                     const bd = row.breakdown;
                     return (
                       <tr key={row.id} className="border-t hover:bg-slate-50 transition-colors">
@@ -254,6 +256,7 @@ export default function AdminRating() {
                 </tbody>
               </table>
             </div>
+            <Pagination page={pag.page} pageCount={pag.pageCount} onChange={pag.setPage} total={pag.total} pageSize={pag.pageSize} />
           </div>
         )}
       </div>

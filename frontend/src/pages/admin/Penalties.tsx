@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { AlertTriangle, Plus, X, ShieldCheck } from 'lucide-react';
 import { api } from '@/lib/api';
 import AdminLayout from './AdminLayout';
+import { Pagination, usePagination } from '@/components/em/Primitives';
 
 type Group = { id: string; name: string; course: number };
 type StudentBasic = { id: string; fullName: string; group: Group };
@@ -117,6 +118,8 @@ export default function AdminPenalties() {
 
   const maxRecovery = recTarget ? Math.min(Math.ceil(recTarget.ball * 0.5), 10) : 0;
 
+  const pag = usePagination(penalties, 25);
+
   return (
     <AdminLayout>
       <div className="p-6 space-y-5">
@@ -165,7 +168,7 @@ export default function AdminPenalties() {
                   </tr>
                 </thead>
                 <tbody>
-                  {penalties.map(p => (
+                  {pag.pageItems.map(p => (
                     <tr key={p.id} className="border-t hover:bg-slate-50 transition-colors">
                       <td className="px-4 py-3 font-medium">{p.student.fullName}</td>
                       <td className="px-4 py-3 text-muted-foreground">{p.student.group?.name}</td>
@@ -208,6 +211,7 @@ export default function AdminPenalties() {
                 </tbody>
               </table>
             </div>
+            <Pagination page={pag.page} pageCount={pag.pageCount} onChange={pag.setPage} total={pag.total} pageSize={pag.pageSize} />
           </div>
         )}
       </div>

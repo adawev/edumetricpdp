@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { T } from '@/lib/theme';
-import { Card, Button, Input, Select, Field, Dialog, Skeleton, Tooltip } from '@/components/em/Primitives';
+import { Card, Button, Input, Select, Field, Dialog, Skeleton, Tooltip, Pagination, usePagination } from '@/components/em/Primitives';
 import { Icons } from '@/components/em/Icons';
 import { useAchievements, useCreateAchievement } from '@/hooks/useStudent';
 import { ErrorState } from '@/components/em/ErrorState';
@@ -184,6 +184,8 @@ export default function StudentAchievements() {
     statusFilter === 'ALL' ? true : a.status === statusFilter
   ) ?? [];
 
+  const pag = usePagination(filtered, 10, [statusFilter, filtered.length]);
+
   const counts = {
     ALL: achievements?.length ?? 0,
     PENDING: achievements?.filter(a => a.status === 'PENDING').length ?? 0,
@@ -248,7 +250,7 @@ export default function StudentAchievements() {
         <EmptyState onAdd={() => setDialogOpen(true)} filtered={statusFilter !== 'ALL'} />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {filtered.map(a => {
+          {pag.pageItems.map(a => {
             const sc = STATUS_CONFIG[a.status];
             return (
               <Card key={a.id} padding={18}>
@@ -328,6 +330,7 @@ export default function StudentAchievements() {
               </Card>
             );
           })}
+          <Pagination page={pag.page} pageCount={pag.pageCount} onChange={pag.setPage} total={pag.total} pageSize={pag.pageSize} style={{ borderTop: 0, padding: '4px 0 0', background: 'transparent' }} />
         </div>
       )}
 

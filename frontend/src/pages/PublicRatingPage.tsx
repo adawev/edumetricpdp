@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { T } from '@/lib/theme';
 import { PublicChrome } from '@/components/em/PublicChrome';
-import { Card, Input, Select, Skeleton, Avatar, Tabs } from '@/components/em/Primitives';
+import { Card, Input, Select, Skeleton, Avatar, Tabs, Pagination, usePagination } from '@/components/em/Primitives';
 import { Icons } from '@/components/em/Icons';
 import { BadgeRowMark, type BadgeMini } from '@/components/em/Badges';
 
@@ -26,7 +26,8 @@ function fmtRelative(s?: string | null): string {
 
 type Row = {
   rank: number; id: string; fullName: string; group: string;
-  grantScore: number; grantStatus: string; grantReason: string; riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+  grantScore: number; periodBall?: number;
+  grantStatus: string; grantReason: string; riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
   weeklyActivity?: number;
   lastRecalc?: string;
   isAnonymized?: boolean;
@@ -39,6 +40,7 @@ export default function PublicRatingPage() {
   const [q, setQ] = useState('');
   const [group, setGroup] = useState('all');
   const [course, setCourse] = useState('all');
+  const [period, setPeriod] = useState<Period>('all');
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [skeletonDelay, setSkeletonDelay] = useState(true);
 
@@ -53,8 +55,8 @@ export default function PublicRatingPage() {
   });
 
   const { data, isLoading } = useQuery({
-    queryKey: ['public-rating'],
-    queryFn: async () => (await api.get<Row[]>('/public/rating')).data,
+    queryKey: ['public-rating', period],
+    queryFn: async () => (await api.get<Row[]>('/public/rating', { params: { period } })).data,
   });
 
   const courses = useMemo(() => Array.from(new Set(groups?.map(g => String(g.course)) || [])).sort(), [groups]);
@@ -71,20 +73,33 @@ export default function PublicRatingPage() {
   const hasFilter = q.trim() !== '' || group !== 'all' || course !== 'all';
   const top3 = filtered.slice(0, 3);
   const rest = hasFilter ? filtered : filtered.slice(3);
-  const startIdx = hasFilter ? 1 : 4;
+  const baseRank = hasFilter ? 1 : 4;
   const loading = isLoading || skeletonDelay;
+
+  const pag = usePagination(rest, 20, [q, group, course]);
 
   return (
     <PublicChrome loginModal={{ open: showLoginModal, onClose: () => setShowLoginModal(false) }}>
       <div style={{ padding: '44px 32px 0' }}>
         <div style={{ maxWidth: 1080, margin: '0 auto' }}>
-          <div style={{ marginBottom: 28 }}>
-            <h1 style={{ fontSize: 36, fontWeight: 700, margin: 0, letterSpacing: '-0.035em', lineHeight: 1.05, color: T.text }}>
-              Talabalar reytingi
-            </h1>
-            <p style={{ margin: '10px 0 0', color: T.textMuted, fontSize: 15, maxWidth: 620, lineHeight: 1.55 }}>
-              PDP University grant nizomi asosida shaffof ball tizimi
-            </p>
+          <div style={{ marginBottom: 28, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
+            <div>
+              <h1 style={{ fontSize: 36, fontWeight: 700, margin: 0, letterSpacing: '-0.035em', lineHeight: 1.05, color: T.text }}>
+                Talabalar reytingi
+              </h1>
+              <p style={{ margin: '10px 0 0', color: T.textMuted, fontSize: 15, maxWidth: 620, lineHeight: 1.55 }}>
+                PDP University grant nizomi asosida shaffof ball tizimi
+              </p>
+            </div>
+            <Tabs
+              value={period}
+              onChange={(v) => setPeriod(v as Period)}
+              items={[
+                { id: 'week',  label: 'Bu hafta' },
+                { id: 'month', label: 'Bu oy' },
+                { id: 'all',   label: 'Hammasi' },
+              ]}
+            />
           </div>
 
           <Card padding={12} style={{ marginBottom: 24 }}>
@@ -115,10 +130,11 @@ export default function PublicRatingPage() {
             </>
           ) : (
             <>
-              {!hasFilter && top3.length === 3 && <Top3Podium rows={top3} onClick={() => setShowLoginModal(true)} />}
+              {!hasFilter && top3.length === 3 && <Top3Podium rows={top3} period={period} onClick={() => setShowLoginModal(true)} />}
               {rest.length === 0 ? <PublicEmptyState /> : (
                 <Card padding={0}>
-                  <RatingTable rows={rest} startIndex={startIdx} onRowClick={() => setShowLoginModal(true)} />
+                  <RatingTable rows={pag.pageItems} startIndex={baseRank + pag.startIndex} period={period} onRowClick={() => setShowLoginModal(true)} />
+                  <Pagination page={pag.page} pageCount={pag.pageCount} onChange={pag.setPage} total={pag.total} pageSize={pag.pageSize} />
                 </Card>
               )}
             </>
@@ -138,7 +154,8 @@ export default function PublicRatingPage() {
   );
 }
 
-function Top3Podium({ rows, onClick }: { rows: Row[]; onClick: () => void }) {
+function Top3Podium({ rows, period, onClick }: { rows: Row[]; period: Period; onClick: () => void }) {
+  const showPeriodBall = period !== 'all';
   // Olympic podium order: #2 chap, #1 markaz (katta), #3 o'ng
   const order: { stu: Row; place: 1 | 2 | 3 }[] = [
     { stu: rows[1], place: 2 },
@@ -241,8 +258,10 @@ function Top3Podium({ rows, onClick }: { rows: Row[]; onClick: () => void }) {
               <div style={{
                 fontSize: scoreFontSize, fontWeight: 800, letterSpacing: '-0.04em',
                 color: T.text, fontVariantNumeric: 'tabular-nums', lineHeight: 1,
-              }}>{stu.grantScore.toFixed(1)}</div>
-              <div style={{ fontSize: 13, color: T.textMuted, fontWeight: 500 }}>ball</div>
+              }}>{(showPeriodBall ? (stu.periodBall ?? 0) : stu.grantScore).toFixed(1)}</div>
+              <div style={{ fontSize: 13, color: T.textMuted, fontWeight: 500 }}>
+                {showPeriodBall ? PERIOD_LABEL[period].toLowerCase() : 'ball'}
+              </div>
             </div>
 
             <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -297,8 +316,9 @@ function ActivityBar({ value, max }: { value: number; max: number }) {
   );
 }
 
-function RatingTable({ rows, startIndex, onRowClick }: { rows: Row[]; startIndex: number; onRowClick: () => void }) {
+function RatingTable({ rows, startIndex, period, onRowClick }: { rows: Row[]; startIndex: number; period: Period; onRowClick: () => void }) {
   const maxActivity = Math.max(1, ...rows.map(r => r.weeklyActivity ?? 0));
+  const showPeriodBall = period !== 'all';
   return (
     <div style={{ overflowX: 'auto' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 720 }}>
@@ -357,7 +377,7 @@ function RatingTable({ rows, startIndex, onRowClick }: { rows: Row[]; startIndex
                   <ActivityBar value={stu.weeklyActivity ?? 0} max={maxActivity} />
                 </td>
                 <td className="em-hov" style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontSize: 14, letterSpacing: '-0.01em' }}>
-                  {stu.grantScore.toFixed(1)}
+                  {(showPeriodBall ? (stu.periodBall ?? 0) : stu.grantScore).toFixed(1)}
                 </td>
               </tr>
             );

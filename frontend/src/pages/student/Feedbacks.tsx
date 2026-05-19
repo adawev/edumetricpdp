@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { T } from '@/lib/theme';
-import { Card, Avatar, Select, Skeleton } from '@/components/em/Primitives';
+import { Card, Avatar, Select, Skeleton, Pagination, usePagination } from '@/components/em/Primitives';
 import { Icons } from '@/components/em/Icons';
 import { useFeedbacks } from '@/hooks/useStudent';
 import { ErrorState } from '@/components/em/ErrorState';
@@ -58,6 +58,8 @@ export default function StudentFeedbacks() {
   );
 
   const avg = useMemo(() => avgScore(filtered), [filtered]);
+
+  const pag = usePagination(filtered, 10, [period, filtered.length]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -133,9 +135,10 @@ export default function StudentFeedbacks() {
         <EmptyState period={period} />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {filtered.map(f => (
+          {pag.pageItems.map(f => (
             <FeedbackCard key={f.id} feedback={f} />
           ))}
+          <Pagination page={pag.page} pageCount={pag.pageCount} onChange={pag.setPage} total={pag.total} pageSize={pag.pageSize} style={{ borderTop: 0, padding: '4px 0 0', background: 'transparent' }} />
         </div>
       )}
     </div>

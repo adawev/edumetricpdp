@@ -4,6 +4,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { Search, ChevronRight, X, Users } from 'lucide-react';
 import { api } from '@/lib/api';
 import AdminLayout from './AdminLayout';
+import { Pagination, usePagination } from '@/components/em/Primitives';
 
 type Student = {
   id: string;
@@ -95,6 +96,8 @@ export default function AdminStudents() {
     return list;
   }, [students, search, groupId, status]);
 
+  const pag = usePagination(filtered, 25, [search, groupId, status]);
+
   return (
     <AdminLayout>
       <div className="p-6 space-y-5">
@@ -179,13 +182,13 @@ export default function AdminStudents() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((s, i) => (
+                  {pag.pageItems.map((s, i) => (
                     <tr
                       key={s.id}
                       onClick={() => setSelected(s)}
                       className="border-t hover:bg-slate-50 cursor-pointer transition-colors"
                     >
-                      <td className="px-4 py-3 text-muted-foreground tabular-nums">{i + 1}</td>
+                      <td className="px-4 py-3 text-muted-foreground tabular-nums">{pag.startIndex + i + 1}</td>
                       <td className="px-4 py-3 font-medium">{s.fullName}</td>
                       <td className="px-4 py-3 text-muted-foreground">{s.group?.name}</td>
                       <td className="px-4 py-3 text-right tabular-nums">
@@ -214,6 +217,7 @@ export default function AdminStudents() {
                 </tbody>
               </table>
             </div>
+            <Pagination page={pag.page} pageCount={pag.pageCount} onChange={pag.setPage} total={pag.total} pageSize={pag.pageSize} />
           </div>
         )}
       </div>

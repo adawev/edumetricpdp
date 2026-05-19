@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Star, ExternalLink, X, CheckCircle, XCircle, FileText } from 'lucide-react';
 import { api } from '@/lib/api';
 import AdminLayout from './AdminLayout';
+import { Pagination, usePagination } from '@/components/em/Primitives';
 
 type Achievement = {
   id: string;
@@ -253,9 +254,22 @@ function AchievementList({
       </div>
     );
   }
+  return <PaginatedAchievementGrid items={items} renderCard={renderCard} />;
+}
+
+function PaginatedAchievementGrid({
+  items, renderCard,
+}: {
+  items: Achievement[];
+  renderCard: (a: Achievement) => React.ReactNode;
+}) {
+  const pag = usePagination(items, 12, [items.length]);
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-      {items.map(renderCard)}
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {pag.pageItems.map(renderCard)}
+      </div>
+      <Pagination page={pag.page} pageCount={pag.pageCount} onChange={pag.setPage} total={pag.total} pageSize={pag.pageSize} style={{ borderTop: 0, padding: 0, background: 'transparent' }} />
     </div>
   );
 }
