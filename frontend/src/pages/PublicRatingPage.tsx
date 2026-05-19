@@ -1,200 +1,261 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Trophy, Medal, Award, Search, GraduationCap } from 'lucide-react';
 import { api } from '@/lib/api';
+import { T, GRANT_REASON_LABEL_SHORT, RISK_LABEL_SHORT, RISK_COLOR } from '@/lib/theme';
+import { PublicChrome } from '@/components/em/PublicChrome';
+import { Card, Input, Select, Skeleton, Avatar } from '@/components/em/Primitives';
+import { Icons } from '@/components/em/Icons';
 
-type RatingRow = {
-  rank: number;
-  id: string;
-  fullName: string;
-  group: string;
-  grantScore: number;
-  grantStatus: 'GRANTED' | 'NOT_GRANTED' | 'PENDING' | 'UNKNOWN';
-  grantReason: 'OK' | 'ACADEMIC_FAIL' | 'LOW_SCORE' | 'PAYMENT_OVERDUE' | 'GRANTED_OK';
-  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+type Row = {
+  rank: number; id: string; fullName: string; group: string;
+  grantScore: number; grantStatus: string; grantReason: string; riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
 };
-
 type Group = { id: string; name: string; course: number };
 
-const statusInfo: Record<string, { text: string; cls: string }> = {
-  GRANTED_OK: { text: 'Grant berildi', cls: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-  OK: { text: 'Kutilmoqda', cls: 'bg-amber-100 text-amber-700 border-amber-200' },
-  ACADEMIC_FAIL: { text: 'Akademik past', cls: 'bg-red-100 text-red-700 border-red-200' },
-  LOW_SCORE: { text: 'Ball past', cls: 'bg-red-100 text-red-700 border-red-200' },
-  PAYMENT_OVERDUE: { text: 'To\'lov muddati', cls: 'bg-red-100 text-red-700 border-red-200' },
-};
-
-const riskInfo: Record<string, { text: string; cls: string }> = {
-  LOW: { text: 'Past', cls: 'bg-emerald-500 text-white' },
-  MEDIUM: { text: 'O\'rta', cls: 'bg-amber-500 text-white' },
-  HIGH: { text: 'Yuqori', cls: 'bg-red-500 text-white' },
-};
-
-const podiumStyles = [
-  { border: 'border-amber-400', bg: 'bg-gradient-to-br from-amber-50 to-amber-100', icon: Trophy, iconCls: 'text-amber-500' },
-  { border: 'border-slate-300', bg: 'bg-gradient-to-br from-slate-50 to-slate-100', icon: Medal, iconCls: 'text-slate-400' },
-  { border: 'border-orange-300', bg: 'bg-gradient-to-br from-orange-50 to-orange-100', icon: Award, iconCls: 'text-orange-500' },
-];
-
 export default function PublicRatingPage() {
-  const [groupId, setGroupId] = useState('');
-  const [query, setQuery] = useState('');
+  const [q, setQ] = useState('');
+  const [group, setGroup] = useState('all');
+  const [course, setCourse] = useState('all');
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [skeletonDelay, setSkeletonDelay] = useState(true);
+
+  useEffect(() => {
+    const t = setTimeout(() => setSkeletonDelay(false), 500);
+    return () => clearTimeout(t);
+  }, []);
 
   const { data: groups } = useQuery({
-    queryKey: ['groups'],
+    queryKey: ['public-groups'],
     queryFn: async () => (await api.get<Group[]>('/public/groups')).data,
   });
 
   const { data, isLoading } = useQuery({
-    queryKey: ['public-rating', groupId],
-    queryFn: async () => {
-      const params = groupId ? { groupId } : {};
-      return (await api.get<RatingRow[]>('/public/rating', { params })).data;
-    },
+    queryKey: ['public-rating'],
+    queryFn: async () => (await api.get<Row[]>('/public/rating')).data,
   });
+
+  const courses = useMemo(() => Array.from(new Set(groups?.map(g => String(g.course)) || [])).sort(), [groups]);
 
   const filtered = useMemo(() => {
     if (!data) return [];
-    if (!query.trim()) return data;
-    const q = query.toLowerCase();
-    return data.filter(s => s.fullName.toLowerCase().includes(q) || s.group.toLowerCase().includes(q));
-  }, [data, query]);
+    return data.filter(s =>
+      (group === 'all' || s.group === groups?.find(g => g.id === group)?.name) &&
+      (course === 'all' || groups?.find(g => g.name === s.group)?.course === Number(course)) &&
+      (s.fullName.toLowerCase().includes(q.toLowerCase()) || s.group.toLowerCase().includes(q.toLowerCase()))
+    );
+  }, [data, q, group, course, groups]);
+
+  const hasFilter = q.trim() !== '' || group !== 'all' || course !== 'all';
+  const top3 = filtered.slice(0, 3);
+  const rest = hasFilter ? filtered : filtered.slice(3);
+  const startIdx = hasFilter ? 1 : 4;
+  const loading = isLoading || skeletonDelay;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-      <header className="bg-white border-b sticky top-0 z-10 backdrop-blur supports-[backdrop-filter]:bg-white/80">
-        <div className="container flex items-center justify-between h-14">
-          <div className="flex items-center gap-2">
-            <GraduationCap className="w-5 h-5" />
-            <h1 className="text-lg font-semibold">EduMetric</h1>
+    <PublicChrome loginModal={{ open: showLoginModal, onClose: () => setShowLoginModal(false) }}>
+      <div style={{ padding: '44px 32px 0' }}>
+        <div style={{ maxWidth: 1080, margin: '0 auto' }}>
+          <div style={{ marginBottom: 28 }}>
+            <h1 style={{ fontSize: 36, fontWeight: 700, margin: 0, letterSpacing: '-0.035em', lineHeight: 1.05, color: T.text }}>
+              Talabalar reytingi
+            </h1>
+            <p style={{ margin: '10px 0 0', color: T.textMuted, fontSize: 15, maxWidth: 620, lineHeight: 1.55 }}>
+              PDP University grant nizomi asosida shaffof ball tizimi
+            </p>
           </div>
-          <a href="/login" className="text-sm font-medium px-3 py-1.5 rounded-md hover:bg-slate-100">
-            Kirish →
-          </a>
+
+          <Card padding={12} style={{ marginBottom: 24 }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ flex: '1 1 240px', minWidth: 200 }}>
+                <Input value={q} onChange={e => setQ(e.target.value)} placeholder="Talaba yoki guruh nomi..." icon={<Icons.search size={14} />} />
+              </div>
+              <div style={{ flex: '0 0 180px', minWidth: 150 }}>
+                <Select value={group} onChange={setGroup}
+                  options={[{ value: 'all', label: 'Barcha guruhlar' }, ...(groups?.map(g => ({ value: g.id, label: g.name })) || [])]} />
+              </div>
+              <div style={{ flex: '0 0 150px', minWidth: 130 }}>
+                <Select value={course} onChange={setCourse}
+                  options={[{ value: 'all', label: 'Barcha kurslar' }, ...courses.map(c => ({ value: c, label: `${c}-kurs` }))]} />
+              </div>
+              <div style={{ marginLeft: 'auto', fontSize: 12, color: T.textMuted, whiteSpace: 'nowrap' }}>
+                <span style={{ fontWeight: 500, color: T.text, fontVariantNumeric: 'tabular-nums' }}>{filtered.length}</span> ta talaba
+              </div>
+            </div>
+          </Card>
+
+          {loading ? (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 24 }}>
+                {[0, 1, 2].map(i => <Skeleton key={i} h={170} r={14} />)}
+              </div>
+              <Skeleton h={400} r={12} />
+            </>
+          ) : (
+            <>
+              {!hasFilter && top3.length === 3 && <Top3Podium rows={top3} onClick={() => setShowLoginModal(true)} />}
+              {rest.length === 0 ? <PublicEmptyState /> : (
+                <Card padding={0}>
+                  <RatingTable rows={rest} startIndex={startIdx} onRowClick={() => setShowLoginModal(true)} />
+                </Card>
+              )}
+            </>
+          )}
+
+          <div style={{ marginTop: 24, marginBottom: 24, fontSize: 12, color: T.textSubtle, textAlign: 'center' }}>
+            Reyting har 24 soatda yangilanadi · Avtomatik hisoblash
+          </div>
         </div>
-      </header>
+      </div>
+    </PublicChrome>
+  );
+}
 
-      <main className="container py-10 space-y-8">
-        <div>
-          <h2 className="text-3xl md:text-4xl font-bold tracking-tight">Talabalar reytingi</h2>
-          <p className="text-muted-foreground mt-2 text-base">
-            PDP University grant nizomi asosida shaffof ball tizimi
-          </p>
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Talaba yoki guruh nomi..."
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              className="w-full h-10 pl-9 pr-3 rounded-md border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
-            />
-          </div>
-          <select
-            value={groupId}
-            onChange={e => setGroupId(e.target.value)}
-            className="h-10 px-3 rounded-md border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
-          >
-            <option value="">Barcha guruhlar</option>
-            {groups?.map(g => (
-              <option key={g.id} value={g.id}>{g.name} ({g.course}-kurs)</option>
-            ))}
-          </select>
-        </div>
-
-        {isLoading && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {[0, 1, 2].map(i => <div key={i} className="h-32 rounded-xl bg-slate-100 animate-pulse" />)}
-          </div>
-        )}
-
-        {filtered.length > 0 && !groupId && !query && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {filtered.slice(0, 3).map((s, i) => {
-              const p = podiumStyles[i];
-              const Icon = p.icon;
-              return (
-                <div
-                  key={s.id}
-                  className={`rounded-2xl p-6 border-2 ${p.border} ${p.bg} transition-all hover:shadow-md`}
-                  style={{ animation: `slideUp 0.4s ease-out ${i * 0.1}s both` }}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="text-4xl font-bold tracking-tight">#{s.rank}</div>
-                    <Icon className={`w-8 h-8 ${p.iconCls}`} />
-                  </div>
-                  <div className="mt-3 font-semibold text-lg">{s.fullName}</div>
-                  <div className="text-sm text-muted-foreground">{s.group}</div>
-                  <div className="mt-4 flex items-baseline gap-1">
-                    <span className="text-3xl font-bold">{s.grantScore}</span>
-                    <span className="text-sm text-muted-foreground">ball</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {filtered.length > 0 && (
-          <div className="bg-white rounded-xl border overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-slate-50 text-left text-muted-foreground border-b">
-                  <tr>
-                    <th className="px-4 py-3 font-medium w-12">#</th>
-                    <th className="px-4 py-3 font-medium">Ism</th>
-                    <th className="px-4 py-3 font-medium">Guruh</th>
-                    <th className="px-4 py-3 font-medium text-right">Ball</th>
-                    <th className="px-4 py-3 font-medium">Holat</th>
-                    <th className="px-4 py-3 font-medium w-24">Risk</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map(s => {
-                    const status = statusInfo[s.grantReason] ?? statusInfo.OK;
-                    const risk = riskInfo[s.riskLevel];
-                    return (
-                      <tr key={s.id} className="border-t hover:bg-slate-50 transition-colors">
-                        <td className="px-4 py-3 font-medium tabular-nums">{s.rank}</td>
-                        <td className="px-4 py-3 font-medium">{s.fullName}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{s.group}</td>
-                        <td className="px-4 py-3 text-right font-semibold tabular-nums">{s.grantScore}</td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex px-2 py-1 rounded-md text-xs font-medium border ${status.cls}`}>
-                            {status.text}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex px-2 py-1 rounded-md text-xs font-medium ${risk.cls}`}>
-                            {risk.text}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+function Top3Podium({ rows, onClick }: { rows: Row[]; onClick: () => void }) {
+  const styles = [
+    { bg: 'linear-gradient(180deg, #fef3c7 0%, #fde68a 100%)', border: '#f59e0b', placeColor: '#a16207',
+      icon: <Icons.trophy size={26} stroke="#a16207" strokeWidth={2.2} /> },
+    { bg: 'linear-gradient(180deg, #f1f5f9 0%, #e2e8f0 100%)', border: '#94a3b8', placeColor: '#475569',
+      icon: <Icons.medal size={26} stroke="#475569" strokeWidth={2.2} /> },
+    { bg: 'linear-gradient(180deg, #ffedd5 0%, #fed7aa 100%)', border: '#ea580c', placeColor: '#9a3412',
+      icon: <Icons.award size={26} stroke="#9a3412" strokeWidth={2.2} /> },
+  ];
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 28 }}>
+      {rows.map((stu, i) => {
+        const st = styles[i];
+        return (
+          <div key={stu.id} onClick={onClick} style={{
+            background: st.bg, border: `2px solid ${st.border}`, borderRadius: 14,
+            padding: 22, animation: 'em-slide-up 0.55s cubic-bezier(.2,.7,.3,1) backwards',
+            animationDelay: `${0.06 + i * 0.09}s`, cursor: 'pointer',
+            transition: 'transform .15s, box-shadow .15s',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 10px 28px rgba(15,23,42,.12)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div style={{ fontSize: 38, fontWeight: 800, letterSpacing: '-0.045em', color: st.placeColor, lineHeight: 0.9, fontVariantNumeric: 'tabular-nums' }}>#{i + 1}</div>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(255,255,255,.55)', display: 'grid', placeItems: 'center', border: '1px solid rgba(255,255,255,.55)' }}>{st.icon}</div>
+            </div>
+            <div style={{ marginTop: 22 }}>
+              <div style={{ fontSize: 17, fontWeight: 600, letterSpacing: '-0.015em', color: T.text, lineHeight: 1.3 }}>{stu.fullName}</div>
+              <div style={{ fontSize: 12.5, color: T.textMuted, marginTop: 4 }}>{stu.group}</div>
+            </div>
+            <div style={{ marginTop: 18, display: 'flex', alignItems: 'baseline', gap: 6 }}>
+              <div style={{ fontSize: 34, fontWeight: 700, letterSpacing: '-0.035em', color: T.text, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+                {stu.grantScore.toFixed(1)}
+              </div>
+              <div style={{ fontSize: 12.5, color: T.textMuted, fontWeight: 500 }}>ball</div>
+            </div>
+            <div style={{ marginTop: 14 }}>
+              <HolatBadge reason={stu.grantReason} status={stu.grantStatus} />
             </div>
           </div>
-        )}
+        );
+      })}
+    </div>
+  );
+}
 
-        {!isLoading && filtered.length === 0 && (
-          <div className="text-center py-20 border-2 border-dashed rounded-xl">
-            <Search className="w-10 h-10 mx-auto text-muted-foreground" />
-            <p className="mt-3 text-muted-foreground">Talaba topilmadi</p>
-          </div>
-        )}
-      </main>
+function HolatBadge({ reason, status }: { reason: string; status?: string }) {
+  const isPending = status === 'PENDING';
+  const map: Record<string, { bg: string; fg: string; bd: string }> = {
+    GRANTED_OK:      { bg: T.emeraldBg, fg: T.emeraldText, bd: '#a7f3d0' },
+    OK:              isPending ? { bg: T.amberBg, fg: T.amberText, bd: '#fde68a' } : { bg: T.emeraldBg, fg: T.emeraldText, bd: '#a7f3d0' },
+    ACADEMIC_FAIL:   { bg: T.redBg, fg: T.redText, bd: '#fecaca' },
+    LOW_SCORE:       { bg: T.redBg, fg: T.redText, bd: '#fecaca' },
+    PAYMENT_OVERDUE: { bg: T.redBg, fg: T.redText, bd: '#fecaca' },
+  };
+  const c = map[reason] || { bg: T.bgSubtle, fg: T.text, bd: T.border };
+  const label = isPending && reason === 'OK' ? 'Kutilmoqda' : (GRANT_REASON_LABEL_SHORT[reason] || '—');
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 5,
+      padding: '4px 10px', borderRadius: 999,
+      background: c.bg, color: c.fg, border: `1px solid ${c.bd}`,
+      fontSize: 11.5, fontWeight: 600, whiteSpace: 'nowrap', letterSpacing: '.01em',
+    }}>{label}</span>
+  );
+}
 
-      <style>{`
-        @keyframes slideUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
+function RatingTable({ rows, startIndex, onRowClick }: { rows: Row[]; startIndex: number; onRowClick: () => void }) {
+  return (
+    <div style={{ overflowX: 'auto' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 720 }}>
+        <thead>
+          <tr style={{ background: T.bg }}>
+            {[
+              { l: '#', a: 'center', w: 56 },
+              { l: 'Ism', a: 'left' },
+              { l: 'Guruh', a: 'left', w: 120 },
+              { l: 'Ball', a: 'right', w: 90 },
+              { l: 'Holat', a: 'left', w: 170 },
+              { l: 'Risk', a: 'left', w: 120 },
+            ].map((h, i) => (
+              <th key={i} style={{
+                textAlign: h.a as any, padding: '11px 16px', fontSize: 11.5,
+                fontWeight: 600, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '.04em',
+                width: h.w, borderBottom: `1px solid ${T.border}`, whiteSpace: 'nowrap',
+              }}>{h.l}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((stu, i) => {
+            const rank = startIndex + i;
+            const risk = RISK_COLOR[stu.riskLevel];
+            return (
+              <tr key={stu.id} onClick={onRowClick} style={{
+                borderBottom: i < rows.length - 1 ? `1px solid ${T.border}` : 'none',
+                transition: 'background .12s', cursor: 'pointer',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.querySelectorAll<HTMLTableCellElement>('td.em-hov').forEach(td => td.style.background = T.bgSubtle); }}
+              onMouseLeave={(e) => { e.currentTarget.querySelectorAll<HTMLTableCellElement>('td.em-hov').forEach(td => td.style.background = ''); }}>
+                <td className="em-hov" style={{ padding: '12px 16px', textAlign: 'center', color: T.textMuted, fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>{rank}</td>
+                <td className="em-hov" style={{ padding: '12px 16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Avatar name={stu.fullName} size={30} />
+                    <span style={{ fontWeight: 500 }}>{stu.fullName}</span>
+                  </div>
+                </td>
+                <td className="em-hov" style={{ padding: '12px 16px', color: T.textMuted }}>{stu.group}</td>
+                <td className="em-hov" style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontSize: 14, letterSpacing: '-0.01em' }}>
+                  {stu.grantScore.toFixed(1)}
+                </td>
+                <td className="em-hov" style={{ padding: '12px 16px' }}>
+                  <HolatBadge reason={stu.grantReason} status={stu.grantStatus} />
+                </td>
+                <td style={{
+                  padding: '10px 14px', background: risk.bg, color: risk.fg,
+                  fontSize: 12, fontWeight: 600, letterSpacing: '.02em',
+                  borderBottom: i < rows.length - 1 ? '1px solid rgba(0,0,0,.08)' : 'none',
+                }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                    {stu.riskLevel === 'HIGH' && <Icons.alert size={12} />}
+                    {stu.riskLevel === 'MEDIUM' && <Icons.clock size={12} />}
+                    {stu.riskLevel === 'LOW' && <Icons.check size={12} strokeWidth={2.5} />}
+                    {RISK_LABEL_SHORT[stu.riskLevel]}
+                  </span>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function PublicEmptyState() {
+  return (
+    <div style={{
+      padding: 56, textAlign: 'center', border: `1.5px dashed ${T.borderStrong}`, borderRadius: 12, background: T.white,
+      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+    }}>
+      <div style={{ width: 56, height: 56, borderRadius: 999, background: T.bgSubtle, display: 'grid', placeItems: 'center', marginBottom: 10 }}>
+        <Icons.search size={22} stroke={T.textSubtle} />
+      </div>
+      <div style={{ fontSize: 15.5, fontWeight: 600, color: T.text }}>Talaba topilmadi</div>
+      <div style={{ fontSize: 13, color: T.textMuted, maxWidth: 320 }}>Boshqa nom yoki guruh sinab ko'ring</div>
     </div>
   );
 }

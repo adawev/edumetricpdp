@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth, type Role } from './lib/auth';
 import LoginPage from './pages/LoginPage';
 import PublicRatingPage from './pages/PublicRatingPage';
+import PublicAboutPage from './pages/PublicAboutPage';
 import StudentDashboard from './pages/student/Dashboard';
 import MentorDashboard from './pages/mentor/Dashboard';
 import AdminDashboard from './pages/admin/Dashboard';
@@ -30,6 +31,7 @@ export default function App() {
       <Route path="/" element={<Home />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/public/rating" element={<PublicRatingPage />} />
+      <Route path="/public/about" element={<PublicAboutPage />} />
       <Route path="/student/dashboard" element={<RoleRoute role="STUDENT"><StudentDashboard /></RoleRoute>} />
       <Route path="/mentor/dashboard" element={<RoleRoute role="MENTOR"><MentorDashboard /></RoleRoute>} />
       <Route path="/admin/dashboard" element={<RoleRoute role="ADMIN"><AdminDashboard /></RoleRoute>} />
