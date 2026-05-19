@@ -3,6 +3,7 @@ import { T } from '@/lib/theme';
 import { Card, Button, Input, Select, Field, Dialog, Skeleton, Tooltip } from '@/components/em/Primitives';
 import { Icons } from '@/components/em/Icons';
 import { useAchievements, useCreateAchievement } from '@/hooks/useStudent';
+import { ErrorState } from '@/components/em/ErrorState';
 import type { AchievementType, AchievementStatus } from '@/types/student';
 import { toast } from 'sonner';
 
@@ -46,15 +47,22 @@ interface FormState {
   fileUrl: string;
 }
 
+const EMPTY_FORM: FormState = { type: 'CERTIFICATE', title: '', description: '', file: null, fileUrl: '' };
+
 function AddAchievementDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { mutateAsync, isPending } = useCreateAchievement();
-  const [form, setForm] = useState<FormState>({
-    type: 'CERTIFICATE', title: '', description: '', file: null, fileUrl: '',
-  });
+  const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
 
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) =>
     setForm(f => ({ ...f, [k]: v }));
+
+  const handleClose = () => {
+    if (isPending) return;
+    setForm(EMPTY_FORM);
+    setErrors({});
+    onClose();
+  };
 
   const validate = (): boolean => {
     const e: typeof errors = {};
@@ -74,9 +82,9 @@ function AddAchievementDialog({ open, onClose }: { open: boolean; onClose: () =>
         fileUrl: !form.file && form.fileUrl.trim() ? form.fileUrl.trim() : undefined,
       });
       toast.success("Yutuq qo'shildi — admin ko'rib chiqadi");
-      onClose();
-      setForm({ type: 'CERTIFICATE', title: '', description: '', file: null, fileUrl: '' });
+      setForm(EMPTY_FORM);
       setErrors({});
+      onClose();
     } catch {
       toast.error("Xatolik yuz berdi");
     }
@@ -85,13 +93,13 @@ function AddAchievementDialog({ open, onClose }: { open: boolean; onClose: () =>
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       title="Yangi yutuq qo'shish"
       description="Yutuqingizni kiriting — admin tasdiqlashini kuting"
       size="md"
       footer={
         <>
-          <Button variant="outline" onClick={onClose} disabled={isPending}>Bekor qilish</Button>
+          <Button variant="outline" onClick={handleClose} disabled={isPending}>Bekor qilish</Button>
           <Button variant="primary" onClick={handleSubmit} disabled={isPending}>
             {isPending ? "Saqlanmoqda..." : "Yuborish"}
           </Button>
@@ -168,7 +176,7 @@ function AddAchievementDialog({ open, onClose }: { open: boolean; onClose: () =>
 // ── Main component ──────────────────────────────────────────────────────────
 
 export default function StudentAchievements() {
-  const { data: achievements, isLoading } = useAchievements();
+  const { data: achievements, isLoading, isError, refetch } = useAchievements();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<AchievementStatus | 'ALL'>('ALL');
 
@@ -234,6 +242,8 @@ export default function StudentAchievements() {
       {/* List */}
       {isLoading ? (
         <AchievementsSkeleton />
+      ) : isError ? (
+        <ErrorState onRetry={refetch} />
       ) : filtered.length === 0 ? (
         <EmptyState onAdd={() => setDialogOpen(true)} filtered={statusFilter !== 'ALL'} />
       ) : (

@@ -3,6 +3,7 @@ import { T } from '@/lib/theme';
 import { Card, Avatar, Select, Skeleton } from '@/components/em/Primitives';
 import { Icons } from '@/components/em/Icons';
 import { useFeedbacks } from '@/hooks/useStudent';
+import { ErrorState } from '@/components/em/ErrorState';
 import type { Feedback } from '@/types/student';
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -48,7 +49,7 @@ function filterByPeriod(feedbacks: Feedback[], period: Period): Feedback[] {
 // ── Main ───────────────────────────────────────────────────────────────────
 
 export default function StudentFeedbacks() {
-  const { data: feedbacks, isLoading } = useFeedbacks();
+  const { data: feedbacks, isLoading, isError, refetch } = useFeedbacks();
   const [period, setPeriod] = useState<Period>('all');
 
   const filtered = useMemo(
@@ -126,6 +127,8 @@ export default function StudentFeedbacks() {
       {/* Feedback list */}
       {isLoading ? (
         <FeedbacksSkeleton />
+      ) : isError ? (
+        <ErrorState onRetry={refetch} />
       ) : filtered.length === 0 ? (
         <EmptyState period={period} />
       ) : (

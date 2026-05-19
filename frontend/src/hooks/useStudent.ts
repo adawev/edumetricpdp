@@ -48,9 +48,8 @@ export function useCreateAchievement() {
       if (data.description) form.append('description', data.description);
       if (data.file) form.append('file', data.file);
       else if (data.fileUrl) form.append('fileUrl', data.fileUrl);
-      return api.post('/students/me/achievements', form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      }).then(r => r.data);
+      // Don't set Content-Type manually — Axios auto-adds multipart boundary for FormData
+      return api.post('/students/me/achievements', form).then(r => r.data);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['student', 'achievements'] }),
   });

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { T } from '@/lib/theme';
-import { BrandMark, BrandWord, Avatar, Button } from '@/components/em/Primitives';
+import { BrandMark, BrandWord, Avatar, Button, Tooltip } from '@/components/em/Primitives';
 import { Icons } from '@/components/em/Icons';
 import { useAuth } from '@/lib/auth';
 
@@ -12,11 +12,18 @@ type NavItem = {
 };
 
 const NAV: NavItem[] = [
-  { label: 'Dashboard',   path: '/student/dashboard',     icon: Icons.bolt },
-  { label: 'Profil',      path: '/student/profile',       icon: Icons.user },
-  { label: 'Yutuqlar',    path: '/student/achievements',  icon: Icons.award },
-  { label: "Feedback'lar", path: '/student/feedbacks',   icon: Icons.fileText },
+  { label: 'Dashboard',    path: '/student/dashboard',    icon: Icons.bolt },
+  { label: 'Profil',       path: '/student/profile',      icon: Icons.user },
+  { label: 'Yutuqlar',     path: '/student/achievements', icon: Icons.award },
+  { label: 'Feedbacklar',  path: '/student/feedbacks',    icon: Icons.fileText },
 ];
+
+const PAGE_TITLES: Record<string, string> = {
+  '/student/dashboard':    'Dashboard',
+  '/student/profile':      'Profilim',
+  '/student/achievements': 'Yutuqlarim',
+  '/student/feedbacks':    'Mentor Feedbacklari',
+};
 
 export default function StudentLayout() {
   const { user, clear } = useAuth();
@@ -27,6 +34,7 @@ export default function StudentLayout() {
   const handleLogout = () => { clear(); navigate('/login'); };
 
   const sidebarW = collapsed ? 64 : 240;
+  const pageTitle = PAGE_TITLES[location.pathname] ?? 'Student Panel';
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: T.bg, fontFamily: 'inherit' }}>
@@ -53,15 +61,16 @@ export default function StudentLayout() {
         <nav style={{ flex: 1, padding: '10px 8px', display: 'flex', flexDirection: 'column', gap: 2 }}>
           {NAV.map(item => {
             const active = location.pathname === item.path;
-            return (
+            const btn = (
               <button key={item.path} onClick={() => navigate(item.path)} style={{
                 display: 'flex', alignItems: 'center', gap: 10,
-                padding: collapsed ? '9px 18px' : '9px 12px',
+                padding: collapsed ? '9px 0' : '9px 12px',
+                justifyContent: collapsed ? 'center' : 'flex-start',
                 borderRadius: 8, border: 0, cursor: 'pointer',
                 background: active ? T.bgSubtle : 'transparent',
                 color: active ? T.text : T.textMuted,
                 fontWeight: active ? 500 : 400,
-                fontSize: 13.5, transition: 'all .12s',
+                fontSize: 13.5, transition: 'background .12s',
                 textAlign: 'left', width: '100%', fontFamily: 'inherit',
                 overflow: 'hidden', whiteSpace: 'nowrap',
               }}
@@ -78,6 +87,9 @@ export default function StudentLayout() {
                 )}
               </button>
             );
+            return collapsed
+              ? <Tooltip key={item.path} content={item.label}>{btn}</Tooltip>
+              : btn;
           })}
         </nav>
 
@@ -122,14 +134,14 @@ export default function StudentLayout() {
           }}>
             <Icons.bolt size={16} stroke={T.textMuted} />
           </button>
+          <span style={{ fontSize: 15, fontWeight: 600, color: T.text, letterSpacing: '-0.01em' }}>
+            {pageTitle}
+          </span>
           <div style={{ flex: 1 }} />
           {user && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Tooltip content={user.profile?.fullName || user.email}>
               <Avatar name={user.profile?.fullName || user.email} size={28} />
-              <span style={{ fontSize: 13, color: T.textMuted }}>
-                {user.profile?.fullName || user.email}
-              </span>
-            </div>
+            </Tooltip>
           )}
         </header>
 

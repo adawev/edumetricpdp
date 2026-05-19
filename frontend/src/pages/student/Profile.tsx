@@ -2,6 +2,7 @@ import { T } from '@/lib/theme';
 import { Card, Avatar, Skeleton } from '@/components/em/Primitives';
 import { Icons } from '@/components/em/Icons';
 import { useStudentMe } from '@/hooks/useStudent';
+import { ErrorState } from '@/components/em/ErrorState';
 import type { GrantStatus } from '@/types/student';
 
 const STATUS_LABEL: Record<GrantStatus, string> = {
@@ -39,15 +40,15 @@ function ProgressBar({ value, max, color }: { value: number; max: number; color:
 }
 
 export default function StudentProfile() {
-  const { data, isLoading } = useStudentMe();
+  const { data, isLoading, isError, refetch } = useStudentMe();
 
   if (isLoading) return <ProfileSkeleton />;
+  if (isError) return <ErrorState onRetry={refetch} />;
   if (!data) return null;
 
   const { student, breakdown } = data;
   const sc = STATUS_COLORS[student.grantStatus];
   const penaltyTotal = student.penalties.reduce((s, p) => s + p.ball, 0);
-  const recoveryTotal = student.penalties.reduce((s, p) => s + p.recovered, 0);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 720 }}>

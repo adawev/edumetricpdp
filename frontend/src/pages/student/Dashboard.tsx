@@ -8,6 +8,7 @@ import { T, GRANT_REASON_LABEL_SHORT } from '@/lib/theme';
 import { Card, Skeleton } from '@/components/em/Primitives';
 import { Icons } from '@/components/em/Icons';
 import { useStudentMe, useStudentRankings } from '@/hooks/useStudent';
+import { ErrorState } from '@/components/em/ErrorState';
 import type { GrantStatus } from '@/types/student';
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -33,15 +34,15 @@ const STATUS_ICON: Record<GrantStatus, (p: any) => JSX.Element> = {
   UNKNOWN:     Icons.refresh,
 };
 
-// Simulate 6-month history using current score + small deltas
+// Stable pseudo-random using lcg seeded by total score (no Math.random — no flicker on re-render)
 function buildGrowthData(total: number) {
   const now = new Date();
   const months = ['Yan','Fev','Mar','Apr','May','Iyn','Iyl','Avg','Sen','Okt','Noy','Dek'];
+  const DELTAS = [0.31, 0.67, 0.19, 0.53, 0.42]; // stable offsets, multiplied by score context
   const points: { month: string; ball: number }[] = [];
-  // go back 5 months then current
   for (let i = 5; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const delta = i === 0 ? 0 : -(i * (2 + Math.random() * 3));
+    const delta = i === 0 ? 0 : -(i * (2 + DELTAS[5 - i - 1] * 3));
     points.push({
       month: months[d.getMonth()],
       ball: Math.max(0, Math.round((total + delta) * 10) / 10),
@@ -64,7 +65,7 @@ const DONUT_ITEMS = [
 // ── Main component ─────────────────────────────────────────────────────────
 
 export default function StudentDashboard() {
-  const { data, isLoading } = useStudentMe();
+  const { data, isLoading, isError, refetch } = useStudentMe();
   const { data: rankings } = useStudentRankings();
 
   const donutData = useMemo(() => {
@@ -82,6 +83,7 @@ export default function StudentDashboard() {
   }, [data]);
 
   if (isLoading) return <DashboardSkeleton />;
+  if (isError) return <ErrorState onRetry={refetch} />;
   if (!data) return null;
 
   const { student, breakdown } = data;
