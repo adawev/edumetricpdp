@@ -119,6 +119,16 @@ async function main() {
     const total = Math.min(base + f.employmentBonus, 110);
     const dec = decide(f, total, spec.scenario);
 
+    // Tyutor bahosi 5 yo'nalish (har biri 0-1)
+    const tutorTotal = f.tutorScore; // 0-5
+    const each = tutorTotal / 5;     // teng taqsimlangan
+    const jitter = () => Math.max(0, Math.min(1, each + (Math.random() - 0.5) * 0.3));
+    const tutorEval = {
+      culture: jitter(), activity: jitter(), softSkills: jitter(),
+      discipline: jitter(), dormitory: jitter(),
+      by: 'seed', at: new Date().toISOString(),
+    };
+
     const student = await prisma.student.create({
       data: {
         userId: user.id,
@@ -129,6 +139,7 @@ async function main() {
         projectScore: f.projectScore,
         activityScore: f.activityScore,
         tutorScore: f.tutorScore,
+        tutorEval,
         disciplineScore: f.disciplineScore,
         employmentBonus: f.employmentBonus,
         paymentOverdue: f.paymentOverdue,
