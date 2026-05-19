@@ -17,9 +17,15 @@ publicRouter.get('/rating', async (req, res) => {
     orderBy: { grantScore: 'desc' },
   });
 
-  // Har talaba uchun badge'larni hisoblash (kichik ro'yxat)
+  // Har talaba uchun faqat 1 ta badge (pinned yoki eng noyobi)
+  const rarityRank: Record<string, number> = { legendary: 0, epic: 1, rare: 2, common: 3 };
   const rows = await Promise.all(students.map(async (s, i) => {
-    const badges = await computeBadgesForStudent(s.id);
+    const earned = await computeBadgesForStudent(s.id);
+    let pinned = s.pinnedBadge ? earned.find(b => b.slug === s.pinnedBadge) : undefined;
+    if (!pinned && earned.length) {
+      // pin yo'q bo'lsa eng noyobini ko'rsatamiz
+      pinned = [...earned].sort((a, b) => rarityRank[a.rarity] - rarityRank[b.rarity])[0];
+    }
     return {
       rank: i + 1,
       id: s.id,
@@ -29,7 +35,10 @@ publicRouter.get('/rating', async (req, res) => {
       grantStatus: s.grantStatus,
       grantReason: s.grantReason,
       riskLevel: s.riskLevel,
-      badges: badges.map(b => ({ slug: b.slug, name: b.name, icon: b.icon, color: b.color })),
+      badge: pinned ? {
+        slug: pinned.slug, name: pinned.name, icon: pinned.icon, color: pinned.color, rarity: pinned.rarity,
+      } : null,
+      badgeCount: earned.length,
     };
   }));
   res.json(rows);

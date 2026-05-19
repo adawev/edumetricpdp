@@ -52,7 +52,7 @@ const rand = (min: number, max: number) => min + Math.random() * (max - min);
 function scenarioFields(s: Scenario): ScoreFields {
   switch (s) {
     case 'TOP_GRANTED':
-      return { gpa: rand(90, 98), attendance: rand(92, 99), projectScore: rand(13, 15), activityScore: rand(8, 10), tutorScore: rand(4, 5), disciplineScore: rand(9, 10), employmentBonus: rand(5, 10), paymentOverdue: false };
+      return { gpa: rand(96, 99), attendance: rand(98, 100), projectScore: rand(13, 15), activityScore: rand(8, 10), tutorScore: rand(4, 5), disciplineScore: rand(9, 10), employmentBonus: rand(7, 10), paymentOverdue: false };
     case 'CANDIDATE':
       return { gpa: rand(82, 90), attendance: rand(85, 95), projectScore: rand(11, 14), activityScore: rand(7, 10), tutorScore: rand(3.5, 5), disciplineScore: rand(8, 10), employmentBonus: rand(0, 5), paymentOverdue: false };
     case 'ACADEMIC_FAIL':
@@ -186,30 +186,25 @@ async function main() {
       });
     }
 
-    // Yutuq namunalari
-    if (spec.scenario === 'TOP_GRANTED' || spec.scenario === 'CANDIDATE') {
-      await prisma.achievement.create({
-        data: {
-          studentId: student.id,
-          type: 'HACKATHON',
-          title: 'PDP Hackathon 2026 — 2-o\'rin',
-          description: 'Jamoaviy loyiha bilan ishtirok etib sovrinli o\'rin oldim.',
-          ball: 3,
-          status: 'APPROVED',
-          reviewedAt: new Date(),
-        },
-      });
-    }
-    if (spec.scenario === 'ACADEMIC_FAIL') {
-      await prisma.achievement.create({
-        data: {
-          studentId: student.id,
-          type: 'CERTIFICATE',
-          title: 'IELTS 7.0',
-          ball: 5,
-          status: 'PENDING',
-        },
-      });
+    // Yutuq namunalari — har xil darajalar
+    if (spec.scenario === 'TOP_GRANTED') {
+      // TOP'larga ko'p yutuq — Champion + Founder + Polyglot + Collector imkoniyati
+      await prisma.achievement.create({ data: { studentId: student.id, type: 'HACKATHON', title: 'PDP Unicorn Hackathon — 1-o\'rin', ball: 7, status: 'APPROVED', reviewedAt: new Date() } });
+      await prisma.achievement.create({ data: { studentId: student.id, type: 'STARTUP',   title: 'EduMetric CRM startup', ball: 6, status: 'APPROVED', reviewedAt: new Date() } });
+      await prisma.achievement.create({ data: { studentId: student.id, type: 'LANGUAGE',  title: 'IELTS 7.5', ball: 5, status: 'APPROVED', reviewedAt: new Date() } });
+      await prisma.achievement.create({ data: { studentId: student.id, type: 'MENTORING', title: '3 ta talabaga mentorlik', ball: 3, status: 'APPROVED', reviewedAt: new Date() } });
+      await prisma.achievement.create({ data: { studentId: student.id, type: 'CERTIFICATE', title: 'AWS Cloud Practitioner', ball: 3, status: 'APPROVED', reviewedAt: new Date() } });
+      await prisma.achievement.create({ data: { studentId: student.id, type: 'COURSE',     title: 'PDP Academy offline', ball: 3, status: 'APPROVED', reviewedAt: new Date() } });
+      await prisma.achievement.create({ data: { studentId: student.id, type: 'CERTIFICATE', title: 'Google Cloud Digital Leader', ball: 2, status: 'APPROVED', reviewedAt: new Date() } });
+      await prisma.achievement.create({ data: { studentId: student.id, type: 'VOLUNTEER',  title: 'ICT Week ko\'ngillisi', ball: 2, status: 'APPROVED', reviewedAt: new Date() } });
+    } else if (spec.scenario === 'CANDIDATE') {
+      // Kandidatlarga 2-3 ta
+      await prisma.achievement.create({ data: { studentId: student.id, type: 'HACKATHON', title: 'Ideathon 2026', ball: 3, status: 'APPROVED', reviewedAt: new Date() } });
+      if (i % 2 === 0) {
+        await prisma.achievement.create({ data: { studentId: student.id, type: 'CERTIFICATE', title: 'CS50 sertifikati', ball: 2, status: 'APPROVED', reviewedAt: new Date() } });
+      }
+    } else if (spec.scenario === 'ACADEMIC_FAIL') {
+      await prisma.achievement.create({ data: { studentId: student.id, type: 'CERTIFICATE', title: 'IELTS 7.0', ball: 5, status: 'PENDING' } });
     }
   }
 

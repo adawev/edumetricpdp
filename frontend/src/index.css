@@ -58,3 +58,5 @@
 @keyframes em-shimmer   { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
 @keyframes em-spin      { to { transform: rotate(360deg); } }
 .em-skel { background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 40%, #f1f5f9 80%); background-size: 800px 100%; animation: em-shimmer 1.4s linear infinite; }
+@keyframes em-shimmer-sweep { 0% { left: -100%; } 60% { left: 200%; } 100% { left: 200%; } }
+@keyframes em-sparkle       { 0%, 100% { opacity: 0; transform: scale(0.4); } 50% { opacity: 1; transform: scale(1); } }

@@ -146,11 +146,33 @@ studentRouter.get('/:id/public', async (req, res) => {
   });
 });
 
-// Talabaning shaxsiy badge'lari
+// Talabaning shaxsiy badge'lari + pinned
 studentRouter.get('/me/badges', requireRole('STUDENT'), async (req, res) => {
   const me = await prisma.student.findUnique({ where: { userId: req.user!.userId } });
   if (!me) return res.status(404).json({ error: 'Student not found' });
-  res.json(await computeBadgesForStudent(me.id));
+  const badges = await computeBadgesForStudent(me.id);
+  res.json({ earned: badges, pinnedSlug: me.pinnedBadge });
+});
+
+// Reytingda ko'rinadigan badge'ni tanlash
+studentRouter.put('/me/pinned-badge', requireRole('STUDENT'), async (req, res) => {
+  const schema = z.object({ slug: z.string().nullable() });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Invalid input' });
+
+  const me = await prisma.student.findUnique({ where: { userId: req.user!.userId } });
+  if (!me) return res.status(404).json({ error: 'Student not found' });
+
+  // Tanlangan badge talabaning haqiqatan olganmi tekshirish
+  if (parsed.data.slug) {
+    const earned = await computeBadgesForStudent(me.id);
+    if (!earned.some(b => b.slug === parsed.data.slug)) {
+      return res.status(400).json({ error: 'Bu badge sizda yo\'q' });
+    }
+  }
+
+  await prisma.student.update({ where: { id: me.id }, data: { pinnedBadge: parsed.data.slug } });
+  res.json({ ok: true, pinnedBadge: parsed.data.slug });
 });
 
 studentRouter.get('/me/feedbacks', requireRole('STUDENT'), async (req, res) => {

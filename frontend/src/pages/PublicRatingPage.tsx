@@ -5,12 +5,13 @@ import { T } from '@/lib/theme';
 import { PublicChrome } from '@/components/em/PublicChrome';
 import { Card, Input, Select, Skeleton, Avatar } from '@/components/em/Primitives';
 import { Icons } from '@/components/em/Icons';
-import { BadgeChips, type BadgeMini } from '@/components/em/Badges';
+import { BadgeRowMark, type BadgeMini, type BadgeRarity } from '@/components/em/Badges';
 
 type Row = {
   rank: number; id: string; fullName: string; group: string;
   grantScore: number; grantStatus: string; grantReason: string; riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
-  badges: BadgeMini[];
+  badge: BadgeMini | null;
+  badgeCount: number;
 };
 type Group = { id: string; name: string; course: number };
 
@@ -150,7 +151,7 @@ function Top3Podium({ rows, onClick }: { rows: Row[]; onClick: () => void }) {
             </div>
             <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               <HolatBadge status={stu.grantStatus} />
-              <BadgeChips badges={stu.badges} max={3} size={26} />
+              <BadgeRowMark badge={stu.badge} count={stu.badgeCount} />
             </div>
           </div>
         );
@@ -213,7 +214,7 @@ function RatingTable({ rows, startIndex, onRowClick }: { rows: Row[]; startIndex
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <Avatar name={stu.fullName} size={30} />
                     <span style={{ fontWeight: 500 }}>{stu.fullName}</span>
-                    <BadgeChips badges={stu.badges} max={3} />
+                    <BadgeRowMark badge={stu.badge} count={stu.badgeCount} />
                   </div>
                 </td>
                 <td className="em-hov" style={{ padding: '12px 16px', color: T.textMuted }}>{stu.group}</td>

@@ -3,17 +3,20 @@ import { T } from '@/lib/theme';
 import { Card, Tooltip } from './Primitives';
 import { Icons } from './Icons';
 
+export type BadgeRarity = 'common' | 'rare' | 'epic' | 'legendary';
+
 export type BadgeDef = {
   slug: string;
   name: string;
   icon: string;
   category: 'compete' | 'academic' | 'activity' | 'aggregate';
+  rarity: BadgeRarity;
   color: string;
   description: string;
   howToEarn: string;
 };
 export type EarnedBadge = BadgeDef & { earnedAt?: string };
-export type BadgeMini = { slug: string; name: string; icon: string; color: string };
+export type BadgeMini = { slug: string; name: string; icon: string; color: string; rarity: BadgeRarity };
 
 const fmtDate = (s?: string) => {
   if (!s) return '';
@@ -26,8 +29,12 @@ export const BADGE_CATEGORY_LABEL: Record<string, string> = {
   compete: 'Musobaqa', academic: 'Akademik', activity: 'Faollik', aggregate: 'Jamlovchi',
 };
 
-// ===== Slug → lucide-style icon component =====
-const ICON_FOR: Record<string, (p: { size: number; stroke: string }) => JSX.Element> = {
+export const BADGE_RARITY_LABEL: Record<BadgeRarity, string> = {
+  common: 'Oddiy', rare: 'Noyob', epic: 'Epik', legendary: 'Afsonaviy',
+};
+
+// Slug → lucide-style ikon
+const ICON_FOR: Record<string, (p: { size: number; stroke: string; strokeWidth?: number }) => JSX.Element> = {
   champion:           Icons.trophy,
   top3:               Icons.medal,
   top10:              Icons.star,
@@ -42,114 +49,183 @@ const ICON_FOR: Record<string, (p: { size: number; stroke: string }) => JSX.Elem
   streak:             Icons.flame,
 };
 
-// Color → light gradient bg (lighter shade to darker shade of same hue)
-function gradient(color: string): string {
-  return `linear-gradient(135deg, ${color}ee 0%, ${color} 60%, ${color}cc 100%)`;
-}
+// Rarity → vizual stillar
+type RarityStyle = {
+  gradient: (color: string) => string;
+  outerRing: string;        // tashqi halqa rangi
+  ringWidth: number;
+  glowStrength: number;     // shadow uchun
+  hasShimmer: boolean;
+  hasSparkle: boolean;
+  rarityLabel: string;
+  rarityColor: string;
+};
 
-// Slug → lighter accent for ring + tint bg in card
-function tint(color: string): string {
-  return `${color}1a`; // 10% opacity
-}
+const RARITY_STYLE: Record<BadgeRarity, RarityStyle> = {
+  legendary: {
+    gradient: (c) => `conic-gradient(from 220deg, ${c} 0%, #fff7c2 25%, ${c} 50%, #fef3c7 75%, ${c} 100%)`,
+    outerRing: '#fbbf24', ringWidth: 3, glowStrength: 28,
+    hasShimmer: true, hasSparkle: true,
+    rarityLabel: 'AFSONAVIY', rarityColor: '#a16207',
+  },
+  epic: {
+    gradient: (c) => `linear-gradient(135deg, ${c}ff 0%, ${c}cc 50%, ${c}dd 100%)`,
+    outerRing: '#a78bfa', ringWidth: 2.5, glowStrength: 20,
+    hasShimmer: true, hasSparkle: false,
+    rarityLabel: 'EPIK', rarityColor: '#6d28d9',
+  },
+  rare: {
+    gradient: (c) => `linear-gradient(135deg, ${c}ff 0%, ${c}bb 100%)`,
+    outerRing: '#60a5fa', ringWidth: 2, glowStrength: 14,
+    hasShimmer: false, hasSparkle: false,
+    rarityLabel: 'NOYOB', rarityColor: '#1d4ed8',
+  },
+  common: {
+    gradient: (c) => `linear-gradient(135deg, ${c}ee 0%, ${c}aa 100%)`,
+    outerRing: '#cbd5e1', ringWidth: 1.5, glowStrength: 8,
+    hasShimmer: false, hasSparkle: false,
+    rarityLabel: 'ODDIY', rarityColor: '#475569',
+  },
+};
 
 // =====================================================================
-// 1) Visual: circular badge medallion
+// Visual medallion — rarity'ga qarab style farqlanadi
 // =====================================================================
 export function BadgeMedal({ badge, size = 56, earned = true, style }: { badge: BadgeDef | BadgeMini; size?: number; earned?: boolean; style?: CSSProperties }) {
   const Icon = ICON_FOR[badge.slug] || Icons.award;
-  const iconSize = Math.round(size * 0.5);
+  const iconSize = Math.round(size * 0.48);
+  const rs = RARITY_STYLE[badge.rarity];
+
   if (!earned) {
     return (
       <div style={{
         width: size, height: size, borderRadius: 999,
         background: '#e2e8f0', display: 'grid', placeItems: 'center',
-        opacity: 0.55, filter: 'grayscale(.8)', position: 'relative',
+        opacity: 0.5, filter: 'grayscale(.85)', position: 'relative',
+        border: '2px solid #cbd5e1',
         ...style,
       }}>
         <Icon size={iconSize} stroke="#94a3b8" />
       </div>
     );
   }
+
   return (
     <div style={{
       width: size, height: size, borderRadius: 999,
-      background: gradient(badge.color),
+      background: rs.gradient(badge.color),
       display: 'grid', placeItems: 'center',
-      boxShadow: `0 4px 12px ${badge.color}55, inset 0 -2px 6px rgba(0,0,0,.18), inset 0 2px 6px rgba(255,255,255,.35)`,
-      position: 'relative',
+      boxShadow: `0 ${rs.glowStrength / 3}px ${rs.glowStrength}px ${badge.color}66, inset 0 -2px 8px rgba(0,0,0,.22), inset 0 2px 8px rgba(255,255,255,.45)`,
+      position: 'relative', overflow: 'visible',
       ...style,
     }}>
-      {/* shine highlight */}
+      {/* Outer ring */}
       <span style={{
-        position: 'absolute', top: '8%', left: '15%', width: '40%', height: '30%',
-        borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(255,255,255,.55) 0%, transparent 70%)',
+        position: 'absolute', inset: -rs.ringWidth, borderRadius: 999,
+        border: `${rs.ringWidth}px solid ${rs.outerRing}`,
+        pointerEvents: 'none',
+        boxShadow: rs.glowStrength > 18 ? `0 0 ${rs.glowStrength}px ${rs.outerRing}aa` : 'none',
+      }} />
+
+      {/* Inner highlight shine */}
+      <span style={{
+        position: 'absolute', top: '6%', left: '12%', width: '46%', height: '34%',
+        borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(255,255,255,.65) 0%, transparent 70%)',
         pointerEvents: 'none',
       }} />
-      <Icon size={iconSize} stroke="#fff" />
-      {/* ring */}
-      <span style={{
-        position: 'absolute', inset: -2, borderRadius: 999,
-        border: `2px solid ${badge.color}66`, pointerEvents: 'none',
-      }} />
+
+      {/* Diagonal shimmer sweep (epic + legendary) */}
+      {rs.hasShimmer && (
+        <span style={{
+          position: 'absolute', inset: 0, borderRadius: 999, overflow: 'hidden', pointerEvents: 'none',
+        }}>
+          <span style={{
+            position: 'absolute', top: 0, left: '-100%', width: '50%', height: '100%',
+            background: 'linear-gradient(105deg, transparent 30%, rgba(255,255,255,.7) 50%, transparent 70%)',
+            animation: 'em-shimmer-sweep 3s ease-in-out infinite',
+          }} />
+        </span>
+      )}
+
+      {/* Sparkle particles (legendary only) */}
+      {rs.hasSparkle && (
+        <>
+          <span style={{
+            position: 'absolute', top: -4, right: '15%', width: 6, height: 6,
+            background: '#fff', borderRadius: '50%',
+            boxShadow: '0 0 8px #fff, 0 0 14px #fbbf24',
+            animation: 'em-sparkle 2.2s ease-in-out infinite',
+          }} />
+          <span style={{
+            position: 'absolute', bottom: 2, left: -2, width: 4, height: 4,
+            background: '#fff', borderRadius: '50%',
+            boxShadow: '0 0 6px #fff, 0 0 12px #fbbf24',
+            animation: 'em-sparkle 2.2s ease-in-out .8s infinite',
+          }} />
+        </>
+      )}
+
+      {/* Icon */}
+      <Icon size={iconSize} stroke="#fff" strokeWidth={2.4} />
     </div>
   );
 }
 
 // =====================================================================
-// 2) Inline chips for rating row
+// Single badge chip for rating row — faqat 1 ta, lekin yorqin
 // =====================================================================
-export function BadgeChips({ badges, max = 3, size = 22 }: { badges: BadgeMini[]; max?: number; size?: number }) {
-  if (!badges?.length) return null;
-  const visible = badges.slice(0, max);
-  const rest = badges.length - visible.length;
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 8 }}>
-      {visible.map((b, i) => (
-        <Tooltip key={b.slug} content={b.name}>
-          <span style={{
-            display: 'inline-block', marginLeft: i === 0 ? 0 : -6,
-            transition: 'transform .15s', cursor: 'help',
-          }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px) scale(1.1)'; (e.currentTarget as HTMLElement).style.zIndex = '5'; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = 'none'; (e.currentTarget as HTMLElement).style.zIndex = '1'; }}>
-            <BadgeMedal badge={b} size={size} />
-          </span>
-        </Tooltip>
-      ))}
-      {rest > 0 && (
-        <Tooltip content={badges.slice(max).map(b => b.name).join(', ')}>
+export function BadgeRowMark({ badge, count }: { badge: BadgeMini | null; count?: number }) {
+  if (!badge) {
+    if (count && count > 0) {
+      return (
+        <Tooltip content={`${count} ta badge — profilda ko'rsatish uchun tanlang`}>
           <span style={{
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            width: size, height: size, marginLeft: -6,
-            fontSize: 10.5, fontWeight: 700, color: T.text,
-            background: T.white, border: `2px solid ${T.borderStrong}`, borderRadius: 999,
-            cursor: 'help',
-          }}>+{rest}</span>
+            width: 22, height: 22, marginLeft: 8,
+            fontSize: 10.5, fontWeight: 700, color: T.textMuted,
+            background: T.bgSubtle, border: `1px solid ${T.border}`, borderRadius: 999,
+          }}>+{count}</span>
         </Tooltip>
-      )}
-    </span>
+      );
+    }
+    return null;
+  }
+  return (
+    <Tooltip content={`${badge.name} · ${BADGE_RARITY_LABEL[badge.rarity]}${count && count > 1 ? ` · jami ${count} badge` : ''}`}>
+      <span style={{ display: 'inline-block', marginLeft: 8, cursor: 'help' }}>
+        <BadgeMedal badge={badge} size={26} />
+      </span>
+    </Tooltip>
   );
 }
 
 // =====================================================================
-// 3) Big catalog card (in /public/badges)
+// Catalog card (/public/badges)
 // =====================================================================
 export function BadgeCatalogCard({ badge }: { badge: BadgeDef }) {
-  const tintBg = tint(badge.color);
+  const rs = RARITY_STYLE[badge.rarity];
+  const tintBg = badge.color + '14';
   return (
     <Card padding={20} style={{ display: 'flex', flexDirection: 'column', gap: 14, position: 'relative', overflow: 'hidden' }}>
-      {/* decorative blob */}
       <span aria-hidden style={{
-        position: 'absolute', top: -50, right: -50, width: 140, height: 140, borderRadius: 999,
-        background: tintBg, filter: 'blur(20px)', pointerEvents: 'none', opacity: .8,
+        position: 'absolute', top: -50, right: -50, width: 160, height: 160, borderRadius: 999,
+        background: tintBg, filter: 'blur(24px)', pointerEvents: 'none',
       }} />
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, position: 'relative' }}>
-        <BadgeMedal badge={badge} size={64} />
-        <span style={{
-          fontSize: 10.5, fontWeight: 700, padding: '4px 9px', borderRadius: 999,
-          background: T.white, color: badge.color, border: `1px solid ${badge.color}44`,
-          textTransform: 'uppercase', letterSpacing: '.05em',
-        }}>{BADGE_CATEGORY_LABEL[badge.category]}</span>
+        <BadgeMedal badge={badge} size={68} />
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5 }}>
+          <span style={{
+            fontSize: 9.5, fontWeight: 800, padding: '3px 8px', borderRadius: 4,
+            background: rs.rarityColor + '15', color: rs.rarityColor,
+            border: `1px solid ${rs.rarityColor}33`,
+            letterSpacing: '.1em',
+          }}>{rs.rarityLabel}</span>
+          <span style={{
+            fontSize: 10.5, fontWeight: 600, padding: '3px 8px', borderRadius: 999,
+            background: T.white, color: badge.color, border: `1px solid ${badge.color}33`,
+            textTransform: 'uppercase', letterSpacing: '.05em',
+          }}>{BADGE_CATEGORY_LABEL[badge.category]}</span>
+        </div>
       </div>
       <div style={{ position: 'relative' }}>
         <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.015em', color: T.text }}>{badge.name}</div>
@@ -157,7 +233,7 @@ export function BadgeCatalogCard({ badge }: { badge: BadgeDef }) {
       </div>
       <div style={{
         marginTop: 'auto', padding: '10px 12px',
-        background: 'rgba(255,255,255,.6)', backdropFilter: 'blur(4px)',
+        background: 'rgba(255,255,255,.7)', backdropFilter: 'blur(4px)',
         border: `1px solid ${T.border}`, borderRadius: 8, position: 'relative',
       }}>
         <div style={{ fontSize: 10.5, fontWeight: 700, color: badge.color, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>
@@ -170,7 +246,7 @@ export function BadgeCatalogCard({ badge }: { badge: BadgeDef }) {
 }
 
 // =====================================================================
-// 4) Grid for profile pages (earned + locked)
+// Grid (profile pages)
 // =====================================================================
 export function BadgeGrid({ catalog, earned, columns = 4 }: { catalog: BadgeDef[]; earned: EarnedBadge[]; columns?: number }) {
   const earnedMap = Object.fromEntries(earned.map(b => [b.slug, b]));
@@ -183,19 +259,17 @@ export function BadgeGrid({ catalog, earned, columns = 4 }: { catalog: BadgeDef[
           <Tooltip key={b.slug} content={isEarned ? `${b.name} · ${fmtDate(e.earnedAt)}` : `${b.name} · Hali olinmagan`}>
             <div style={{
               padding: 14, border: `1px solid ${T.border}`, borderRadius: 12,
-              background: isEarned ? `linear-gradient(180deg, ${b.color}0d 0%, ${T.white} 100%)` : T.white,
+              background: isEarned ? `linear-gradient(180deg, ${b.color}10 0%, ${T.white} 100%)` : T.white,
               display: 'flex', flexDirection: 'column', alignItems: 'center',
               textAlign: 'center', gap: 8,
               transition: 'transform .15s, box-shadow .15s', cursor: 'help',
-            }}
-            onMouseEnter={(e2) => { if (isEarned) { (e2.currentTarget as HTMLElement).style.transform = 'translateY(-3px)'; (e2.currentTarget as HTMLElement).style.boxShadow = `0 10px 24px ${b.color}33`; } }}
-            onMouseLeave={(e2) => { (e2.currentTarget as HTMLElement).style.transform = 'none'; (e2.currentTarget as HTMLElement).style.boxShadow = 'none'; }}>
-              <BadgeMedal badge={b} size={56} earned={isEarned} />
+            }}>
+              <BadgeMedal badge={b} size={60} earned={isEarned} />
               <div style={{ fontSize: 12.5, fontWeight: 600, color: isEarned ? T.text : T.textMuted, lineHeight: 1.3 }}>
                 {b.name}
               </div>
-              <div style={{ fontSize: 10.5, color: T.textSubtle, fontVariantNumeric: 'tabular-nums' }}>
-                {isEarned ? fmtDate(e.earnedAt) : 'Hali olinmagan'}
+              <div style={{ fontSize: 10, color: isEarned ? RARITY_STYLE[b.rarity].rarityColor : T.textSubtle, fontWeight: 700, letterSpacing: '.08em' }}>
+                {RARITY_STYLE[b.rarity].rarityLabel}
               </div>
             </div>
           </Tooltip>
