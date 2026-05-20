@@ -209,6 +209,13 @@ export default function AdminRating() {
     if (masterRef.current) masterRef.current.indeterminate = someSelected;
   }, [someSelected]);
 
+  // Clear selection when page is restored from bfcache (browser back button)
+  useEffect(() => {
+    const fn = (e: PageTransitionEvent) => { if (e.persisted) setSelected({}); };
+    window.addEventListener('pageshow', fn);
+    return () => window.removeEventListener('pageshow', fn);
+  }, []);
+
   const lowCount  = sorted.filter(x => x.riskLevel === 'LOW').length;
   const midCount  = sorted.filter(x => x.riskLevel === 'MEDIUM').length;
   const highCount = sorted.filter(x => x.riskLevel === 'HIGH').length;
