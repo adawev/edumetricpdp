@@ -107,18 +107,18 @@ adminRouter.post('/penalties/:id/recover', async (req, res) => {
   res.json(penalty);
 });
 
+const grantInclude = {
+  group: true,
+  user: { select: { email: true } },
+} as const;
+
 adminRouter.get('/grants', async (_req, res) => {
-  const pending = await prisma.student.findMany({
-    where: { grantStatus: 'PENDING' },
-    include: { group: true },
-    orderBy: { grantScore: 'desc' },
-  });
-  const granted = await prisma.student.findMany({
-    where: { grantStatus: 'GRANTED' },
-    include: { group: true },
-    orderBy: { grantScore: 'desc' },
-  });
-  res.json({ pending, granted });
+  const [pending, granted, rejected] = await Promise.all([
+    prisma.student.findMany({ where: { grantStatus: 'PENDING' },     include: grantInclude, orderBy: { grantScore: 'desc' } }),
+    prisma.student.findMany({ where: { grantStatus: 'GRANTED' },     include: grantInclude, orderBy: { grantScore: 'desc' } }),
+    prisma.student.findMany({ where: { grantStatus: 'NOT_GRANTED' }, include: grantInclude, orderBy: { grantScore: 'desc' } }),
+  ]);
+  res.json({ pending, granted, rejected });
 });
 
 adminRouter.post('/grants/:id/grant', async (req, res) => {
@@ -129,12 +129,33 @@ adminRouter.post('/grants/:id/grant', async (req, res) => {
   res.json(s);
 });
 
+adminRouter.post('/grants/:id/reject', async (req, res) => {
+  const schema = z.object({
+    reason: z.enum(['ACADEMIC_FAIL', 'LOW_SCORE', 'PAYMENT_OVERDUE']).default('LOW_SCORE'),
+  });
+  const parsed = schema.safeParse(req.body);
+  const reason = parsed.success ? parsed.data.reason : 'LOW_SCORE';
+  const s = await prisma.student.update({
+    where: { id: req.params.id },
+    data: { grantStatus: 'NOT_GRANTED', grantReason: reason },
+  });
+  res.json(s);
+});
+
 adminRouter.post('/grants/:id/revoke', async (req, res) => {
-  // GRANTED_OK sababini saqlaymiz — bu admin qarorini keyingi recalc'dan himoya qiladi
   const s = await prisma.student.update({
     where: { id: req.params.id },
     data: { grantStatus: 'NOT_GRANTED', grantReason: 'GRANTED_OK' },
   });
+  res.json(s);
+});
+
+adminRouter.post('/grants/:id/restore', async (req, res) => {
+  await prisma.student.update({
+    where: { id: req.params.id },
+    data: { grantStatus: 'PENDING', grantReason: 'OK' },
+  });
+  const s = await recalcStudent(req.params.id);
   res.json(s);
 });
 
