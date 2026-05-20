@@ -97,13 +97,18 @@ export default function MentorDashboard() {
     const avgAttendance = all.reduce((s, x) => s + x.attendance, 0) / total;
     const riskHigh = all.filter(x => x.riskLevel === 'HIGH').length;
     const sorted = [...all].sort((a, b) => b.grantScore - a.grantScore);
+    const top5 = sorted.slice(0, 5);
+    const top5Ids = new Set(top5.map(s => s.id));
+    const bottom5 = total > 5
+      ? sorted.slice(-5).reverse().filter(s => !top5Ids.has(s.id))
+      : [];
     return {
       total,
       avgScore,
       riskHigh,
       avgAttendance,
-      top5: sorted.slice(0, 5),
-      bottom5: sorted.slice(-5).reverse(),
+      top5,
+      bottom5,
     };
   }, [data]);
 

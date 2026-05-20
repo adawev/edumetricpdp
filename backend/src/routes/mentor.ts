@@ -26,6 +26,7 @@ async function studentBelongsToMentor(studentId: string, mentorId: string) {
     include: { group: true },
   });
   if (!student) return null;
+  if (!student.group) return false;
   return student.group.mentorId === mentorId;
 }
 
@@ -115,6 +116,11 @@ mentorRouter.post('/tutor-evaluation', async (req, res) => {
   if (!mentorId) return res.status(404).json({ error: 'Mentor not found' });
 
   const { studentId, culture, activity, softSkills, discipline, dormitory } = parsed.data;
+
+  const owned = await studentBelongsToMentor(studentId, mentorId);
+  if (owned === null) return res.status(404).json({ error: 'Student not found' });
+  if (!owned) return res.status(403).json({ error: 'Forbidden' });
+
   const tutorScore = culture + activity + softSkills + discipline + dormitory; // max 5
 
   await prisma.student.update({
@@ -125,6 +131,14 @@ mentorRouter.post('/tutor-evaluation', async (req, res) => {
     },
   });
   await recalcStudent(studentId);
+
+  await prisma.activityLog.create({
+    data: {
+      studentId,
+      action: 'MENTOR_TUTOR_EVAL',
+      meta: { mentorId, tutorScore, culture, activity, softSkills, discipline, dormitory },
+    },
+  });
 
   res.json({ ok: true, tutorScore, breakdown: { culture, activity, softSkills, discipline, dormitory } });
 });
