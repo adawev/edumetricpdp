@@ -9,9 +9,7 @@ export function PublicChrome({ children, loginModal }: { children: ReactNode; lo
   const navigate = useNavigate();
   const loc = useLocation();
   const user = useAuth(s => s.user);
-  const active = loc.pathname.includes('about') ? 'about'
-               : loc.pathname.includes('badges') ? 'badges'
-               : 'rating';
+  const active = loc.pathname.includes('about') ? 'about' : 'rating';
 
   // Login bo'lganlar uchun panel marshruti
   const panelPath = user?.role === 'STUDENT' ? '/student/dashboard'
@@ -37,8 +35,7 @@ export function PublicChrome({ children, loginModal }: { children: ReactNode; lo
           </Link>
           <nav style={{ display: 'flex', gap: 4 }}>
             {[{ id: 'rating', label: 'Reyting', path: '/public/rating' },
-              { id: 'about',  label: 'Grant haqida', path: '/public/about' },
-              { id: 'badges', label: "Badge'lar", path: '/public/badges' }].map(item => {
+              { id: 'about',  label: 'Grant haqida', path: '/public/about' }].map(item => {
               const isActive = active === item.id;
               return (
                 <Link key={item.id} to={item.path} style={{

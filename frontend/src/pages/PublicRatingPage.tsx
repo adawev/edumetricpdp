@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth';
 import { PublicChrome } from '@/components/em/PublicChrome';
 import { Card, Input, Select, Skeleton, Avatar, Tabs, Pagination, usePagination } from '@/components/em/Primitives';
 import { Icons } from '@/components/em/Icons';
+import { BadgeRowMark, type BadgeMini } from '@/components/em/Badges';
 
 type Period = 'week' | 'month' | 'all';
 const PERIOD_LABEL: Record<Period, string> = {
@@ -32,6 +33,8 @@ type Row = {
   weeklyActivity?: number;
   lastRecalc?: string;
   isAnonymized?: boolean;
+  badge: BadgeMini | null;
+  badgeCount: number;
 };
 type Group = { id: string; name: string; course: number };
 
@@ -271,6 +274,9 @@ function Top3Podium({ rows, period, onClick }: { rows: Row[]; period: Period; on
               </div>
             </div>
 
+            <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <BadgeRowMark badge={stu.badge} count={stu.badgeCount} size={isCenter ? 32 : 26} />
+            </div>
           </div>
         );
       })}
@@ -358,6 +364,10 @@ function RatingTable({ rows, startIndex, period, onRowClick }: { rows: Row[]; st
                 <td className="em-hov" style={{ padding: '12px 16px', textAlign: 'center', color: T.textMuted, fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>{rank}</td>
                 <td className="em-hov" style={{ padding: '12px 16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {/* Badge: avatardan oldin, kichik */}
+                    <span style={{ width: 22, display: 'inline-flex', justifyContent: 'center' }}>
+                      <BadgeRowMark badge={stu.badge} count={stu.badgeCount} size={22} />
+                    </span>
                     <Avatar name={stu.fullName} size={30} />
                     <span style={{
                       fontWeight: 500,
