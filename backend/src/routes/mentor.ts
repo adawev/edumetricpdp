@@ -35,9 +35,19 @@ mentorRouter.get('/students', async (req, res) => {
   if (!mentorId) return res.status(404).json({ error: 'Mentor not found' });
   const groups = await prisma.group.findMany({
     where: { mentorId },
-    include: { students: { orderBy: { grantScore: 'desc' } } },
+    include: {
+      students: {
+        orderBy: { grantScore: 'desc' },
+        include: { user: { select: { email: true } } },
+      },
+    },
   });
-  res.json(groups);
+  // Flatten email into student object
+  const result = groups.map(g => ({
+    ...g,
+    students: g.students.map(({ user, ...s }) => ({ ...s, email: user?.email ?? '' })),
+  }));
+  res.json(result);
 });
 
 mentorRouter.get('/feedbacks', async (req, res) => {

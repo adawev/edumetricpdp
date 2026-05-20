@@ -206,7 +206,7 @@ export default function MentorDiscipline() {
           ))}
         </div>
       ) : !isError && (
-        <div className="bg-white rounded-xl border overflow-hidden" style={{ paddingBottom: 72 }}>
+        <div className="bg-white rounded-xl border overflow-hidden">
           {/* Table header */}
           <div className="grid items-center border-b bg-slate-50 px-5 py-2.5 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground"
             style={{ gridTemplateColumns: '28px 1fr 100px 220px 1fr' }}
@@ -233,7 +233,7 @@ export default function MentorDiscipline() {
             return (
               <div
                 key={stu.id}
-                className="grid items-center px-5 py-3 border-b last:border-b-0"
+                className="grid items-center px-5 py-3 border-b"
                 style={{ gridTemplateColumns: '28px 1fr 100px 220px 1fr' }}
               >
                 <span className="text-xs text-slate-400 tabular-nums">{i + 1}</span>
@@ -285,50 +285,42 @@ export default function MentorDiscipline() {
               </div>
             );
           })}
-        </div>
-      )}
 
-      {/* Sticky save bar */}
-      {!isLoading && !isError && groupStudents.length > 0 && (
-        <div
-          className="fixed bottom-0 left-0 right-0 z-30 px-8 py-3.5 flex items-center justify-between"
-          style={{
-            background: 'rgba(255,255,255,0.92)',
-            backdropFilter: 'blur(8px)',
-            borderTop: '1px solid #e2e8f0',
-          }}
-        >
-          <div className="text-sm text-muted-foreground">
-            {dirty ? (
-              <span className="text-amber-600 font-medium">● Saqlanmagan o'zgarishlar bor</span>
-            ) : (
-              <span>Barcha o'zgarishlar saqlangan</span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                // Reset to original
-                if (data) {
-                  const next: Record<string, number> = {};
-                  data.flatMap(g => g.students).forEach(s => { next[s.id] = s.disciplineScore; });
-                  setScores(next);
-                  setDirty(false);
-                }
-              }}
-              className="h-9 px-4 rounded-md border bg-white text-sm font-medium hover:bg-slate-50 transition-colors"
-            >
-              Bekor qilish
-            </button>
-            <button
-              disabled={!dirty || saving === 'all'}
-              onClick={saveAll}
-              className="inline-flex items-center gap-2 h-9 px-4 bg-slate-900 text-white text-sm font-medium rounded-md hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <CheckCheck className="w-4 h-4" />
-              {saving === 'all' ? 'Saqlanmoqda...' : 'Barchasini saqlash'}
-            </button>
-          </div>
+          {/* Save bar — card ichida, pastda */}
+          {groupStudents.length > 0 && (
+            <div className="flex items-center justify-between px-5 py-3 border-t bg-slate-50">
+              <div className="text-sm text-muted-foreground">
+                {dirty ? (
+                  <span className="text-amber-600 font-medium">● Saqlanmagan o'zgarishlar bor</span>
+                ) : (
+                  <span>Barcha o'zgarishlar saqlangan</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    if (data) {
+                      const next: Record<string, number> = {};
+                      data.flatMap(g => g.students).forEach(s => { next[s.id] = s.disciplineScore; });
+                      setScores(next);
+                      setDirty(false);
+                    }
+                  }}
+                  className="h-9 px-4 rounded-md border bg-white text-sm font-medium hover:bg-slate-50 transition-colors"
+                >
+                  Bekor qilish
+                </button>
+                <button
+                  disabled={!dirty || saving === 'all'}
+                  onClick={saveAll}
+                  className="inline-flex items-center gap-2 h-9 px-4 bg-slate-900 text-white text-sm font-medium rounded-md hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <CheckCheck className="w-4 h-4" />
+                  {saving === 'all' ? 'Saqlanmoqda...' : 'Barchasini saqlash'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
