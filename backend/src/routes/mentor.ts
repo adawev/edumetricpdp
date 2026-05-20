@@ -97,17 +97,17 @@ mentorRouter.post('/feedback', async (req, res) => {
   if (owned === null) return res.status(404).json({ error: 'Student not found' });
   if (!owned) return res.status(403).json({ error: 'Forbidden' });
 
-  // Shu mentor shu talabaga avval feedback yozganmi?
-  const existing = await prisma.feedback.findFirst({
-    where: { studentId: parsed.data.studentId, mentorId },
+  // Atomic upsert — race condition'siz. @@unique([studentId, mentorId]) kafolat beradi.
+  const existing = await prisma.feedback.findUnique({
+    where: { studentId_mentorId: { studentId: parsed.data.studentId, mentorId } },
+    select: { id: true },
   });
 
-  const fb = existing
-    ? await prisma.feedback.update({
-        where: { id: existing.id },
-        data: { text: parsed.data.text, score: parsed.data.score, createdAt: new Date() },
-      })
-    : await prisma.feedback.create({ data: { ...parsed.data, mentorId } });
+  const fb = await prisma.feedback.upsert({
+    where: { studentId_mentorId: { studentId: parsed.data.studentId, mentorId } },
+    update: { text: parsed.data.text, score: parsed.data.score },
+    create: { studentId: parsed.data.studentId, mentorId, text: parsed.data.text, score: parsed.data.score },
+  });
 
   // Feedback bahosi (1-5) → tutorScore. Grant ballini qayta hisoblaydi.
   await prisma.student.update({

@@ -118,7 +118,8 @@ export default function MentorFeedback() {
   const myFeedback = useMemo(() => history?.find(f => f.isMine) ?? null, [history]);
   const isEditing = !!myFeedback;
 
-  // Talaba tanlanganda / tarix yuklanganda formani mavjud feedback bilan to'ldiradi
+  // Talaba almashganda yoki feedback ID o'zgarganda formani to'ldiradi.
+  // Deps'da `myFeedback` obyekti emas, faqat `id` — refetch'da forma reset bo'lmasin.
   useEffect(() => {
     if (myFeedback) {
       setText(myFeedback.text);
@@ -127,7 +128,8 @@ export default function MentorFeedback() {
       setText('');
       setScore(0);
     }
-  }, [myFeedback, studentId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myFeedback?.id, studentId]);
 
   const submit = useMutation({
     mutationFn: async () => {
