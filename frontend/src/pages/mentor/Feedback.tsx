@@ -39,38 +39,51 @@ function Avatar({ name, size = 36 }: { name: string; size?: number }) {
   );
 }
 
-// ── Stars ─────────────────────────────────────────────────────────────────────
-function StarPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
-  const [hover, setHover] = useState(0);
-  const active = hover || value;
+// ── Score input/display ───────────────────────────────────────────────────────
+// 1.0 – 5.0, 0.1 qadam. Yulduzcha emas — kasr qiymat (4.3 kabi) kiritish uchun.
+function ScorePicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const clamp = (n: number) => Math.max(0, Math.min(5, Math.round(n * 10) / 10));
   return (
-    <div className="flex items-center gap-1" onMouseLeave={() => setHover(0)}>
-      {[1, 2, 3, 4, 5].map(n => (
-        <button
-          key={n}
-          type="button"
-          onMouseEnter={() => setHover(n)}
-          onClick={() => onChange(n)}
-          className="p-0.5 rounded hover:bg-slate-100 transition-colors"
-          aria-label={`${n} yulduz`}
-        >
-          <Star className={`w-6 h-6 transition-colors ${n <= active ? 'fill-amber-400 text-amber-400' : 'text-slate-200'}`} />
-        </button>
-      ))}
-      <span className="ml-2 text-sm text-muted-foreground tabular-nums">
-        {value > 0 ? `${value} / 5` : 'Baho tanlang'}
-      </span>
+    <div className="space-y-2">
+      <div className="flex items-center gap-3">
+        <input
+          type="range"
+          min={1}
+          max={5}
+          step={0.1}
+          value={value || 1}
+          onChange={e => onChange(clamp(Number(e.target.value)))}
+          className="flex-1 accent-slate-900"
+          aria-label="Baho"
+        />
+        <input
+          type="number"
+          min={1}
+          max={5}
+          step={0.1}
+          value={value || ''}
+          placeholder="0.0"
+          onChange={e => {
+            const n = Number(e.target.value);
+            onChange(Number.isFinite(n) ? clamp(n) : 0);
+          }}
+          className="w-20 h-9 px-2 rounded-md border bg-white text-sm text-center tabular-nums focus:outline-none focus:ring-2 focus:ring-slate-900"
+        />
+        <span className="text-sm text-muted-foreground tabular-nums w-8">/ 5</span>
+      </div>
+      <p className="text-[11.5px] text-muted-foreground">
+        Diapazon: 1.0 – 5.0 (masalan, 4.3)
+      </p>
     </div>
   );
 }
 
-function StarsDisplay({ score }: { score: number }) {
+function ScoreBadge({ score }: { score: number }) {
   return (
-    <div className="flex items-center gap-0.5">
-      {[1, 2, 3, 4, 5].map(n => (
-        <Star key={n} className={`w-3 h-3 ${n <= score ? 'fill-amber-400 text-amber-400' : 'text-slate-200'}`} />
-      ))}
-    </div>
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-medium tabular-nums">
+      <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+      {score.toFixed(1)} / 5
+    </span>
   );
 }
 
@@ -257,8 +270,8 @@ export default function MentorFeedback() {
             )}
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Mentor bahosi (1–5)</label>
-              <StarPicker value={score} onChange={setScore} />
+              <label className="text-sm font-medium">Mentor bahosi (1.0–5.0)</label>
+              <ScorePicker value={score} onChange={setScore} />
               <p className="text-[11.5px] text-muted-foreground">
                 Bu baho grant ballidagi "Mentor bahosi" mezoni — max 5 ball
               </p>
@@ -351,7 +364,7 @@ export default function MentorFeedback() {
                               siz
                             </span>
                           )}
-                          <StarsDisplay score={item.score} />
+                          <ScoreBadge score={item.score} />
                           <span className="text-xs text-muted-foreground ml-auto">{formatDate(item.createdAt)}</span>
                         </div>
                         <p className="mt-1.5 text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{item.text}</p>

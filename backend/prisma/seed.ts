@@ -238,17 +238,17 @@ async function main() {
       });
     }
 
-    // Feedback namunalari (1-2 ta)
-    if (i % 3 === 0) {
-      await prisma.feedback.create({
-        data: {
-          studentId: student.id,
-          mentorId: i < 8 ? mentor1.id : mentor2.id,
-          text: 'Yaxshi ishlayapti, faollik ko\'rsatsa yana yaxshi natijaga erishadi.',
-          score: 4,
-        },
-      });
-    }
+    // Feedback — har talaba uchun o'z guruhi mentoridan, score = tutorScore.
+    // Shu orqali admin va mentor paneldagi tyutor bahosi mos keladi.
+    const studentGroup = groups[i % groups.length];
+    await prisma.feedback.create({
+      data: {
+        studentId: student.id,
+        mentorId: studentGroup.mentorId,
+        text: 'Yaxshi ishlayapti, faollik ko\'rsatsa yana yaxshi natijaga erishadi.',
+        score: Math.round(f.tutorScore * 10) / 10,
+      },
+    });
 
     // Yutuq namunalari — har xil darajalar
     if (spec.scenario === 'TOP_GRANTED') {

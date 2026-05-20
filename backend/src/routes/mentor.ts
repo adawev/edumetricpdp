@@ -82,7 +82,8 @@ mentorRouter.get('/feedbacks', async (req, res) => {
 const feedbackSchema = z.object({
   studentId: z.string().uuid(),
   text: z.string().min(3).max(500),
-  score: z.number().int().min(1).max(5),
+  // 1.0 dan 5.0 gacha, 0.1 qadam (4.3 kabi qiymatlar)
+  score: z.number().min(1).max(5).multipleOf(0.1),
 });
 
 // Feedback = text comment + mentor bahosi (1-5).
@@ -108,13 +109,6 @@ mentorRouter.post('/feedback', async (req, res) => {
     update: { text: parsed.data.text, score: parsed.data.score },
     create: { studentId: parsed.data.studentId, mentorId, text: parsed.data.text, score: parsed.data.score },
   });
-
-  // Feedback bahosi (1-5) → tutorScore. Grant ballini qayta hisoblaydi.
-  await prisma.student.update({
-    where: { id: parsed.data.studentId },
-    data: { tutorScore: parsed.data.score },
-  });
-  await recalcStudent(parsed.data.studentId);
 
   // Feedback bahosi (1-5) → tutorScore. Grant ballini qayta hisoblaydi.
   await prisma.student.update({
