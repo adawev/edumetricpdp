@@ -50,11 +50,26 @@ const STATUS_LABEL: Record<string, string> = {
   APPROVED: 'Tasdiqlangan',
   REJECTED: 'Rad etilgan',
 };
-const STATUS_CLS: Record<string, string> = {
-  PENDING:  'bg-amber-100 text-amber-700',
-  APPROVED: 'bg-emerald-100 text-emerald-700',
-  REJECTED: 'bg-red-100 text-red-600',
+const STATUS_DOT: Record<string, { bg: string; fg: string; dot: string }> = {
+  PENDING:  { bg: '#fef3c7', fg: '#92400e', dot: '#f59e0b' },
+  APPROVED: { bg: '#d1fae5', fg: '#065f46', dot: '#10b981' },
+  REJECTED: { bg: '#fee2e2', fg: '#991b1b', dot: '#ef4444' },
 };
+
+function StatusBadge({ status }: { status: string }) {
+  const c = STATUS_DOT[status] ?? { bg: '#f1f5f9', fg: '#475569', dot: '#94a3b8' };
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 5,
+      padding: '2px 7px', borderRadius: 999,
+      background: c.bg, color: c.fg,
+      fontSize: 10.5, fontWeight: 500, whiteSpace: 'nowrap', flexShrink: 0,
+    }}>
+      <span style={{ width: 6, height: 6, borderRadius: 999, background: c.dot, flexShrink: 0 }} />
+      {STATUS_LABEL[status] ?? status}
+    </span>
+  );
+}
 
 const AVATAR_COLORS = ['#6366f1','#f59e0b','#10b981','#ef4444','#3b82f6','#8b5cf6','#ec4899'];
 function nameToColor(name: string): string {
@@ -144,28 +159,42 @@ export default function AdminAchievements() {
         {/* Tabs + content card */}
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
 
-          {/* Tab bar */}
-          <div className="flex items-center gap-1 px-4 py-3 border-b border-slate-200">
-            {tabs.map(t => (
-              <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors ${
-                  tab === t.id
-                    ? 'bg-slate-100 text-slate-900'
-                    : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
-                }`}
-              >
-                {t.label}
-                {t.count > 0 && (
-                  <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full tabular-nums ${
-                    tab === t.id ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-600'
-                  }`}>
-                    {t.count}
-                  </span>
-                )}
-              </button>
-            ))}
+          {/* Tab bar — pill container (design-exact) */}
+          <div className="px-4 py-3 border-b border-slate-200">
+            <div style={{
+              display: 'inline-flex', padding: 3, borderRadius: 9,
+              background: '#f8fafc', gap: 2,
+            }}>
+              {tabs.map(t => {
+                const active = tab === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => setTab(t.id)}
+                    style={{
+                      padding: '6px 12px', borderRadius: 7, border: 0,
+                      background: active ? '#fff' : 'transparent',
+                      color: active ? '#0f172a' : '#64748b',
+                      fontWeight: active ? 500 : 400, fontSize: 12.5,
+                      cursor: 'pointer', transition: 'background .12s, color .12s',
+                      boxShadow: active ? '0 1px 2px rgba(15,23,42,.04)' : 'none',
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                    }}
+                  >
+                    {t.label}
+                    {t.count != null && (
+                      <span style={{
+                        fontSize: 10.5, padding: '0 5px', borderRadius: 999,
+                        background: '#f8fafc', color: '#64748b',
+                        fontVariantNumeric: 'tabular-nums',
+                        minWidth: 16, height: 16,
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      }}>{t.count}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Content */}
@@ -260,8 +289,7 @@ function AchCard({
   const Icon = TYPE_ICON[a.type] ?? Award;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white flex flex-col overflow-hidden">
-      <div className="p-4 flex-1 space-y-3">
+    <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
 
         {/* Top row: icon + title + date + status */}
         <div className="flex items-start gap-3">
@@ -276,9 +304,7 @@ function AchCard({
               <span>{fmt(a.createdAt)}</span>
             </div>
           </div>
-          <span className={`shrink-0 text-[11px] font-medium px-2 py-0.5 rounded-md ${STATUS_CLS[a.status]}`}>
-            {STATUS_LABEL[a.status]}
-          </span>
+          <StatusBadge status={a.status} />
         </div>
 
         {/* Student row */}
@@ -324,54 +350,50 @@ function AchCard({
             <div><strong>Sabab:</strong> {a.rejectReason}</div>
           </div>
         )}
-      </div>
-
-      {/* Action row */}
-      <div className="border-t border-slate-100 p-3">
-        {a.status === 'PENDING' ? (
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 flex-1">
-              <span className="text-[12px] text-slate-500 whitespace-nowrap">Ball:</span>
-              <input
-                type="number"
-                min={0}
-                max={15}
-                value={ball}
-                onChange={e => onBallChange(e.target.value)}
-                placeholder="0–15"
-                className="w-[70px] h-7 px-2 rounded-lg border border-slate-200 text-[12.5px] text-center outline-none focus:border-slate-400 tabular-nums"
-              />
-            </div>
-            <button
-              onClick={onReject}
-              disabled={loading}
-              className="flex items-center gap-1 h-7 px-3 rounded-lg border border-red-200 text-red-600 bg-red-50 text-[12px] font-medium hover:bg-red-100 disabled:opacity-50 transition-colors"
-            >
-              <X className="w-3 h-3" /> Rad etish
-            </button>
-            <button
-              onClick={onApprove}
-              disabled={loading}
-              className="flex items-center gap-1 h-7 px-3 rounded-lg bg-emerald-600 text-white text-[12px] font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors"
-            >
-              <Check className="w-3 h-3" /> Tasdiqlash
-            </button>
+      {/* Action row — no border-top, just padding inside card */}
+      {a.status === 'PENDING' ? (
+        <div className="flex items-center gap-2 mt-3">
+          <div className="flex items-center gap-1.5 flex-1">
+            <span className="text-[12px] text-slate-500 whitespace-nowrap">Ball:</span>
+            <input
+              type="number"
+              min={0}
+              max={15}
+              value={ball}
+              onChange={e => onBallChange(e.target.value)}
+              placeholder="0–15"
+              className="w-[70px] h-7 px-2 rounded-lg border border-slate-200 text-[12.5px] text-center outline-none focus:border-slate-400 tabular-nums"
+            />
           </div>
-        ) : (
-          <div className="flex items-center justify-between">
-            {a.status === 'APPROVED' ? (
-              <span className="text-[12.5px] font-semibold text-emerald-700">
-                +{a.ball} ball qo'shildi
-              </span>
-            ) : (
-              <span className="text-[12.5px] text-slate-400">Rad etildi</span>
-            )}
-            <button className="text-[12px] text-slate-500 hover:text-slate-800 transition-colors">
-              Qaytadan ko'rib chiqish
-            </button>
-          </div>
-        )}
-      </div>
+          <button
+            onClick={onReject}
+            disabled={loading}
+            className="flex items-center gap-1 h-7 px-3 rounded-lg border border-red-200 text-red-600 bg-red-50 text-[12px] font-medium hover:bg-red-100 disabled:opacity-50 transition-colors"
+          >
+            <X className="w-3 h-3" /> Rad etish
+          </button>
+          <button
+            onClick={onApprove}
+            disabled={loading}
+            className="flex items-center gap-1 h-7 px-3 rounded-lg bg-emerald-600 text-white text-[12px] font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+          >
+            <Check className="w-3 h-3" /> Tasdiqlash
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between mt-3">
+          {a.status === 'APPROVED' ? (
+            <span className="text-[12.5px] font-semibold text-emerald-700">
+              +{a.ball} ball qo'shildi
+            </span>
+          ) : (
+            <span className="text-[12.5px] text-slate-400">Rad etildi</span>
+          )}
+          <button className="text-[12px] text-slate-500 hover:text-slate-800 transition-colors">
+            Qaytadan ko'rib chiqish
+          </button>
+        </div>
+      )}
     </div>
   );
 }
