@@ -86,26 +86,37 @@ const feedbackSchema = z.object({
 });
 
 // Feedback = text comment + personal rating (1-5). tutorScore'ga ta'sir qilmaydi.
+// Qoida: bitta mentor → bitta talaba uchun bitta feedback. Mavjud bo'lsa yangilanadi.
 mentorRouter.post('/feedback', async (req, res) => {
   const parsed = feedbackSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid input' });
   const mentorId = await getMentorId(req.user!.userId);
   if (!mentorId) return res.status(404).json({ error: 'Mentor not found' });
-const owned = await studentBelongsToMentor(parsed.data.studentId, mentorId);
+  const owned = await studentBelongsToMentor(parsed.data.studentId, mentorId);
   if (owned === null) return res.status(404).json({ error: 'Student not found' });
   if (!owned) return res.status(403).json({ error: 'Forbidden' });
 
-  const fb = await prisma.feedback.create({ data: { ...parsed.data, mentorId } });
+  // Shu mentor shu talabaga avval feedback yozganmi?
+  const existing = await prisma.feedback.findFirst({
+    where: { studentId: parsed.data.studentId, mentorId },
+  });
+
+  const fb = existing
+    ? await prisma.feedback.update({
+        where: { id: existing.id },
+        data: { text: parsed.data.text, score: parsed.data.score, createdAt: new Date() },
+      })
+    : await prisma.feedback.create({ data: { ...parsed.data, mentorId } });
 
   await prisma.activityLog.create({
     data: {
       studentId: parsed.data.studentId,
       action: 'MENTOR_FEEDBACK',
-      meta: { mentorId, score: parsed.data.score },
+      meta: { mentorId, score: parsed.data.score, updated: !!existing },
     },
   });
 
-  res.status(201).json(fb);
+  res.status(existing ? 200 : 201).json(fb);
 });
 
 // Tyutor bahosi — nizom bo'yicha 5 yo'nalish, har biri 0-1, sum = tutorScore (max 5)
