@@ -60,6 +60,8 @@ export default function MentorDiscipline() {
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
   const [scores, setScores]   = useState<Record<string, number>>({});
   const [saving, setSaving]   = useState<string | null>(null);
+  const [page, setPage]       = useState(1);
+  const PAGE_SIZE = 15;
 
   // Init scores when data loads
   useEffect(() => {
@@ -76,6 +78,11 @@ export default function MentorDiscipline() {
 
   const selectedGroup = data?.find(g => g.id === selectedGroupId);
   const groupStudents = selectedGroup?.students ?? [];
+
+  const pageCount = Math.max(1, Math.ceil(groupStudents.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const paginatedStudents = groupStudents.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  useEffect(() => { setPage(1); }, [selectedGroupId]);
 
   const setOne = (id: string, v: number) => {
     setScores(p => ({ ...p, [id]: Math.max(0, Math.min(10, v)) }));
@@ -235,7 +242,7 @@ export default function MentorDiscipline() {
             </div>
           )}
 
-          {groupStudents.map((stu, i) => {
+          {paginatedStudents.map((stu, i) => {
             const cur   = scores[stu.id] ?? 0;
             const tone  = scoreTone(cur);
             const isSaving = saving === stu.id || saving === 'all';
@@ -246,13 +253,24 @@ export default function MentorDiscipline() {
                 className="grid items-center px-5 py-3 border-b"
                 style={{ gridTemplateColumns: GRID }}
               >
-                <span className="text-xs text-slate-400 tabular-nums">{i + 1}</span>
+                <span className="text-xs text-slate-400 tabular-nums">{(currentPage - 1) * PAGE_SIZE + i + 1}</span>
 
                 {/* Student */}
                 <div className="flex items-center gap-3 min-w-0">
                   <Avatar name={stu.fullName} size={32} />
                   <div className="min-w-0">
-                    <div className="text-[13.5px] font-medium truncate">{stu.fullName}</div>
+                    <div className="flex items-center gap-2">
+                      <div className="text-[13.5px] font-medium truncate">{stu.fullName}</div>
+                      {stu.disciplineScore > 0 ? (
+                        <span className="shrink-0 inline-flex items-center px-1.5 py-px rounded text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          Baholangan
+                        </span>
+                      ) : (
+                        <span className="shrink-0 inline-flex items-center px-1.5 py-px rounded text-[10px] font-medium bg-slate-50 text-slate-500 border border-slate-200">
+                          Yangi
+                        </span>
+                      )}
+                    </div>
                     <div className="text-[11.5px] text-muted-foreground">
                       GPA <span className={`font-medium ${stu.gpa < 80 ? 'text-red-600' : ''}`}>{Math.round(stu.gpa)}%</span>
                       {' · '}Ball <span className="font-medium">{Math.round(stu.grantScore)}</span>
@@ -286,6 +304,34 @@ export default function MentorDiscipline() {
               </div>
             );
           })}
+
+          {/* Pagination */}
+          {pageCount > 1 && (
+            <div className="flex items-center justify-between px-5 py-2.5 border-t bg-white">
+              <div className="text-xs text-muted-foreground tabular-nums">
+                {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, groupStudents.length)} / {groupStudents.length}
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="h-8 px-3 rounded-md border bg-white text-xs font-medium hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Oldingi
+                </button>
+                <span className="px-3 text-xs text-muted-foreground tabular-nums">
+                  {currentPage} / {pageCount}
+                </span>
+                <button
+                  onClick={() => setPage(p => Math.min(pageCount, p + 1))}
+                  disabled={currentPage === pageCount}
+                  className="h-8 px-3 rounded-md border bg-white text-xs font-medium hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Keyingi
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Save bar — card ichida, pastda */}
           {groupStudents.length > 0 && (
