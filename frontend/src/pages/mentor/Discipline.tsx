@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Info, RefreshCw, CheckCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
@@ -47,8 +47,11 @@ function scoreTone(v: number) {
   return           { text: 'text-red-700',       bg: 'bg-red-50',     accent: '#ef4444' };
 }
 
+const GRID = '32px 1fr 130px 360px';
+
 // ─────────────────────────────────────────────────────────────────────────────
 export default function MentorDiscipline() {
+  const qc = useQueryClient();
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['mentor-students'],
     queryFn: async () => (await api.get<Group[]>('/mentor/students')).data,
@@ -56,9 +59,7 @@ export default function MentorDiscipline() {
 
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
   const [scores, setScores]   = useState<Record<string, number>>({});
-  const [notes, setNotes]     = useState<Record<string, string>>({});
   const [saving, setSaving]   = useState<string | null>(null);
-  const [dirty, setDirty]     = useState(false);
 
   // Init scores when data loads
   useEffect(() => {
@@ -78,11 +79,6 @@ export default function MentorDiscipline() {
 
   const setOne = (id: string, v: number) => {
     setScores(p => ({ ...p, [id]: Math.max(0, Math.min(10, v)) }));
-    setDirty(true);
-  };
-  const setNote = (id: string, v: string) => {
-    setNotes(p => ({ ...p, [id]: v }));
-    setDirty(true);
   };
   const setAll = (v: number) => {
     setScores(p => {
@@ -90,7 +86,6 @@ export default function MentorDiscipline() {
       groupStudents.forEach(s => { next[s.id] = v; });
       return next;
     });
-    setDirty(true);
   };
 
   // Save individual student
@@ -98,6 +93,7 @@ export default function MentorDiscipline() {
     setSaving(studentId);
     try {
       await api.post('/mentor/discipline', { studentId, score: scores[studentId] ?? 0 });
+      await qc.invalidateQueries({ queryKey: ['mentor-students'] });
       toast.success('Saqlandi');
     } catch (e: any) {
       toast.error(e.response?.data?.error || 'Xato');
@@ -115,8 +111,8 @@ export default function MentorDiscipline() {
           api.post('/mentor/discipline', { studentId: s.id, score: scores[s.id] ?? 0 })
         )
       );
+      await qc.invalidateQueries({ queryKey: ['mentor-students'] });
       toast.success(`${selectedGroup?.name} guruhi · ${groupStudents.length} ta talaba saqlandi`);
-      setDirty(false);
     } catch {
       toast.error('Saqlashda xato');
     } finally {
@@ -124,11 +120,27 @@ export default function MentorDiscipline() {
     }
   };
 
+  // Reset to original (server) values
+  const resetScores = () => {
+    if (!data) return;
+    const next: Record<string, number> = {};
+    data.flatMap(g => g.students).forEach(s => { next[s.id] = s.disciplineScore; });
+    setScores(next);
+  };
+
   const avg = groupStudents.length
     ? (groupStudents.reduce((a, s) => a + (scores[s.id] ?? 0), 0) / groupStudents.length)
     : 0;
 
   const avgTone = scoreTone(avg);
+
+  // Dirty — joriy ballar serverdagi qiymatdan farq qiladimi (hisoblanadi, state emas)
+  const dirty = useMemo(() => {
+    if (!data) return false;
+    const orig = new Map<string, number>();
+    data.flatMap(g => g.students).forEach(s => orig.set(s.id, s.disciplineScore));
+    return Object.entries(scores).some(([id, v]) => orig.has(id) && orig.get(id) !== v);
+  }, [scores, data]);
 
   return (
     <div className="p-8 space-y-5">
@@ -209,13 +221,12 @@ export default function MentorDiscipline() {
         <div className="bg-white rounded-xl border overflow-hidden">
           {/* Table header */}
           <div className="grid items-center border-b bg-slate-50 px-5 py-2.5 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground"
-            style={{ gridTemplateColumns: '28px 1fr 100px 220px 1fr' }}
+            style={{ gridTemplateColumns: GRID }}
           >
             <span>#</span>
             <span>Talaba</span>
             <span className="text-right">LMS davomat</span>
             <span className="text-center">Intizom (0–10)</span>
-            <span>Izoh (ixtiyoriy)</span>
           </div>
 
           {groupStudents.length === 0 && (
@@ -227,14 +238,13 @@ export default function MentorDiscipline() {
           {groupStudents.map((stu, i) => {
             const cur   = scores[stu.id] ?? 0;
             const tone  = scoreTone(cur);
-            const note  = notes[stu.id] ?? '';
             const isSaving = saving === stu.id || saving === 'all';
 
             return (
               <div
                 key={stu.id}
                 className="grid items-center px-5 py-3 border-b"
-                style={{ gridTemplateColumns: '28px 1fr 100px 220px 1fr' }}
+                style={{ gridTemplateColumns: GRID }}
               >
                 <span className="text-xs text-slate-400 tabular-nums">{i + 1}</span>
 
@@ -273,15 +283,6 @@ export default function MentorDiscipline() {
                     {isSaving ? '...' : cur.toFixed(1)}
                   </button>
                 </div>
-
-                {/* Note */}
-                <input
-                  type="text"
-                  placeholder="Masalan: Faol, intizomli..."
-                  value={note}
-                  onChange={e => setNote(stu.id, e.target.value)}
-                  className="w-full h-8 px-3 rounded-md border bg-slate-50 text-[12.5px] focus:outline-none focus:ring-1 focus:ring-slate-400"
-                />
               </div>
             );
           })}
@@ -298,15 +299,9 @@ export default function MentorDiscipline() {
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => {
-                    if (data) {
-                      const next: Record<string, number> = {};
-                      data.flatMap(g => g.students).forEach(s => { next[s.id] = s.disciplineScore; });
-                      setScores(next);
-                      setDirty(false);
-                    }
-                  }}
-                  className="h-9 px-4 rounded-md border bg-white text-sm font-medium hover:bg-slate-50 transition-colors"
+                  onClick={resetScores}
+                  disabled={!dirty}
+                  className="h-9 px-4 rounded-md border bg-white text-sm font-medium hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Bekor qilish
                 </button>
