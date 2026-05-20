@@ -299,6 +299,14 @@ async function main() {
         });
       }
     }
+
+    // Demo uchun: pinnedBadge'ni har xil qilamiz, reytingda turli ikonalar ko'rinsin.
+    // Faqat TOP_GRANTED talabalar barcha 5 turdagi badge'larni topganiga ishonchimiz bor.
+    if (spec.scenario === 'TOP_GRANTED') {
+      const rotation = ['champion', 'founder', 'polyglot', 'mentor', 'grant_keeper'];
+      const pinned = rotation[i % rotation.length];
+      await prisma.student.update({ where: { id: student.id }, data: { pinnedBadge: pinned } });
+    }
   }
 
   const apiKey = await prisma.apiKey.create({
