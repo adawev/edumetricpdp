@@ -3,7 +3,6 @@ import { useAuth, type Role } from './lib/auth';
 import LoginPage from './pages/LoginPage';
 import PublicRatingPage from './pages/PublicRatingPage';
 import PublicAboutPage from './pages/PublicAboutPage';
-import PublicBadgesPage from './pages/PublicBadgesPage';
 import StudentLayout from './components/layout/StudentLayout';
 import StudentDashboard from './pages/student/Dashboard';
 import StudentProfile from './pages/student/Profile';
@@ -59,7 +58,6 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/public/rating" element={<PublicRatingPage />} />
       <Route path="/public/about" element={<PublicAboutPage />} />
-      <Route path="/public/badges" element={<PublicBadgesPage />} />
 
       {/* Student panel — nested layout, STUDENT only */}
       <Route path="/student" element={<RoleRoute role="STUDENT"><StudentLayout /></RoleRoute>}>
