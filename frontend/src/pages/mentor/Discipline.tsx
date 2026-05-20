@@ -244,15 +244,15 @@ export default function MentorDiscipline() {
                   <div className="min-w-0">
                     <div className="text-[13.5px] font-medium truncate">{stu.fullName}</div>
                     <div className="text-[11.5px] text-muted-foreground">
-                      GPA <span className={`font-medium ${stu.gpa < 80 ? 'text-red-600' : ''}`}>{stu.gpa}%</span>
-                      {' · '}Ball <span className="font-medium">{stu.grantScore}</span>
+                      GPA <span className={`font-medium ${stu.gpa < 80 ? 'text-red-600' : ''}`}>{Math.round(stu.gpa)}%</span>
+                      {' · '}Ball <span className="font-medium">{Math.round(stu.grantScore)}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Attendance (from LMS, read-only) */}
                 <div className={`text-right tabular-nums text-[13px] font-medium ${stu.attendance < 75 ? 'text-red-600' : 'text-slate-700'}`}>
-                  {stu.attendance}%
+                  {Math.round(stu.attendance)}%
                 </div>
 
                 {/* Slider */}
