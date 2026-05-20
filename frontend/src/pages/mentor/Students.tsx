@@ -241,6 +241,7 @@ export default function MentorStudents() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery]         = useState('');
   const [statusFilter, setStatus] = useState<string>('ALL');
+  const [groupFilter, setGroupFilter] = useState<string>('ALL');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sortKey, setSortKey]     = useState<SortKey>('grantScore');
   const [sortDir, setSortDir]     = useState<SortDir>('desc');
@@ -273,6 +274,7 @@ export default function MentorStudents() {
 
   const filtered = useMemo(() => {
     let list = allStudents;
+    if (groupFilter !== 'ALL') list = list.filter(s => s.groupId === groupFilter);
     if (statusFilter !== 'ALL') list = list.filter(s => s.grantStatus === statusFilter);
     if (query.trim()) {
       const q = query.toLowerCase();
@@ -286,7 +288,7 @@ export default function MentorStudents() {
         : (va as number) - (vb as number);
       return sortDir === 'desc' ? -cmp : cmp;
     });
-  }, [allStudents, query, statusFilter, sortKey, sortDir]);
+  }, [allStudents, query, statusFilter, groupFilter, sortKey, sortDir]);
 
   const selected = useMemo(
     () => allStudents.find(s => s.id === selectedId) ?? null,
@@ -351,6 +353,19 @@ export default function MentorStudents() {
             ))}
           </div>
 
+          {/* Group filter */}
+          {data && data.length > 1 && (
+            <select
+              value={groupFilter}
+              onChange={e => setGroupFilter(e.target.value)}
+              className="h-9 px-3 rounded-md border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+            >
+              <option value="ALL">Barcha guruhlar</option>
+              {data.map(g => (
+                <option key={g.id} value={g.id}>{g.name} · {g.course}-kurs</option>
+              ))}
+            </select>
+          )}
         </div>
       </div>
 
