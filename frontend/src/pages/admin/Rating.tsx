@@ -518,56 +518,91 @@ export default function AdminRating() {
           </div>
         )}
 
-        {/* Sticky bottom action bar */}
+        {/* Fixed bottom action bar */}
         {selectedCount > 0 && (
-          <div style={{
-            position: 'sticky', bottom: 18, zIndex: 30,
-            background: '#0f172a', color: '#fff',
-            borderRadius: 12, padding: '12px 18px',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-            boxShadow: '0 12px 32px rgba(15,23,42,.25)',
-            animation: 'em-slide-up .2s ease-out',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{
-                width: 32, height: 32, borderRadius: 999,
-                background: 'rgba(255,255,255,.12)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <Check className="w-4 h-4" />
+          <>
+            <style>{`
+              @keyframes em-slide-up {
+                from { opacity: 0; transform: translateY(16px); }
+                to   { opacity: 1; transform: translateY(0); }
+              }
+            `}</style>
+            <div style={{
+              position: 'fixed',
+              bottom: 24,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: 'max-content',
+              minWidth: 520,
+              maxWidth: 'calc(100vw - 320px)',
+              zIndex: 50,
+              background: '#0f172a',
+              color: '#fff',
+              borderRadius: 14,
+              padding: '11px 16px 11px 14px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 24,
+              boxShadow: '0 8px 40px rgba(15,23,42,.35), 0 2px 8px rgba(15,23,42,.15)',
+              animation: 'em-slide-up .22s cubic-bezier(.2,.7,.3,1)',
+            }}>
+              {/* Left: count + desc */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{
+                  width: 30, height: 30, borderRadius: 999,
+                  background: 'rgba(255,255,255,.12)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0,
+                }}>
+                  <Check style={{ width: 14, height: 14 }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 13.5, fontWeight: 600, lineHeight: 1.2 }}>
+                    <span style={{ fontVariantNumeric: 'tabular-nums' }}>{selectedCount}</span>
+                    {' '}ta talaba tanlandi
+                  </div>
+                  <div style={{ fontSize: 11, opacity: 0.5, marginTop: 1 }}>
+                    Grant qarori sahifasidan har biriga qaror qabul qiling
+                  </div>
+                </div>
               </div>
-              <div>
-                <div style={{ fontSize: 13.5, fontWeight: 600 }}>
-                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>{selectedCount}</span> ta talaba tanlandi
-                </div>
-                <div style={{ fontSize: 11.5, opacity: 0.65 }}>
-                  Grant qarori sahifasiga o'tib har biriga grant berish yoki rad etishingiz mumkin
-                </div>
+
+              {/* Right: actions */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                <button
+                  onClick={() => setSelected({})}
+                  style={{
+                    height: 32, padding: '0 14px', borderRadius: 8,
+                    border: '1px solid rgba(255,255,255,.15)',
+                    background: 'rgba(255,255,255,.08)', color: 'rgba(255,255,255,.85)',
+                    fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
+                    transition: 'background .15s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,.14)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,.08)')}
+                >
+                  Tozalash
+                </button>
+                <button
+                  onClick={() => window.location.href = '/admin/grants'}
+                  style={{
+                    height: 32, padding: '0 16px', borderRadius: 8,
+                    border: 0,
+                    background: '#10b981', color: '#fff',
+                    fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    transition: 'background .15s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = '#059669')}
+                  onMouseLeave={e => (e.currentTarget.style.background = '#10b981')}
+                >
+                  Grant berishga o'tish
+                  <ArrowRight style={{ width: 13, height: 13 }} />
+                </button>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                onClick={() => setSelected({})}
-                style={{
-                  height: 32, padding: '0 12px', borderRadius: 8, border: 0,
-                  background: 'rgba(255,255,255,.1)', color: '#fff',
-                  fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
-                }}
-              >
-                Tozalash
-              </button>
-              <button
-                style={{
-                  height: 32, padding: '0 14px', borderRadius: 8, border: 0,
-                  background: '#10b981', color: '#fff',
-                  fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: 6,
-                }}
-              >
-                Grant berishga o'tish <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
+          </>
         )}
       </div>
     </AdminLayout>
