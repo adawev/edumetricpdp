@@ -3,8 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
-  BadgeCheck, XCircle, Trophy, Users, TrendingUp,
-  Filter, X, Award,
+  BadgeCheck, XCircle, Trophy, Users, TrendingUp, Filter, X, Award,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import AdminLayout from './AdminLayout';
@@ -22,32 +21,50 @@ type Student = {
 };
 type GrantsData = { pending: Student[]; granted: Student[] };
 
-/* ── Avatar helpers ─────────────────────────────────────────── */
-const AVATAR_COLORS = [
-  '#6366f1','#8b5cf6','#ec4899','#f43f5e',
-  '#f97316','#eab308','#22c55e','#14b8a6','#06b6d4','#3b82f6',
-];
-function nameToColor(n: string) {
+/* ── Avatar ─────────────────────────────────────────────────── */
+const AVATAR_COLORS = ['#6366f1','#f59e0b','#10b981','#ef4444','#3b82f6','#8b5cf6','#ec4899'];
+function nameToColor(name: string): string {
   let h = 0;
-  for (let i = 0; i < n.length; i++) h = n.charCodeAt(i) + ((h << 5) - h);
+  for (const c of name) h = (h * 31 + c.charCodeAt(0)) & 0xffffffff;
   return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
 }
-function initials(n: string) {
-  const p = n.trim().split(' ');
-  return ((p[0]?.[0] ?? '') + (p[1]?.[0] ?? '')).toUpperCase();
+function Avatar({ name, size = 32 }: { name: string; size?: number }) {
+  const ini = name.split(' ').map(w => w[0]).filter(Boolean).join('').slice(0, 2).toUpperCase();
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: 999,
+      background: nameToColor(name), color: '#fff', flexShrink: 0,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: size * 0.38, fontWeight: 600, letterSpacing: '-0.01em',
+    }}>{ini}</div>
+  );
 }
 
-/* ── Risk / Status meta ─────────────────────────────────────── */
-const RISK_META: Record<string, { bg: string; color: string; label: string }> = {
-  LOW:    { bg: '#f0fdf4', color: '#16a34a', label: 'Past'    },
-  MEDIUM: { bg: '#fffbeb', color: '#d97706', label: "O'rta"   },
-  HIGH:   { bg: '#fef2f2', color: '#dc2626', label: 'Yuqori'  },
+/* ── Status / Risk badges ───────────────────────────────────── */
+const RISK_DOT: Record<string, { bg: string; fg: string; dot: string; label: string }> = {
+  LOW:    { bg: '#d1fae5', fg: '#065f46', dot: '#10b981', label: 'Past'   },
+  MEDIUM: { bg: '#fef3c7', fg: '#92400e', dot: '#f59e0b', label: "O'rta"  },
+  HIGH:   { bg: '#fee2e2', fg: '#991b1b', dot: '#ef4444', label: 'Yuqori' },
 };
-const STATUS_META: Record<string, { bg: string; color: string; label: string }> = {
-  GRANTED:     { bg: '#f0fdf4', color: '#16a34a', label: 'Grant berildi' },
-  PENDING:     { bg: '#fffbeb', color: '#d97706', label: 'Kutilmoqda'    },
-  NOT_GRANTED: { bg: '#fef2f2', color: '#dc2626', label: "Grant yo'q"    },
+const STATUS_DOT: Record<string, { bg: string; fg: string; dot: string; label: string }> = {
+  GRANTED:     { bg: '#d1fae5', fg: '#065f46', dot: '#10b981', label: 'Grant berildi' },
+  PENDING:     { bg: '#fef3c7', fg: '#92400e', dot: '#f59e0b', label: 'Kutilmoqda'    },
+  NOT_GRANTED: { bg: '#fee2e2', fg: '#991b1b', dot: '#ef4444', label: "Grant yo'q"    },
 };
+
+function Pill({ bg, fg, dot, label }: { bg: string; fg: string; dot: string; label: string }) {
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 5,
+      padding: '2px 7px', borderRadius: 999,
+      background: bg, color: fg,
+      fontSize: 10.5, fontWeight: 500, whiteSpace: 'nowrap', flexShrink: 0,
+    }}>
+      <span style={{ width: 6, height: 6, borderRadius: 999, background: dot, flexShrink: 0 }} />
+      {label}
+    </span>
+  );
+}
 
 /* ══════════════════════════════════════════════════════════════ */
 export default function AdminGrants() {
@@ -55,17 +72,16 @@ export default function AdminGrants() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const selectedIds = useMemo(() => {
-    const param = searchParams.get('selected');
-    return param ? new Set(param.split(',').filter(Boolean)) : null;
+    const p = searchParams.get('selected');
+    return p ? new Set(p.split(',').filter(Boolean)) : null;
   }, [searchParams]);
 
-  /* Queries */
   const { data, isLoading } = useQuery({
     queryKey: ['admin-grants'],
     queryFn: async () => (await api.get<GrantsData>('/admin/grants')).data,
   });
 
-  // Fetch ALL students only when filter is active — to find NOT_GRANTED/UNKNOWN students too
+  // Fetch all students only when filter active — to find NOT_GRANTED students too
   const { data: allStudents } = useQuery({
     queryKey: ['admin-students'],
     queryFn: async () => (await api.get<Student[]>('/admin/students')).data,
@@ -80,8 +96,6 @@ export default function AdminGrants() {
     () => [...(data?.granted ?? [])].sort((a, b) => b.grantScore - a.grantScore),
     [data],
   );
-
-  // When filter active → search ALL students (any status), exclude already-GRANTED ones
   const filteredPending = useMemo(() => {
     if (!selectedIds) return pending;
     const base: Student[] = allStudents ?? pending;
@@ -90,7 +104,6 @@ export default function AdminGrants() {
       .sort((a, b) => b.grantScore - a.grantScore);
   }, [pending, selectedIds, allStudents]);
 
-  /* Mutations */
   const grantMutation = useMutation({
     mutationFn: async (id: string) => (await api.post(`/admin/grants/${id}/grant`)).data,
     onSuccess: () => {
@@ -100,7 +113,6 @@ export default function AdminGrants() {
     },
     onError: () => toast.error('Xatolik yuz berdi'),
   });
-
   const revokeMutation = useMutation({
     mutationFn: async (id: string) => (await api.post(`/admin/grants/${id}/revoke`)).data,
     onSuccess: () => {
@@ -122,254 +134,219 @@ export default function AdminGrants() {
 
   return (
     <AdminLayout>
-      <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div className="p-6 space-y-4">
 
         {/* ── Header ──────────────────────────────────────── */}
         <div>
-          <h1 style={{ fontSize: 20, fontWeight: 600, color: '#0f172a', margin: 0 }}>
-            Grant qaror
-          </h1>
-          <p style={{ fontSize: 13, color: '#64748b', marginTop: 3, margin: '3px 0 0' }}>
+          <h1 className="text-[22px] font-semibold text-slate-900 tracking-tight">Grant qaror</h1>
+          <p className="text-[13.5px] text-slate-500 mt-1">
             Kandidatlarni ko'rib chiqib, grant bering yoki bekor qiling
           </p>
         </div>
 
-        {/* ── KPI Cards ───────────────────────────────────── */}
+        {/* ── Stats + slot progress ────────────────────────── */}
         {!isLoading && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14 }}>
-            {/* Grant berilgan */}
-            <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 12, padding: '16px 20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                <div style={{ width: 32, height: 32, borderRadius: 8, background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Trophy style={{ width: 15, height: 15, color: '#16a34a' }} />
-                </div>
-                <p style={{ fontSize: 12, color: '#16a34a', fontWeight: 500, margin: 0 }}>Grant berilgan</p>
+          <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
+            {/* Stats row */}
+            <div className="flex items-center gap-6 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Trophy className="w-4 h-4 text-emerald-500" />
+                <span className="text-[12.5px] text-slate-500">Grant berilgan:</span>
+                <span className="text-[13px] font-bold text-emerald-700 tabular-nums">{granted.length}</span>
               </div>
-              <p style={{ fontSize: 30, fontWeight: 700, color: '#15803d', margin: 0, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
-                {granted.length}
-              </p>
-              <p style={{ fontSize: 11, color: '#22c55e', marginTop: 5, opacity: 0.8 }}>Tasdiqlangan talabalar</p>
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-amber-500" />
+                <span className="text-[12.5px] text-slate-500">Kutilayotgan:</span>
+                <span className="text-[13px] font-bold text-amber-700 tabular-nums">{pending.length}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-slate-400" />
+                <span className="text-[12.5px] text-slate-500">Jami:</span>
+                <span className="text-[13px] font-bold text-slate-700 tabular-nums">{totalCandidates}</span>
+              </div>
             </div>
-
-            {/* Kutilayotgan */}
-            <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 12, padding: '16px 20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                <div style={{ width: 32, height: 32, borderRadius: 8, background: '#fef9c3', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Users style={{ width: 15, height: 15, color: '#d97706' }} />
-                </div>
-                <p style={{ fontSize: 12, color: '#d97706', fontWeight: 500, margin: 0 }}>Kutilayotgan</p>
+            {/* Slot progress */}
+            <div>
+              <div className="flex justify-between text-[11.5px] text-slate-400 mb-1.5">
+                <span className="flex items-center gap-1.5">
+                  <Award className="w-3 h-3" /> Slot to'ldirilishi
+                </span>
+                <span className="font-semibold text-slate-600 tabular-nums">
+                  {granted.length} / {Math.max(totalCandidates, 1)} ta
+                </span>
               </div>
-              <p style={{ fontSize: 30, fontWeight: 700, color: '#b45309', margin: 0, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
-                {pending.length}
-              </p>
-              <p style={{ fontSize: 11, color: '#f59e0b', marginTop: 5, opacity: 0.8 }}>Qaror kutayotganlar</p>
-            </div>
-
-            {/* Jami */}
-            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '16px 20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                <div style={{ width: 32, height: 32, borderRadius: 8, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <TrendingUp style={{ width: 15, height: 15, color: '#475569' }} />
-                </div>
-                <p style={{ fontSize: 12, color: '#64748b', fontWeight: 500, margin: 0 }}>Jami arizachi</p>
+              <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-emerald-500 rounded-full transition-all duration-700"
+                  style={{ width: `${slotPct}%` }}
+                />
               </div>
-              <p style={{ fontSize: 30, fontWeight: 700, color: '#0f172a', margin: 0, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
-                {totalCandidates}
-              </p>
-              <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 5 }}>Pending + granted</p>
             </div>
           </div>
         )}
 
-        {/* ── Slot progress ────────────────────────────────── */}
-        {!isLoading && (
-          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '16px 20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Award style={{ width: 15, height: 15, color: '#10b981' }} />
-                <span style={{ fontSize: 13, fontWeight: 500, color: '#0f172a' }}>Slot to'ldirilishi</span>
-              </div>
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>
-                {granted.length} / {Math.max(totalCandidates, 1)} ta
-              </span>
-            </div>
-            <div style={{ height: 8, background: '#f1f5f9', borderRadius: 999, overflow: 'hidden' }}>
-              <div
-                style={{
-                  height: '100%',
-                  width: `${slotPct}%`,
-                  background: 'linear-gradient(90deg,#10b981,#34d399)',
-                  borderRadius: 999,
-                  transition: 'width .7s cubic-bezier(.4,0,.2,1)',
-                }}
-              />
-            </div>
-            <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 7 }}>
-              {slotPct.toFixed(0)}% slot band — {pending.length} ta talaba hali qaror kutmoqda
-            </p>
-          </div>
-        )}
-
-        {/* ── Filter banner (from Rating navigation) ───────── */}
+        {/* ── Filter banner ────────────────────────────────── */}
         {selectedIds && (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 12,
-            padding: '10px 16px',
-            background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10,
-          }}>
-            <Filter style={{ width: 15, height: 15, color: '#d97706', flexShrink: 0 }} />
-            <span style={{ fontSize: 13, color: '#92400e', flex: 1 }}>
+          <div
+            className="flex items-center gap-3 px-4 py-2.5 rounded-xl border"
+            style={{ background: '#fffbeb', borderColor: '#fde68a' }}
+          >
+            <Filter className="w-3.5 h-3.5 shrink-0" style={{ color: '#d97706' }} />
+            <span className="text-[12.5px] flex-1" style={{ color: '#92400e' }}>
               Reytingdan{' '}
-              <strong style={{ fontWeight: 600 }}>{selectedIds.size} ta</strong>{' '}
+              <strong className="font-semibold">{selectedIds.size} ta</strong>{' '}
               tanlangan talaba ko'rsatilmoqda
             </span>
             <button
               onClick={() => setSearchParams({})}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 4,
-                fontSize: 12, fontWeight: 500, color: '#b45309',
-                background: 'none', border: 'none', cursor: 'pointer',
-                padding: '2px 4px', borderRadius: 4,
-              }}
+              className="flex items-center gap-1 text-[12px] font-medium transition-colors"
+              style={{ color: '#b45309', background: 'none', border: 'none', cursor: 'pointer' }}
               onMouseEnter={e => (e.currentTarget.style.color = '#78350f')}
               onMouseLeave={e => (e.currentTarget.style.color = '#b45309')}
             >
-              <X style={{ width: 13, height: 13 }} />
-              Barchasini ko'rish
+              <X className="w-3 h-3" /> Barchasini ko'rish
             </button>
           </div>
         )}
 
-        {/* ── 2-Column layout ──────────────────────────────── */}
+        {/* ── 2-col layout ─────────────────────────────────── */}
         {isLoading ? (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+          <div className="grid grid-cols-2 gap-4">
             {[0, 1].map(col => (
-              <div key={col} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div style={{ height: 28, width: 160, borderRadius: 6, background: '#f1f5f9' }} />
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} style={{ height: 76, borderRadius: 12, background: '#f1f5f9' }} />
+              <div key={col} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                <div className="px-4 py-3 border-b border-slate-100">
+                  <div className="h-5 w-36 bg-slate-100 rounded animate-pulse" />
+                </div>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="px-4 py-3 border-b border-slate-100">
+                    <div className="h-10 bg-slate-50 rounded-lg animate-pulse" />
+                  </div>
                 ))}
               </div>
             ))}
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'start' }}>
+          <div className="grid grid-cols-2 gap-4 items-start">
 
-            {/* ── Left: Candidates ──────────────────────────── */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {/* ── Kandidatlar ──────────────────────────────── */}
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
               {/* Column header */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 2 }}>
-                <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#f59e0b', flexShrink: 0 }} />
-                <h2 style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', margin: 0 }}>Kandidatlar</h2>
-                <span style={{ fontSize: 12, color: '#94a3b8' }}>
-                  —{' '}
-                  {selectedIds
-                    ? `${filteredPending.length} ta tanlangan`
-                    : `${pending.length} ta talaba kutilmoqda`}
+              <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+                <span className="text-[13px] font-semibold text-slate-900">Kandidatlar</span>
+                <span
+                  className="text-[10.5px] font-medium ml-0.5 px-1.5 py-0.5 rounded-md tabular-nums"
+                  style={{ background: '#fef3c7', color: '#92400e' }}
+                >
+                  {selectedIds ? filteredPending.length : pending.length}
                 </span>
+                {selectedIds && (
+                  <span className="ml-auto text-[11px] text-slate-400">tanlangan</span>
+                )}
               </div>
 
+              {/* Empty */}
               {filteredPending.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '60px 0', border: '2px dashed #e2e8f0', borderRadius: 12 }}>
-                  <Users style={{ width: 36, height: 36, color: '#cbd5e1', margin: '0 auto 10px' }} />
-                  <p style={{ fontSize: 13, color: '#94a3b8', margin: 0 }}>
+                <div className="py-16 text-center">
+                  <Users className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+                  <p className="text-[12.5px] text-slate-400">
                     {selectedIds ? "Tanlangan talabalar topilmadi" : "Kutilayotgan kandidat yo'q"}
                   </p>
                 </div>
               ) : (
                 <>
-                  {pagPending.pageItems.map((s, i) => (
-                    <StudentCard
-                      key={s.id}
-                      student={s}
-                      rank={pagPending.startIndex + i + 1}
-                      showStatus={s.grantStatus !== 'PENDING'}
-                      action={
-                        <button
-                          onClick={() => grantMutation.mutate(s.id)}
-                          disabled={isBusy}
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: 6,
-                            padding: '6px 12px', borderRadius: 8,
-                            background: isBusy ? '#d1fae5' : '#10b981',
-                            color: '#fff', border: 'none', cursor: isBusy ? 'default' : 'pointer',
-                            fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap',
-                            transition: 'background .15s',
-                          }}
-                          onMouseEnter={e => { if (!isBusy) e.currentTarget.style.background = '#059669'; }}
-                          onMouseLeave={e => { if (!isBusy) e.currentTarget.style.background = '#10b981'; }}
-                        >
-                          <BadgeCheck style={{ width: 13, height: 13 }} />
-                          Grant berish
-                        </button>
-                      }
+                  <div className="divide-y divide-slate-100">
+                    {pagPending.pageItems.map((s, i) => (
+                      <StudentRow
+                        key={s.id}
+                        student={s}
+                        rank={pagPending.startIndex + i + 1}
+                        showStatus={s.grantStatus !== 'PENDING'}
+                        action={
+                          <button
+                            onClick={() => grantMutation.mutate(s.id)}
+                            disabled={isBusy}
+                            className="flex items-center gap-1.5 h-7 px-3 rounded-lg text-[11.5px] font-semibold text-white transition-colors disabled:opacity-50"
+                            style={{ background: '#10b981' }}
+                            onMouseEnter={e => { if (!isBusy) e.currentTarget.style.background = '#059669'; }}
+                            onMouseLeave={e => { if (!isBusy) e.currentTarget.style.background = '#10b981'; }}
+                          >
+                            <BadgeCheck className="w-3.5 h-3.5" />
+                            Grant berish
+                          </button>
+                        }
+                      />
+                    ))}
+                  </div>
+                  <div className="px-4 py-2 border-t border-slate-100">
+                    <Pagination
+                      page={pagPending.page}
+                      pageCount={pagPending.pageCount}
+                      onChange={pagPending.setPage}
+                      total={pagPending.total}
+                      pageSize={pagPending.pageSize}
+                      style={{ border: 0, padding: 0, background: 'transparent' }}
                     />
-                  ))}
-                  <Pagination
-                    page={pagPending.page}
-                    pageCount={pagPending.pageCount}
-                    onChange={pagPending.setPage}
-                    total={pagPending.total}
-                    pageSize={pagPending.pageSize}
-                    style={{ border: 0, padding: '4px 0 0', background: 'transparent' }}
-                  />
+                  </div>
                 </>
               )}
             </div>
 
-            {/* ── Right: Granted ────────────────────────────── */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {/* ── Grant berilganlar ─────────────────────────── */}
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
               {/* Column header */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 2 }}>
-                <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#10b981', flexShrink: 0 }} />
-                <h2 style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', margin: 0 }}>Grant berilganlar</h2>
-                <span style={{ fontSize: 12, color: '#94a3b8' }}>— {granted.length} ta tasdiqlangan</span>
+              <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                <span className="text-[13px] font-semibold text-slate-900">Grant berilganlar</span>
+                <span
+                  className="text-[10.5px] font-medium ml-0.5 px-1.5 py-0.5 rounded-md tabular-nums"
+                  style={{ background: '#d1fae5', color: '#065f46' }}
+                >
+                  {granted.length}
+                </span>
               </div>
 
+              {/* Empty */}
               {granted.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '60px 0', border: '2px dashed #e2e8f0', borderRadius: 12 }}>
-                  <Trophy style={{ width: 36, height: 36, color: '#cbd5e1', margin: '0 auto 10px' }} />
-                  <p style={{ fontSize: 13, color: '#94a3b8', margin: 0 }}>Hali grant berilmagan</p>
+                <div className="py-16 text-center">
+                  <Trophy className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+                  <p className="text-[12.5px] text-slate-400">Hali grant berilmagan</p>
                 </div>
               ) : (
                 <>
-                  {pagGranted.pageItems.map((s, i) => (
-                    <StudentCard
-                      key={s.id}
-                      student={s}
-                      rank={pagGranted.startIndex + i + 1}
-                      granted
-                      action={
-                        <button
-                          onClick={() => revokeMutation.mutate(s.id)}
-                          disabled={isBusy}
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: 6,
-                            padding: '6px 12px', borderRadius: 8,
-                            background: '#fff', color: '#dc2626',
-                            border: '1px solid #fca5a5',
-                            cursor: isBusy ? 'default' : 'pointer',
-                            fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap',
-                            opacity: isBusy ? 0.5 : 1,
-                            transition: 'background .15s',
-                          }}
-                          onMouseEnter={e => { if (!isBusy) e.currentTarget.style.background = '#fef2f2'; }}
-                          onMouseLeave={e => { if (!isBusy) e.currentTarget.style.background = '#fff'; }}
-                        >
-                          <XCircle style={{ width: 13, height: 13 }} />
-                          Bekor qilish
-                        </button>
-                      }
+                  <div className="divide-y divide-slate-100">
+                    {pagGranted.pageItems.map((s, i) => (
+                      <StudentRow
+                        key={s.id}
+                        student={s}
+                        rank={pagGranted.startIndex + i + 1}
+                        granted
+                        action={
+                          <button
+                            onClick={() => revokeMutation.mutate(s.id)}
+                            disabled={isBusy}
+                            className="flex items-center gap-1.5 h-7 px-3 rounded-lg text-[11.5px] font-semibold transition-colors disabled:opacity-50"
+                            style={{ background: '#fff', color: '#dc2626', border: '1px solid #fca5a5' }}
+                            onMouseEnter={e => { if (!isBusy) e.currentTarget.style.background = '#fef2f2'; }}
+                            onMouseLeave={e => { if (!isBusy) e.currentTarget.style.background = '#fff'; }}
+                          >
+                            <XCircle className="w-3.5 h-3.5" />
+                            Bekor qilish
+                          </button>
+                        }
+                      />
+                    ))}
+                  </div>
+                  <div className="px-4 py-2 border-t border-slate-100">
+                    <Pagination
+                      page={pagGranted.page}
+                      pageCount={pagGranted.pageCount}
+                      onChange={pagGranted.setPage}
+                      total={pagGranted.total}
+                      pageSize={pagGranted.pageSize}
+                      style={{ border: 0, padding: 0, background: 'transparent' }}
                     />
-                  ))}
-                  <Pagination
-                    page={pagGranted.page}
-                    pageCount={pagGranted.pageCount}
-                    onChange={pagGranted.setPage}
-                    total={pagGranted.total}
-                    pageSize={pagGranted.pageSize}
-                    style={{ border: 0, padding: '4px 0 0', background: 'transparent' }}
-                  />
+                  </div>
                 </>
               )}
             </div>
@@ -381,8 +358,8 @@ export default function AdminGrants() {
   );
 }
 
-/* ── Student card ──────────────────────────────────────────── */
-function StudentCard({
+/* ── Student row ───────────────────────────────────────────── */
+function StudentRow({
   student: s, rank, granted = false, showStatus = false, action,
 }: {
   student: Student;
@@ -391,84 +368,43 @@ function StudentCard({
   showStatus?: boolean;
   action: React.ReactNode;
 }) {
-  const bg  = nameToColor(s.fullName);
-  const ini = initials(s.fullName);
-  const risk = RISK_META[s.riskLevel] ?? RISK_META.LOW;
-  const statusMeta = STATUS_META[s.grantStatus];
+  const risk = RISK_DOT[s.riskLevel] ?? RISK_DOT.LOW;
+  const statusMeta = STATUS_DOT[s.grantStatus];
 
   return (
     <div
-      style={{
-        background: granted ? '#f0fdf4' : '#fff',
-        border: `1px solid ${granted ? '#bbf7d0' : '#e2e8f0'}`,
-        borderRadius: 12,
-        padding: '12px 14px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-      }}
+      className="flex items-center gap-3 px-4 py-3 transition-colors"
+      style={{ background: granted ? '#f0fdf4' : undefined }}
+      onMouseEnter={e => { if (!granted) e.currentTarget.style.background = '#f8fafc'; }}
+      onMouseLeave={e => { e.currentTarget.style.background = granted ? '#f0fdf4' : ''; }}
     >
       {/* Avatar */}
-      <div
-        style={{
-          width: 36, height: 36, borderRadius: '50%',
-          background: bg, color: '#fff',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 11, fontWeight: 700, flexShrink: 0, userSelect: 'none',
-        }}
-      >
-        {ini}
-      </div>
+      <Avatar name={s.fullName} size={32} />
 
       {/* Info */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <p style={{ fontSize: 13, fontWeight: 500, color: '#0f172a', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {s.fullName}
-          </p>
-          <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
-            #{rank}
-          </span>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5">
+          <span className="text-[13px] font-medium text-slate-900 truncate">{s.fullName}</span>
+          <span className="text-[11px] text-slate-400 shrink-0 tabular-nums">#{rank}</span>
         </div>
-        <p style={{ fontSize: 11, color: '#94a3b8', margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {s.group?.name}
-        </p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 5, flexWrap: 'wrap' }}>
-          {/* Ball */}
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>
+        <p className="text-[11px] text-slate-400 truncate">{s.group?.name}</p>
+        <div className="flex items-center gap-2 mt-1 flex-wrap">
+          <span className="text-[12px] font-bold text-slate-800 tabular-nums">
             {Math.round(s.grantScore * 10) / 10} ball
           </span>
-          {/* GPA */}
-          <span style={{ fontSize: 11, color: s.gpa < 80 ? '#dc2626' : '#64748b', fontWeight: s.gpa < 80 ? 600 : 400, fontVariantNumeric: 'tabular-nums' }}>
+          <span
+            className="text-[11px] tabular-nums"
+            style={{ color: s.gpa < 80 ? '#dc2626' : '#64748b', fontWeight: s.gpa < 80 ? 600 : 400 }}
+          >
             GPA {s.gpa.toFixed(1)}%
           </span>
-          {/* Risk */}
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 4,
-            padding: '2px 7px', borderRadius: 999,
-            background: risk.bg, color: risk.color,
-            fontSize: 11, fontWeight: 600,
-          }}>
-            <span style={{ width: 5, height: 5, borderRadius: '50%', background: risk.color }} />
-            {risk.label}
-          </span>
-          {/* Status (only when not PENDING, e.g. NOT_GRANTED candidates from Rating) */}
-          {showStatus && statusMeta && (
-            <span style={{
-              display: 'inline-flex', alignItems: 'center', gap: 4,
-              padding: '2px 7px', borderRadius: 999,
-              background: statusMeta.bg, color: statusMeta.color,
-              fontSize: 11, fontWeight: 600,
-            }}>
-              <span style={{ width: 5, height: 5, borderRadius: '50%', background: statusMeta.color }} />
-              {statusMeta.label}
-            </span>
-          )}
+          <Pill {...risk} />
+          {showStatus && statusMeta && <Pill {...statusMeta} />}
         </div>
       </div>
 
-      {/* Action button */}
-      <div style={{ flexShrink: 0 }}>{action}</div>
+      {/* Action */}
+      <div className="shrink-0">{action}</div>
     </div>
   );
 }
