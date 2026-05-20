@@ -140,15 +140,9 @@ function AddAchievementDialog({ open, onClose }: { open: boolean; onClose: () =>
       }
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <Field label="Yutuq turi" htmlFor="ach-type">
-            <Select value={form.type} onChange={v => set('type', v as AchievementType)} options={TYPE_OPTIONS} />
-          </Field>
-          <Field label="Sana" htmlFor="ach-date">
-            <Input id="ach-date" type="date" value={new Date().toISOString().slice(0, 10)}
-              onChange={() => {}} readOnly />
-          </Field>
-        </div>
+        <Field label="Yutuq turi" htmlFor="ach-type">
+          <Select value={form.type} onChange={v => set('type', v as AchievementType)} options={TYPE_OPTIONS} />
+        </Field>
 
         <Field label="Nomi" htmlFor="ach-title"
           hint={<span style={{ color: errors.title ? T.red : T.textSubtle }}>{form.title.length} / 100</span>}>

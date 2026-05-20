@@ -105,7 +105,7 @@ export default function StudentRating() {
         <RankCard label="Kursda"         rank={rankings.course.rank}     total={rankings.course.total}
           accent="#7c3aed"   icon={Icons.graduation} sub={`${courseDirection} yo'nalishi`} />
         <RankCard label="Universitetda" rank={rankings.university.rank} total={rankings.university.total}
-          accent={T.slate900} icon={Icons.trophy}    sub="412 ta talaba" />
+          accent={T.slate900} icon={Icons.trophy}    sub={`${rankings.university.total} ta talaba`} />
       </div>
 
       {/* Table card */}

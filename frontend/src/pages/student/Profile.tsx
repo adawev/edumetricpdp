@@ -115,8 +115,8 @@ export default function StudentProfile() {
           <div style={{ marginTop: 14 }}>
             <div style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-0.025em', color: T.text }}>{student.fullName}</div>
             <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              <InfoTag icon={Icons.mail} label="Email" value={`${student.fullName.toLowerCase().replace(/\s+/g, '.')}@student.pdp.uz`} />
               <InfoTag icon={Icons.users} label="Guruh" value={student.group.name} />
+              <InfoTag icon={Icons.cal} label="Kurs" value={`${student.group.course}-kurs`} />
               {student.group.mentor && (
                 <InfoTag icon={Icons.graduation} label="Mentor" value={student.group.mentor.fullName} />
               )}
@@ -311,7 +311,7 @@ function InfoTag({ icon, label, value }: { icon: (p: any) => JSX.Element; label:
 function CertificatesSection({ certs }: { certs: Achievement[] }) {
   const { mutateAsync, isPending } = useCreateAchievement();
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ type: 'CERTIFICATE' as AchievementType, title: '', description: '', file: false });
+  const [form, setForm] = useState({ type: 'CERTIFICATE' as AchievementType, title: '', description: '' });
 
   const fmtDate = (s: string) => {
     const d = new Date(s);
@@ -324,7 +324,7 @@ function CertificatesSection({ certs }: { certs: Achievement[] }) {
     try {
       await mutateAsync({ type: form.type, title: form.title.trim(), description: form.description.trim() || undefined });
       toast.success("Sertifikat yuborildi — admin tasdiqlashini kuting");
-      setForm({ type: 'CERTIFICATE', title: '', description: '', file: false });
+      setForm({ type: 'CERTIFICATE', title: '', description: '' });
       setOpen(false);
     } catch (err: any) {
       toast.error(err?.response?.data?.error ?? 'Xatolik yuz berdi');
@@ -425,18 +425,8 @@ function CertificatesSection({ certs }: { certs: Achievement[] }) {
               border: `1px solid ${T.border}`, fontSize: 13.5, fontFamily: 'inherit',
               outline: 'none', color: T.text, background: T.white, boxSizing: 'border-box' }} />
         </Field>
-        <Field label="Hujjat" hint={<span style={{ color: T.textSubtle }}>PDF, PNG yoki JPG</span>}>
-          <div onClick={() => setForm(f => ({ ...f, file: !f.file }))} style={{
-            border: `1.5px dashed ${form.file ? T.emerald : T.borderStrong}`, borderRadius: 8, padding: 14,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer',
-            background: form.file ? T.emeraldBg : T.bg,
-            color: form.file ? T.emeraldText : T.textMuted, fontSize: 13,
-          }}>
-            {form.file
-              ? <>{Icons.check({ size: 14, stroke: T.emerald })} sertifikat.pdf</>
-              : <>{Icons.upload({ size: 14, stroke: T.textMuted })} Hujjatni yuklash uchun bosing</>}
-          </div>
-        </Field>
+        {/* Fayl yuklash backend tomonida hali yo'q — keyingi versiyada qo'shiladi.
+            Hozircha admin metadata orqali tasdiqlaydi. */}
       </Dialog>
     </Card>
   );
@@ -444,10 +434,10 @@ function CertificatesSection({ certs }: { certs: Achievement[] }) {
 
 // ── BadgesSection ──────────────────────────────────────────────────────────
 
-function BadgesSection({ student, achievements }: { student: any; achievements: any[] }) {
+function BadgesSection({ student, achievements }: { student: import('@/types/student').Student; achievements: Achievement[] }) {
   const earnedSlugs = useMemo(() => {
     const slugs = new Set<string>();
-    const approvedTypes = new Set(achievements.filter(a => a.status === 'APPROVED').map((a: any) => a.type));
+    const approvedTypes = new Set(achievements.filter(a => a.status === 'APPROVED').map(a => a.type));
     const approvedCount = achievements.filter(a => a.status === 'APPROVED').length;
     const certCount = achievements.filter(a => a.status === 'APPROVED' && ['CERTIFICATE','LANGUAGE','COURSE'].includes(a.type)).length;
 
