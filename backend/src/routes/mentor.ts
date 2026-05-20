@@ -116,6 +116,13 @@ mentorRouter.post('/feedback', async (req, res) => {
   });
   await recalcStudent(parsed.data.studentId);
 
+  // Feedback bahosi (1-5) → tutorScore. Grant ballini qayta hisoblaydi.
+  await prisma.student.update({
+    where: { id: parsed.data.studentId },
+    data: { tutorScore: parsed.data.score },
+  });
+  await recalcStudent(parsed.data.studentId);
+
   await prisma.activityLog.create({
     data: {
       studentId: parsed.data.studentId,
