@@ -85,27 +85,46 @@ const feedbackSchema = z.object({
   score: z.number().int().min(1).max(5),
 });
 
-// Feedback = text comment + personal rating (1-5). tutorScore'ga ta'sir qilmaydi.
+// Feedback = text comment + mentor bahosi (1-5).
+// Feedback bahosi = tutorScore (grant nizomi "Mentor bahosi" mezoni, max 5 ball).
+// Qoida: bitta mentor → bitta talaba uchun bitta feedback. Mavjud bo'lsa yangilanadi.
 mentorRouter.post('/feedback', async (req, res) => {
   const parsed = feedbackSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid input' });
   const mentorId = await getMentorId(req.user!.userId);
   if (!mentorId) return res.status(404).json({ error: 'Mentor not found' });
-const owned = await studentBelongsToMentor(parsed.data.studentId, mentorId);
+  const owned = await studentBelongsToMentor(parsed.data.studentId, mentorId);
   if (owned === null) return res.status(404).json({ error: 'Student not found' });
   if (!owned) return res.status(403).json({ error: 'Forbidden' });
 
-  const fb = await prisma.feedback.create({ data: { ...parsed.data, mentorId } });
+  // Shu mentor shu talabaga avval feedback yozganmi?
+  const existing = await prisma.feedback.findFirst({
+    where: { studentId: parsed.data.studentId, mentorId },
+  });
+
+  const fb = existing
+    ? await prisma.feedback.update({
+        where: { id: existing.id },
+        data: { text: parsed.data.text, score: parsed.data.score, createdAt: new Date() },
+      })
+    : await prisma.feedback.create({ data: { ...parsed.data, mentorId } });
+
+  // Feedback bahosi (1-5) → tutorScore. Grant ballini qayta hisoblaydi.
+  await prisma.student.update({
+    where: { id: parsed.data.studentId },
+    data: { tutorScore: parsed.data.score },
+  });
+  await recalcStudent(parsed.data.studentId);
 
   await prisma.activityLog.create({
     data: {
       studentId: parsed.data.studentId,
       action: 'MENTOR_FEEDBACK',
-      meta: { mentorId, score: parsed.data.score },
+      meta: { mentorId, score: parsed.data.score, updated: !!existing },
     },
   });
 
-  res.status(201).json(fb);
+  res.status(existing ? 200 : 201).json(fb);
 });
 
 // Tyutor bahosi — nizom bo'yicha 5 yo'nalish, har biri 0-1, sum = tutorScore (max 5)

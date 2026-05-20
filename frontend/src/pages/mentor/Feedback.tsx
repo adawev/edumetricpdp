@@ -114,14 +114,27 @@ export default function MentorFeedback() {
     enabled: !!studentId,
   });
 
+  // Bitta mentor → bitta talaba uchun bitta feedback. Avval yozilgan bo'lsa — tahrirlanadi.
+  const myFeedback = useMemo(() => history?.find(f => f.isMine) ?? null, [history]);
+  const isEditing = !!myFeedback;
+
+  // Talaba tanlanganda / tarix yuklanganda formani mavjud feedback bilan to'ldiradi
+  useEffect(() => {
+    if (myFeedback) {
+      setText(myFeedback.text);
+      setScore(myFeedback.score);
+    } else {
+      setText('');
+      setScore(0);
+    }
+  }, [myFeedback, studentId]);
+
   const submit = useMutation({
     mutationFn: async () => {
       await api.post('/mentor/feedback', { studentId, text: text.trim(), score });
     },
     onSuccess: () => {
-      toast.success('Feedback yuborildi');
-      setText('');
-      setScore(0);
+      toast.success(isEditing ? 'Feedback yangilandi' : 'Feedback yuborildi');
       qc.invalidateQueries({ queryKey: ['mentor-feedbacks', studentId] });
       qc.invalidateQueries({ queryKey: ['mentor-students'] });
     },
@@ -227,9 +240,19 @@ export default function MentorFeedback() {
               </div>
             )}
 
+            {isEditing && (
+              <div className="text-[12.5px] text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                Siz bu talabaga avval feedback yozgansiz — har talabaga bittadan feedback.
+                Saqlasangiz eski yozuv yangilanadi.
+              </div>
+            )}
+
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Baho (1–5)</label>
+              <label className="text-sm font-medium">Mentor bahosi (1–5)</label>
               <StarPicker value={score} onChange={setScore} />
+              <p className="text-[11.5px] text-muted-foreground">
+                Bu baho grant ballidagi "Mentor bahosi" mezoni — max 5 ball
+              </p>
             </div>
 
             <div className="space-y-1.5">
@@ -266,7 +289,9 @@ export default function MentorFeedback() {
                 className="inline-flex items-center gap-2 h-9 px-4 bg-slate-900 text-white text-sm font-medium rounded-md hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <Send className="w-3.5 h-3.5" />
-                {submit.isPending ? 'Yuborilmoqda...' : 'Yuborish'}
+                {submit.isPending
+                  ? 'Saqlanmoqda...'
+                  : isEditing ? 'Yangilash' : 'Yuborish'}
               </button>
             </div>
           </div>
