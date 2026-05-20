@@ -85,7 +85,8 @@ const feedbackSchema = z.object({
   score: z.number().int().min(1).max(5),
 });
 
-// Feedback = text comment + personal rating (1-5). tutorScore'ga ta'sir qilmaydi.
+// Feedback = text comment + mentor bahosi (1-5).
+// Feedback bahosi = tutorScore (grant nizomi "Mentor bahosi" mezoni, max 5 ball).
 // Qoida: bitta mentor → bitta talaba uchun bitta feedback. Mavjud bo'lsa yangilanadi.
 mentorRouter.post('/feedback', async (req, res) => {
   const parsed = feedbackSchema.safeParse(req.body);
@@ -107,6 +108,13 @@ mentorRouter.post('/feedback', async (req, res) => {
         data: { text: parsed.data.text, score: parsed.data.score, createdAt: new Date() },
       })
     : await prisma.feedback.create({ data: { ...parsed.data, mentorId } });
+
+  // Feedback bahosi (1-5) → tutorScore. Grant ballini qayta hisoblaydi.
+  await prisma.student.update({
+    where: { id: parsed.data.studentId },
+    data: { tutorScore: parsed.data.score },
+  });
+  await recalcStudent(parsed.data.studentId);
 
   await prisma.activityLog.create({
     data: {

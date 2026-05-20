@@ -248,8 +248,11 @@ export default function MentorFeedback() {
             )}
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Baho (1–5)</label>
+              <label className="text-sm font-medium">Mentor bahosi (1–5)</label>
               <StarPicker value={score} onChange={setScore} />
+              <p className="text-[11.5px] text-muted-foreground">
+                Bu baho grant ballidagi "Mentor bahosi" mezoni — max 5 ball
+              </p>
             </div>
 
             <div className="space-y-1.5">
