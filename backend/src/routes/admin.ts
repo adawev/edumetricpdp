@@ -31,7 +31,7 @@ adminRouter.get('/achievements', async (req, res) => {
   const status = (req.query.status as string | undefined)?.toUpperCase();
   res.json(await prisma.achievement.findMany({
     where: status ? { status: status as any } : undefined,
-    include: { student: true },
+    include: { student: { include: { group: true } } },
     orderBy: { createdAt: 'desc' },
   }));
 });
