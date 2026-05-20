@@ -253,7 +253,6 @@ export default function AdminGrants() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  const [filter, setFilter] = useState<'selected' | 'all'>('selected');
   const [rejectDialog, setRejectDialog] = useState<Student | null>(null);
   const [rejectReason, setRejectReason] = useState<'ACADEMIC_FAIL' | 'LOW_SCORE' | 'PAYMENT_OVERDUE'>('LOW_SCORE');
   const [confirmFinal, setConfirmFinal] = useState(false);
@@ -261,19 +260,11 @@ export default function AdminGrants() {
   const selectedIds = useMemo(() => {
     const p = searchParams.get('selected');
     if (p) return new Set(p.split(',').filter(Boolean));
-    // Sidebar orqali kelganda sessionStorage dan o'qiymiz
     const stored = sessionStorage.getItem('em_grant_session');
     return stored ? new Set(stored.split(',').filter(Boolean)) : null;
   }, [searchParams]);
 
   const hasSelection = !!(selectedIds && selectedIds.size > 0);
-
-  // Default to "all" when no selection
-  useEffect(() => {
-    if (!hasSelection && filter === 'selected') setFilter('all');
-  }, [hasSelection]);
-
-  const activeFilter = hasSelection ? filter : 'all';
 
   /* ── Queries ── */
   const { data, isLoading } = useQuery({
@@ -285,21 +276,21 @@ export default function AdminGrants() {
     queryFn: async () => (await api.get<Student[]>('/admin/students')).data,
   });
 
-  /* ── Working set ── */
+  /* ── Working set — always selectedIds if present, else all ── */
   const allCandidates = useMemo(() => {
     const pending  = data?.pending  ?? [];
     const granted  = data?.granted  ?? [];
     const rejected = data?.rejected ?? [];
     const combined = [...pending, ...granted, ...rejected];
 
-    if (activeFilter === 'selected' && selectedIds) {
+    if (selectedIds && selectedIds.size > 0) {
       const map = new Map(combined.map(s => [s.id, s]));
       return [...selectedIds]
         .map(id => map.get(id) ?? allStudents.find(s => s.id === id))
         .filter(Boolean) as Student[];
     }
     return combined;
-  }, [data, allStudents, activeFilter, selectedIds]);
+  }, [data, allStudents, selectedIds]);
 
   const sorted = [...allCandidates].sort((a, b) => b.grantScore - a.grantScore);
 
@@ -363,46 +354,14 @@ export default function AdminGrants() {
           </div>
         )}
 
-        {/* ── Filter + slot bar ────────────────────────── */}
+        {/* ── Slot bar ─────────────────────────────────── */}
         <div style={{
           background: T.white, border: `1px solid ${T.border}`,
           borderRadius: 12, padding: 12, marginBottom: 12,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
 
-            {hasSelection ? (
-              /* Tabs */
-              <div style={{ display: 'inline-flex', padding: 3, borderRadius: 8, background: T.bg, gap: 2 }}>
-                {([
-                  { id: 'selected' as const, label: 'Tanlanganlar',    count: selectedIds!.size },
-                  { id: 'all'      as const, label: 'Barcha nomzodlar' },
-                ] as const).map(tab => {
-                  const active = activeFilter === tab.id;
-                  return (
-                    <button key={tab.id} onClick={() => setFilter(tab.id)} style={{
-                      padding: '5px 11px', borderRadius: 6, border: 0, cursor: 'pointer',
-                      background: active ? T.white : 'transparent',
-                      color: active ? T.text : T.textMuted,
-                      fontWeight: active ? 500 : 400, fontSize: 12.5,
-                      boxShadow: active ? '0 1px 2px rgba(15,23,42,.06)' : 'none',
-                      display: 'inline-flex', alignItems: 'center', gap: 6,
-                      transition: 'background .1s',
-                    }}>
-                      {tab.label}
-                      {'count' in tab && (
-                        <span style={{
-                          fontSize: 10.5, padding: '0 5px', borderRadius: 999,
-                          background: T.bgSubtle, color: T.textMuted,
-                          minWidth: 16, height: 16, fontVariantNumeric: 'tabular-nums',
-                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                        }}>{tab.count}</span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              /* No selection hint */
+            {!hasSelection && (
               <div style={{ fontSize: 12.5, color: T.textMuted, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Info size={13} />
                 Hech kim tanlanmagan.{' '}
@@ -414,7 +373,6 @@ export default function AdminGrants() {
               </div>
             )}
 
-            {/* Slot progress — right */}
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10, fontSize: 12.5 }}>
               <span style={{ color: T.textMuted }}>Slot</span>
               <div style={{ width: 140, height: 6, background: T.bgSubtle, borderRadius: 999, overflow: 'hidden' }}>
