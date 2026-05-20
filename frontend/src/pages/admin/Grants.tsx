@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { BadgeCheck, XCircle, Trophy, Users, TrendingUp } from 'lucide-react';
+import { BadgeCheck, XCircle, Trophy, Users, TrendingUp, Filter, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import AdminLayout from './AdminLayout';
 import { Pagination, usePagination } from '@/components/em/Primitives';
@@ -32,6 +33,12 @@ const RISK_LABEL: Record<string, string> = {
 
 export default function AdminGrants() {
   const qc = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const selectedIds = useMemo(() => {
+    const param = searchParams.get('selected');
+    return param ? new Set(param.split(',').filter(Boolean)) : null;
+  }, [searchParams]);
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-grants'],
@@ -45,6 +52,11 @@ export default function AdminGrants() {
   const granted = useMemo(
     () => [...(data?.granted ?? [])].sort((a, b) => b.grantScore - a.grantScore),
     [data]
+  );
+
+  const filteredPending = useMemo(
+    () => selectedIds ? pending.filter(s => selectedIds.has(s.id)) : pending,
+    [pending, selectedIds]
   );
 
   const grantMutation = useMutation({
@@ -70,7 +82,7 @@ export default function AdminGrants() {
   const isBusy = grantMutation.isPending || revokeMutation.isPending;
   const total  = pending.length + granted.length;
 
-  const pagPending = usePagination(pending, 15);
+  const pagPending = usePagination(filteredPending, 15);
   const pagGranted = usePagination(granted, 15);
 
   return (
@@ -108,6 +120,23 @@ export default function AdminGrants() {
           </div>
         )}
 
+        {/* Filter banner */}
+        {selectedIds && (
+          <div className="flex items-center gap-3 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-lg">
+            <Filter className="w-4 h-4 text-amber-600 shrink-0" />
+            <span className="text-sm text-amber-800 flex-1">
+              Reytingdan <span className="font-semibold">{filteredPending.length} ta</span> tanlangan talaba ko'rsatilmoqda
+            </span>
+            <button
+              onClick={() => setSearchParams({})}
+              className="flex items-center gap-1 text-xs font-medium text-amber-700 hover:text-amber-900 transition-colors"
+            >
+              <X className="w-3.5 h-3.5" />
+              Barchasini ko'rish
+            </button>
+          </div>
+        )}
+
         {/* 2-ustunli layout */}
         {isLoading ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -125,10 +154,10 @@ export default function AdminGrants() {
             {/* Chap — Kandidatlar */}
             <Column
               title="Kandidatlar"
-              subtitle={`${pending.length} ta talaba kutilmoqda`}
+              subtitle={selectedIds ? `${filteredPending.length} ta tanlangan` : `${pending.length} ta talaba kutilmoqda`}
               accent="amber"
-              empty={pending.length === 0}
-              emptyText="Kutilayotgan kandidat yo'q"
+              empty={filteredPending.length === 0}
+              emptyText={selectedIds ? "Tanlangan talabalar topilmadi" : "Kutilayotgan kandidat yo'q"}
             >
               {pagPending.pageItems.map((s, i) => (
                 <StudentCard

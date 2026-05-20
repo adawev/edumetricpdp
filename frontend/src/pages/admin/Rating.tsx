@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { Download, Zap, ArrowRight, Check, ChevronUp, ChevronDown, Info } from 'lucide-react';
 import { api } from '@/lib/api';
 import AdminLayout from './AdminLayout';
@@ -132,6 +133,7 @@ function exportCsv(rows: RatingRow[]) {
 }
 
 export default function AdminRating() {
+  const navigate = useNavigate();
   const [q,       setQ]       = useState('');
   const [group,   setGroup]   = useState('all');
   const [course,  setCourse]  = useState('all');
@@ -585,7 +587,10 @@ export default function AdminRating() {
                   Tozalash
                 </button>
                 <button
-                  onClick={() => window.location.href = '/admin/grants'}
+                  onClick={() => {
+                    const ids = Object.keys(selected).filter(id => selected[id]).join(',');
+                    navigate(`/admin/grants?selected=${ids}`);
+                  }}
                   style={{
                     height: 32, padding: '0 16px', borderRadius: 8,
                     border: 0,
