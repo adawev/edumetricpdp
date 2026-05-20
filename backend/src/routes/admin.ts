@@ -151,11 +151,13 @@ adminRouter.post('/grants/:id/revoke', async (req, res) => {
 });
 
 adminRouter.post('/grants/:id/restore', async (req, res) => {
-  await prisma.student.update({
+  // Do NOT recalcStudent here — it would immediately re-reject low-score students.
+  // Admin explicitly chose to reconsider; preserve PENDING so they can manually grant.
+  const s = await prisma.student.update({
     where: { id: req.params.id },
     data: { grantStatus: 'PENDING', grantReason: 'OK' },
+    include: { group: true, user: { select: { email: true } } },
   });
-  const s = await recalcStudent(req.params.id);
   res.json(s);
 });
 

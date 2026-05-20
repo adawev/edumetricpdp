@@ -596,6 +596,7 @@ export default function AdminRating() {
                 <button
                   onClick={() => {
                     const ids = Object.keys(selected).filter(id => selected[id]).join(',');
+                    setSelected({});
                     navigate(`/admin/grants?selected=${ids}`);
                   }}
                   style={{
