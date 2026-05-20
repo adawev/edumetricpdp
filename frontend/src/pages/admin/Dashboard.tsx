@@ -226,44 +226,46 @@ export default function AdminDashboard() {
           {/* Bar chart */}
           <div className="bg-white rounded-xl border border-slate-200 p-5">
             <p className="text-sm font-semibold text-slate-900">Guruh bo'yicha o'rtacha ball</p>
-            <p className="text-xs text-slate-400 mt-0.5 mb-2">Bahor 2026 semestri</p>
+            <p className="text-xs text-slate-400 mt-0.5 mb-3">Bahor 2026 semestri</p>
             {isLoading ? (
-              <div className="h-52 bg-slate-100 animate-pulse rounded-lg" />
+              <div className="bg-slate-100 animate-pulse rounded-lg" style={{ height: 260 }} />
             ) : (
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={groupData} margin={{ top: 8, right: 8, left: -14, bottom: 0 }}>
-                  <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} />
-                  <XAxis
-                    dataKey="group"
-                    tick={{ fontSize: 11, fill: '#94a3b8' }}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis
-                    domain={[0, 100]}
-                    tick={{ fontSize: 11, fill: '#94a3b8' }}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      background: '#fff',
-                      border: '1px solid #e2e8f0',
-                      borderRadius: 8,
-                      fontSize: 12,
-                    }}
-                    formatter={(v: number) => [`${v} ball`, "O'rtacha"]}
-                  />
-                  <Bar dataKey="ball" radius={[6, 6, 0, 0]} maxBarSize={40}>
-                    {groupData.map((d, i) => (
-                      <Cell
-                        key={i}
-                        fill={d.ball >= 80 ? '#10b981' : d.ball >= 70 ? '#f59e0b' : '#ef4444'}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+              <div style={{ height: 260 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={groupData} margin={{ top: 8, right: 8, left: -14, bottom: 0 }}>
+                    <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} />
+                    <XAxis
+                      dataKey="group"
+                      tick={{ fontSize: 11, fill: '#94a3b8' }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      domain={[0, 100]}
+                      tick={{ fontSize: 11, fill: '#94a3b8' }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        background: '#fff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: 8,
+                        fontSize: 12,
+                      }}
+                      formatter={(v: number) => [`${v} ball`, "O'rtacha"]}
+                    />
+                    <Bar dataKey="ball" radius={[6, 6, 0, 0]} maxBarSize={52}>
+                      {groupData.map((d, i) => (
+                        <Cell
+                          key={i}
+                          fill={d.ball >= 80 ? '#10b981' : d.ball >= 70 ? '#f59e0b' : '#ef4444'}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             )}
           </div>
         </div>
