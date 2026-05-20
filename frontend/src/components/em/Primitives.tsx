@@ -182,7 +182,7 @@ export const Card = ({ children, style, padding, hoverable }: { children: ReactN
 );
 
 // ===== Input =====
-export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement> & { icon?: ReactNode; iconRight?: ReactNode; size?: 'sm' | 'md' | 'lg'; error?: boolean }>(
+export const Input = forwardRef<HTMLInputElement, Omit<InputHTMLAttributes<HTMLInputElement>, 'size'> & { icon?: ReactNode; iconRight?: ReactNode; size?: 'sm' | 'md' | 'lg'; error?: boolean }>(
   ({ icon, iconRight, error, style, size: inputSize = 'md', ...rest }, ref) => {
     const sizes: Record<string, any> = { sm: { h: 30, fs: 12.5 }, md: { h: 36, fs: 13.5 }, lg: { h: 42, fs: 14 } };
     const sz = sizes[inputSize];
