@@ -76,25 +76,34 @@ print(next(s['breakdown']['academicPct'] for s in d if s['id']=='$GRANTED_ID'))
 ")
 [ "$NEW_GPA" = "92" ] && pass "GPA 92 ga yangilandi" || fail "GPA = $NEW_GPA"
 
-# 6) TYUTOR BAHOSI 5 yo'nalish
-echo "6) Tutor evaluation (5 yo'nalish, max 5 ball)"
-RESP=$(curl -s -X POST $BASE/api/mentor/tutor-evaluation \
+# 6) FEEDBACK BAHOSI → tutorScore (Mentor bahosi, max 5 ball)
+echo "6) Feedback bahosi → tutorScore"
+curl -s -X POST $BASE/api/mentor/feedback \
   -H "Authorization: Bearer $TOKEN_MENTOR" -H 'Content-Type: application/json' \
-  -d "{\"studentId\":\"$GRANTED_ID\",\"culture\":1,\"activity\":1,\"softSkills\":1,\"discipline\":1,\"dormitory\":1}")
-TUTOR=$(echo $RESP | python3 -c 'import json,sys; print(json.load(sys.stdin)["tutorScore"])')
-[ "$TUTOR" = "5" ] && pass "5 yo'nalish × 1.0 → tutorScore = 5" || fail "tutorScore = $TUTOR"
+  -d "{\"studentId\":\"$GRANTED_ID\",\"text\":\"Zo'r ishlayapti\",\"score\":5}" > /dev/null
+TUTOR=$(curl -s -H "Authorization: Bearer $TOKEN_ADMIN" $BASE/api/admin/rating | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+print(next(s['breakdown']['tutor'] for s in d if s['id']=='$GRANTED_ID'))
+")
+[ "$TUTOR" = "5" ] && pass "Feedback bahosi 5 → tutorScore = 5" || fail "tutor = $TUTOR"
 
-RESP=$(curl -s -X POST $BASE/api/mentor/tutor-evaluation \
+# Bitta mentor → bitta feedback: qayta yozilganda yangilanadi
+curl -s -X POST $BASE/api/mentor/feedback \
   -H "Authorization: Bearer $TOKEN_MENTOR" -H 'Content-Type: application/json' \
-  -d "{\"studentId\":\"$GRANTED_ID\",\"culture\":0.5,\"activity\":0.5,\"softSkills\":0.5,\"discipline\":0.5,\"dormitory\":0.5}")
-TUTOR=$(echo $RESP | python3 -c 'import json,sys; print(json.load(sys.stdin)["tutorScore"])')
-[ "$TUTOR" = "2.5" ] && pass "5 × 0.5 → tutorScore = 2.5" || fail "tutorScore = $TUTOR"
+  -d "{\"studentId\":\"$GRANTED_ID\",\"text\":\"Yaxshilanmoqda\",\"score\":3}" > /dev/null
+TUTOR=$(curl -s -H "Authorization: Bearer $TOKEN_ADMIN" $BASE/api/admin/rating | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+print(next(s['breakdown']['tutor'] for s in d if s['id']=='$GRANTED_ID'))
+")
+[ "$TUTOR" = "3" ] && pass "Feedback qayta yozildi → tutorScore = 3" || fail "tutor = $TUTOR"
 
-# Out of range
-RESP=$(curl -s -X POST $BASE/api/mentor/tutor-evaluation \
+# Out of range — score > 5 rad etiladi
+RESP=$(curl -s -X POST $BASE/api/mentor/feedback \
   -H "Authorization: Bearer $TOKEN_MENTOR" -H 'Content-Type: application/json' \
-  -d "{\"studentId\":\"$GRANTED_ID\",\"culture\":1.5,\"activity\":0.5,\"softSkills\":0.5,\"discipline\":0.5,\"dormitory\":0.5}")
-echo $RESP | grep -q '"error"' && pass "culture > 1 rad etildi" || fail "should reject"
+  -d "{\"studentId\":\"$GRANTED_ID\",\"text\":\"Test\",\"score\":7}")
+echo $RESP | grep -q '"error"' && pass "score > 5 rad etildi" || fail "should reject"
 
 # 7) PENALTY → recalc, cap test
 echo "7) Penalty va Recovery"
