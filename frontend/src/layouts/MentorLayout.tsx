@@ -125,9 +125,9 @@ export default function MentorLayout() {
     navItems.find(n => location.pathname.startsWith(n.to))?.label ?? 'Mentor';
 
   return (
-    <div className="min-h-screen flex bg-slate-50">
+    <div className="h-screen flex bg-slate-50 overflow-hidden">
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex w-60 bg-white border-r flex-col shrink-0">
+      <aside className="hidden md:flex w-60 bg-white border-r flex-col shrink-0 h-full overflow-y-auto">
         <SidebarContent onLogout={logout} mentorName={mentorName} initials={initials} />
       </aside>
 
@@ -144,9 +144,9 @@ export default function MentorLayout() {
         </Dialog.Portal>
       </Dialog.Root>
 
-      <div className="flex-1 min-w-0 flex flex-col">
+      <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
         {/* Mobile header */}
-        <header className="md:hidden h-14 bg-white border-b flex items-center px-4 gap-3 sticky top-0 z-30">
+        <header className="md:hidden h-14 bg-white border-b flex items-center px-4 gap-3 shrink-0">
           <button
             onClick={() => setMobileOpen(true)}
             className="p-2 -ml-2 rounded-md text-slate-600 hover:bg-slate-100"
@@ -160,7 +160,7 @@ export default function MentorLayout() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-x-hidden">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden">
           <Outlet />
         </main>
       </div>

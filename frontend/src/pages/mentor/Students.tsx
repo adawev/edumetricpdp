@@ -14,6 +14,7 @@ import { statusBadge, riskBadge, type GrantStatus, type GrantReason, type RiskLe
 type Student = {
   id: string;
   fullName: string;
+  email: string;
   groupId: string;
   gpa: number;
   attendance: number;
@@ -240,7 +241,6 @@ export default function MentorStudents() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery]         = useState('');
   const [statusFilter, setStatus] = useState<string>('ALL');
-  const [groupFilter, setGroup]   = useState<string>('ALL');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sortKey, setSortKey]     = useState<SortKey>('grantScore');
   const [sortDir, setSortDir]     = useState<SortDir>('desc');
@@ -273,7 +273,6 @@ export default function MentorStudents() {
 
   const filtered = useMemo(() => {
     let list = allStudents;
-    if (groupFilter !== 'ALL') list = list.filter(s => s.groupId === groupFilter);
     if (statusFilter !== 'ALL') list = list.filter(s => s.grantStatus === statusFilter);
     if (query.trim()) {
       const q = query.toLowerCase();
@@ -287,7 +286,7 @@ export default function MentorStudents() {
         : (va as number) - (vb as number);
       return sortDir === 'desc' ? -cmp : cmp;
     });
-  }, [allStudents, query, statusFilter, groupFilter, sortKey, sortDir]);
+  }, [allStudents, query, statusFilter, sortKey, sortDir]);
 
   const selected = useMemo(
     () => allStudents.find(s => s.id === selectedId) ?? null,
@@ -313,7 +312,9 @@ export default function MentorStudents() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Talabalar</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {isLoading ? 'Yuklanmoqda...' : `${filtered.length} ta · ${allStudents.length} dan`}
+          {isLoading
+            ? 'Yuklanmoqda...'
+            : `Sizning ${allStudents.length} ta talabangiz — qatorga bosing batafsil ko'rish uchun`}
         </p>
       </div>
 
@@ -350,16 +351,6 @@ export default function MentorStudents() {
             ))}
           </div>
 
-          {/* Group filter */}
-          {data && data.length > 1 && (
-            <select
-              value={groupFilter} onChange={e => setGroup(e.target.value)}
-              className="h-9 px-3 rounded-md border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
-            >
-              <option value="ALL">Barcha guruhlar</option>
-              {data.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-            </select>
-          )}
         </div>
       </div>
 
@@ -435,7 +426,9 @@ export default function MentorStudents() {
                           <Avatar name={s.fullName} size={30} />
                           <div>
                             <div className="font-medium text-[13.5px]">{s.fullName}</div>
-                            <div className="text-[11px] text-muted-foreground">{groupNameById.get(s.groupId) ?? '—'}</div>
+                            {s.email && (
+                              <div className="text-[11px] text-muted-foreground">{s.email}</div>
+                            )}
                           </div>
                         </div>
                       </td>
