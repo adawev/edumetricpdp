@@ -163,6 +163,9 @@ model Feedback {
   text      String
   score     Int
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, mentorId])
 }
 
 model AttendanceRecord {
