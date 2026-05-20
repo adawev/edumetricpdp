@@ -1,13 +1,13 @@
 import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
   Tooltip, CartesianGrid, ResponsiveContainer,
 } from 'recharts';
 import {
   Users, Trophy, Clock, XCircle, BarChart2,
-  Star, AlertTriangle, BadgeCheck, ArrowRight, Download,
+  Star, AlertTriangle, BadgeCheck, ArrowRight, Download, RefreshCw,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import AdminLayout from './AdminLayout';
@@ -19,11 +19,9 @@ type Student = {
   grantStatus: 'GRANTED' | 'NOT_GRANTED' | 'PENDING' | 'UNKNOWN';
   group: { id: string; name: string; course: number };
 };
-
 type Group = { id: string; name: string; course: number };
-
 type Achievement = { id: string };
-type Penalty     = { id: string; recoveryDone: boolean };
+type Penalty = { id: string; recoveryDone: boolean };
 
 const STATUS_COLORS: Record<string, string> = {
   GRANTED:     '#10b981',
@@ -36,8 +34,29 @@ const STATUS_LABELS: Record<string, string> = {
   NOT_GRANTED: "Grant yo'q",
 };
 
+function exportCSV(students: Student[]) {
+  const headers = ['Ism', 'Guruh', 'Ball', 'Status'];
+  const rows = students.map(s => [
+    `"${s.fullName}"`,
+    `"${s.group?.name ?? ''}"`,
+    s.grantScore,
+    s.grantStatus,
+  ]);
+  const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `talabalar_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function AdminDashboard() {
-  const { data: students = [], isLoading } = useQuery({
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+
+  const { data: students = [], isLoading, isFetching } = useQuery({
     queryKey: ['admin-students'],
     queryFn: async () => (await api.get<Student[]>('/admin/students')).data,
   });
@@ -76,14 +95,12 @@ export default function AdminDashboard() {
   const groupData = useMemo(() => {
     const scoreMap: Record<string, { total: number; count: number }> = {};
     for (const s of students) {
-      const k = s.group?.name ?? 'Nomaʼlum';
+      const k = s.group?.name ?? "Noma'lum";
       if (!scoreMap[k]) scoreMap[k] = { total: 0, count: 0 };
       scoreMap[k].total += s.grantScore;
       scoreMap[k].count++;
     }
-    const groups = allGroups.length
-      ? allGroups.map(g => g.name)
-      : Object.keys(scoreMap);
+    const groups = allGroups.length ? allGroups.map(g => g.name) : Object.keys(scoreMap);
     return groups.map(group => {
       const d = scoreMap[group];
       return { group, ball: d ? Math.round((d.total / d.count) * 10) / 10 : 0 };
@@ -92,6 +109,13 @@ export default function AdminDashboard() {
 
   const activePenalties = penalties.filter(p => !p.recoveryDone).length;
   const total = stats?.total ?? 0;
+
+  function refresh() {
+    qc.invalidateQueries({ queryKey: ['admin-students'] });
+    qc.invalidateQueries({ queryKey: ['admin-achievements'] });
+    qc.invalidateQueries({ queryKey: ['admin-penalties'] });
+    qc.invalidateQueries({ queryKey: ['admin-groups'] });
+  }
 
   return (
     <AdminLayout>
@@ -104,7 +128,18 @@ export default function AdminDashboard() {
             <p className="text-[13.5px] text-slate-500 mt-1">Umumiy ko'rsatkichlar va tezkor amallar</p>
           </div>
           <div className="flex items-center gap-2">
-            <button className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-slate-200 bg-white text-[12.5px] font-medium text-slate-700 hover:bg-slate-50 transition-colors">
+            <button
+              onClick={refresh}
+              title="Yangilash"
+              className={`flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 transition-colors ${isFetching ? 'opacity-60' : ''}`}
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`} />
+            </button>
+            <button
+              onClick={() => exportCSV(students)}
+              disabled={!students.length}
+              className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-slate-200 bg-white text-[12.5px] font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
               <Download className="w-3.5 h-3.5" /> Eksport
             </button>
             <Link
@@ -118,7 +153,7 @@ export default function AdminDashboard() {
 
         {/* KPI cards — 5 col */}
         {isLoading ? (
-          <div className="grid grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
             {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="h-24 rounded-xl bg-slate-100 animate-pulse" />
             ))}
@@ -128,17 +163,19 @@ export default function AdminDashboard() {
             <KpiCard
               label="Jami talabalar"
               value={stats?.total ?? 0}
-              trend={`${stats?.total ?? 0} jami`}
+              trend={`${stats?.total ?? 0} ta ro'yxatda`}
               icon={<Users className="w-3.5 h-3.5" />}
+              onClick={() => navigate('/admin/students')}
             />
             <KpiCard
               label="Grant olganlar"
               value={stats?.granted ?? 0}
               sub={`/ ${total}`}
-              trend={`${total ? Math.round((stats!.granted / total) * 100) : 0}%`}
+              trend={`${total ? Math.round((stats!.granted / total) * 100) : 0}% ulushi`}
               trendUp
               accent="#10b981"
               icon={<Trophy className="w-3.5 h-3.5" />}
+              onClick={() => navigate('/admin/grants')}
             />
             <KpiCard
               label="Kutilmoqda"
@@ -146,14 +183,16 @@ export default function AdminDashboard() {
               trend="ko'rib chiqilmoqda"
               accent="#d97706"
               icon={<Clock className="w-3.5 h-3.5" />}
+              onClick={() => navigate('/admin/grants')}
             />
             <KpiCard
               label="Grant yo'q"
               value={stats?.notGranted ?? 0}
-              trend={`${total ? Math.round((stats!.notGranted / total) * 100) : 0}%`}
+              trend={`${total ? Math.round((stats!.notGranted / total) * 100) : 0}% ulushi`}
               trendUp={false}
               accent="#dc2626"
               icon={<XCircle className="w-3.5 h-3.5" />}
+              onClick={() => navigate('/admin/students')}
             />
             <KpiCard
               label="O'rtacha ball"
@@ -162,12 +201,12 @@ export default function AdminDashboard() {
               trend="+3 oxirgi oyda"
               trendUp
               icon={<BarChart2 className="w-3.5 h-3.5" />}
+              onClick={() => navigate('/admin/rating')}
             />
-
           </div>
         )}
 
-        {/* Charts — 1fr : 1.4fr */}
+        {/* Charts */}
         <div className="grid gap-3" style={{ gridTemplateColumns: '1fr 1.4fr' }}>
           {/* Donut */}
           <div className="bg-white rounded-xl border border-slate-200 p-5">
@@ -175,9 +214,12 @@ export default function AdminDashboard() {
             <p className="text-xs text-slate-400 mt-0.5 mb-4">Joriy semestr</p>
             {isLoading ? (
               <div className="h-44 bg-slate-100 animate-pulse rounded-lg" />
+            ) : donutData.length === 0 ? (
+              <div className="h-44 flex items-center justify-center text-slate-400 text-sm">
+                Ma'lumot yo'q
+              </div>
             ) : (
               <div className="flex items-center gap-5">
-                {/* Donut with center label */}
                 <div className="relative shrink-0" style={{ width: 180, height: 180 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -191,9 +233,12 @@ export default function AdminDashboard() {
                       >
                         {donutData.map((d, i) => <Cell key={i} fill={d.color} />)}
                       </Pie>
+                      <Tooltip
+                        contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 12 }}
+                        formatter={(v: number) => [`${v} ta`, '']}
+                      />
                     </PieChart>
                   </ResponsiveContainer>
-                  {/* Center text */}
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                     <span className="text-[26px] font-semibold text-slate-900 tabular-nums tracking-tight leading-none">
                       {stats?.total ?? 0}
@@ -202,30 +247,22 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                {/* Legend */}
                 <div className="flex-1 space-y-2">
                   {donutData.map((d, i) => (
                     <div key={i} className="py-1.5">
                       <div className="flex items-center justify-between mb-1">
                         <span className="flex items-center gap-2 text-[12.5px] text-slate-700">
-                          <span
-                            className="w-2 h-2 rounded-[3px] shrink-0"
-                            style={{ background: d.color }}
-                          />
+                          <span className="w-2 h-2 rounded-[3px] shrink-0" style={{ background: d.color }} />
                           {d.name}
                         </span>
                         <span className="text-[13px] font-semibold tabular-nums text-slate-900">
                           {d.value} · {total ? Math.round((d.value / total) * 100) : 0}%
                         </span>
                       </div>
-                      {/* Progress bar */}
                       <div className="h-1 bg-slate-100 rounded-full overflow-hidden">
                         <div
-                          className="h-full rounded-full"
-                          style={{
-                            width: total ? `${(d.value / total) * 100}%` : '0%',
-                            background: d.color,
-                          }}
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{ width: total ? `${(d.value / total) * 100}%` : '0%', background: d.color }}
                         />
                       </div>
                     </div>
@@ -240,7 +277,11 @@ export default function AdminDashboard() {
             <p className="text-sm font-semibold text-slate-900">Guruh bo'yicha o'rtacha ball</p>
             <p className="text-xs text-slate-400 mt-0.5 mb-3">Bahor 2026 semestri</p>
             {isLoading ? (
-              <div className="bg-slate-100 animate-pulse rounded-lg" style={{ height: 260 }} />
+              <div className="bg-slate-100 animate-pulse rounded-lg" style={{ height: 220 }} />
+            ) : groupData.length === 0 ? (
+              <div className="flex items-center justify-center text-slate-400 text-sm" style={{ height: 220 }}>
+                Guruhlar yo'q
+              </div>
             ) : (
               <div style={{ height: 220 }}>
                 <ResponsiveContainer width="100%" height="100%">
@@ -259,15 +300,11 @@ export default function AdminDashboard() {
                       axisLine={false}
                     />
                     <Tooltip
-                      contentStyle={{
-                        background: '#fff',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: 8,
-                        fontSize: 12,
-                      }}
+                      contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 12 }}
                       formatter={(v: number) => [`${v} ball`, "O'rtacha"]}
+                      cursor={{ fill: '#f1f5f9' }}
                     />
-                    <Bar dataKey="ball" radius={[6, 6, 0, 0]}>
+                    <Bar dataKey="ball" radius={[6, 6, 0, 0]} maxBarSize={48}>
                       {groupData.map((d, i) => (
                         <Cell
                           key={i}
@@ -282,7 +319,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Quick actions — 3 col */}
+        {/* Quick actions */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <QuickCard
             to="/admin/achievements"
@@ -309,7 +346,8 @@ export default function AdminDashboard() {
             icon={<AlertTriangle className="w-5 h-5" />}
             title="Jarima boshqaruvi"
             desc={`${activePenalties} ta faol`}
-            arrow
+            badge={activePenalties || undefined}
+            arrow={!activePenalties}
           />
         </div>
       </div>
@@ -319,7 +357,7 @@ export default function AdminDashboard() {
 
 /* ── KPI Card ─────────────────────────────────────────── */
 function KpiCard({
-  label, value, sub, trend, trendUp, accent, icon,
+  label, value, sub, trend, trendUp, accent, icon, onClick,
 }: {
   label: string;
   value: number;
@@ -328,9 +366,13 @@ function KpiCard({
   trendUp?: boolean | null;
   accent?: string;
   icon?: React.ReactNode;
+  onClick?: () => void;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-4">
+    <div
+      onClick={onClick}
+      className={`bg-white rounded-xl border border-slate-200 p-4 ${onClick ? 'cursor-pointer hover:border-slate-300 hover:shadow-sm transition-all' : ''}`}
+    >
       <div className="flex items-center justify-between mb-2">
         <span className="text-[11.5px] font-medium text-slate-500 leading-tight">{label}</span>
         <span className="text-slate-400">{icon}</span>
@@ -342,12 +384,11 @@ function KpiCard({
         >
           {value}
         </p>
-        {sub && (
-          <span className="text-[12px] text-slate-400 tabular-nums">{sub}</span>
-        )}
+        {sub && <span className="text-[12px] text-slate-400 tabular-nums">{sub}</span>}
       </div>
       {trend && (
-        <p className="text-[11.5px] mt-1.5 tabular-nums"
+        <p
+          className="text-[11.5px] mt-1.5 tabular-nums"
           style={{ color: trendUp === true ? '#10b981' : trendUp === false ? '#ef4444' : '#94a3b8' }}
         >
           {trend}
