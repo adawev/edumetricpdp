@@ -245,6 +245,8 @@ export default function MentorStudents() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sortKey, setSortKey]     = useState<SortKey>('grantScore');
   const [sortDir, setSortDir]     = useState<SortDir>('desc');
+  const [page, setPage]           = useState(1);
+  const PAGE_SIZE = 15;
 
   useEffect(() => {
     const id = searchParams.get('student');
@@ -294,6 +296,15 @@ export default function MentorStudents() {
     () => allStudents.find(s => s.id === selectedId) ?? null,
     [allStudents, selectedId],
   );
+
+  // Pagination
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const paginated = useMemo(
+    () => filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [filtered, currentPage],
+  );
+  useEffect(() => { setPage(1); }, [query, statusFilter, groupFilter]);
 
   function SortIcon({ k }: { k: SortKey }) {
     if (sortKey !== k) return <ChevronUp className="w-3 h-3 opacity-20" />;
@@ -427,7 +438,7 @@ export default function MentorStudents() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((s, i) => {
+                {paginated.map((s, i) => {
                   const st = statusBadge(s.grantStatus, s.grantReason);
                   return (
                     <tr
@@ -435,7 +446,7 @@ export default function MentorStudents() {
                       onClick={() => setSelectedId(s.id)}
                       className="border-t hover:bg-slate-50 transition-colors cursor-pointer"
                     >
-                      <td className="px-4 py-3 text-muted-foreground tabular-nums text-xs">{i + 1}</td>
+                      <td className="px-4 py-3 text-muted-foreground tabular-nums text-xs">{(currentPage - 1) * PAGE_SIZE + i + 1}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5">
                           <Avatar name={s.fullName} size={30} />
@@ -471,6 +482,33 @@ export default function MentorStudents() {
               </tbody>
             </table>
           </div>
+
+          {pageCount > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t bg-slate-50">
+              <div className="text-xs text-muted-foreground tabular-nums">
+                {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} / {filtered.length}
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="h-8 px-3 rounded-md border bg-white text-xs font-medium hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Oldingi
+                </button>
+                <span className="px-3 text-xs text-muted-foreground tabular-nums">
+                  {currentPage} / {pageCount}
+                </span>
+                <button
+                  onClick={() => setPage(p => Math.min(pageCount, p + 1))}
+                  disabled={currentPage === pageCount}
+                  className="h-8 px-3 rounded-md border bg-white text-xs font-medium hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Keyingi
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

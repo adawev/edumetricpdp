@@ -193,7 +193,7 @@ export default function MentorFeedback() {
               </select>
             )}
           </div>
-          <div className="overflow-auto" style={{ maxHeight: 520 }}>
+          <div className="overflow-auto" style={{ maxHeight: 'calc(100vh - 220px)', minHeight: 520 }}>
             {filteredList.length === 0 ? (
               <div className="py-10 text-center text-sm text-muted-foreground">Talaba topilmadi</div>
             ) : filteredList.map(stu => {
