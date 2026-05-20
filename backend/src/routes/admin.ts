@@ -92,12 +92,16 @@ adminRouter.post('/penalties', async (req, res) => {
 });
 
 adminRouter.post('/penalties/:id/recover', async (req, res) => {
-  const schema = z.object({ recovered: z.number().min(0) });
+  const schema = z.object({ recovered: z.number().min(0), task: z.string().optional() });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid input' });
   const penalty = await prisma.penalty.update({
     where: { id: req.params.id },
-    data: { recovered: parsed.data.recovered, recoveryDone: true },
+    data: {
+      recovered: parsed.data.recovered,
+      recoveryTask: parsed.data.task ?? null,
+      recoveryDone: true,
+    },
   });
   await recalcStudent(penalty.studentId);
   res.json(penalty);
