@@ -18,7 +18,10 @@ adminRouter.get('/groups', async (_req, res) => {
 
 adminRouter.get('/students', async (_req, res) => {
   const students = await prisma.student.findMany({
-    include: { group: true },
+    include: {
+      group: { include: { mentor: true } },
+      user: { select: { email: true } },
+    },
     orderBy: { grantScore: 'desc' },
   });
   res.json(students);
