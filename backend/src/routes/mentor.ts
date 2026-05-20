@@ -81,8 +81,7 @@ mentorRouter.post('/feedback', async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: 'Invalid input' });
   const mentorId = await getMentorId(req.user!.userId);
   if (!mentorId) return res.status(404).json({ error: 'Mentor not found' });
-
-  const owned = await studentBelongsToMentor(parsed.data.studentId, mentorId);
+const owned = await studentBelongsToMentor(parsed.data.studentId, mentorId);
   if (owned === null) return res.status(404).json({ error: 'Student not found' });
   if (!owned) return res.status(403).json({ error: 'Forbidden' });
 
@@ -114,8 +113,7 @@ mentorRouter.post('/tutor-evaluation', async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: 'Invalid input', detail: parsed.error.issues });
   const mentorId = await getMentorId(req.user!.userId);
   if (!mentorId) return res.status(404).json({ error: 'Mentor not found' });
-
-  const { studentId, culture, activity, softSkills, discipline, dormitory } = parsed.data;
+const { studentId, culture, activity, softSkills, discipline, dormitory } = parsed.data;
 
   const owned = await studentBelongsToMentor(studentId, mentorId);
   if (owned === null) return res.status(404).json({ error: 'Student not found' });

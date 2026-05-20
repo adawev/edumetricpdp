@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import type {
   StudentMeResponse, Achievement, Feedback, Rankings, AchievementType,
-  StudentPublicProfile, PublicRatingRow,
+  StudentPublicProfile, PublicRatingRow, StudentBadge,
 } from '@/types/student';
 
 export function useStudentMe() {
@@ -54,6 +54,26 @@ export function useStudentPublic(studentId: string) {
     queryKey: ['student', 'public', studentId],
     queryFn: () => api.get(`/students/${studentId}/public`).then(r => r.data),
     enabled: !!studentId,
+  });
+}
+
+export function useStudentBadges() {
+  return useQuery<{ earned: StudentBadge[]; pinnedSlug: string | null }>({
+    queryKey: ['student', 'badges'],
+    queryFn: () => api.get('/students/me/badges').then(r => r.data),
+    staleTime: 60_000,
+  });
+}
+
+export function usePinBadge() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (slug: string | null) =>
+      api.put('/students/me/pinned-badge', { slug }).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['student', 'badges'] });
+      qc.invalidateQueries({ queryKey: ['student', 'me'] });
+    },
   });
 }
 

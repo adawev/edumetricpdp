@@ -85,8 +85,9 @@ function AddAchievementDialog({ open, onClose }: { open: boolean; onClose: () =>
       setForm(EMPTY_FORM);
       setErrors({});
       onClose();
-    } catch {
-      toast.error("Xatolik yuz berdi");
+    } catch (err: any) {
+      const msg = err?.response?.data?.error ?? "Xatolik yuz berdi";
+      toast.error(msg);
     }
   };
 
