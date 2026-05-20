@@ -88,6 +88,7 @@ export default function MentorFeedback() {
   const [score, setScore]         = useState(0);
   const [text, setText]           = useState('');
   const [listSearch, setListSearch] = useState('');
+  const [groupFilter, setGroupFilter] = useState<string>('ALL');
 
   const { data: groups } = useQuery({
     queryKey: ['mentor-students'],
@@ -135,8 +136,11 @@ export default function MentorFeedback() {
   const selectedStudent = allStudents.find(s => s.id === studentId) ?? null;
 
   const filteredList = useMemo(() =>
-    allStudents.filter(s => s.fullName.toLowerCase().includes(listSearch.toLowerCase())),
-    [allStudents, listSearch],
+    allStudents.filter(s =>
+      (groupFilter === 'ALL' || s.groupId === groupFilter) &&
+      s.fullName.toLowerCase().includes(listSearch.toLowerCase())
+    ),
+    [allStudents, listSearch, groupFilter],
   );
 
   return (
@@ -150,7 +154,7 @@ export default function MentorFeedback() {
 
         {/* ─── Left: student list ─── */}
         <div className="bg-white rounded-xl border overflow-hidden self-start">
-          <div className="p-3 border-b">
+          <div className="p-3 border-b space-y-2">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
               <input
@@ -161,6 +165,18 @@ export default function MentorFeedback() {
                 className="w-full h-8 pl-8 pr-3 rounded-md border bg-slate-50 text-[13px] focus:outline-none focus:ring-2 focus:ring-slate-900"
               />
             </div>
+            {groups && groups.length > 1 && (
+              <select
+                value={groupFilter}
+                onChange={e => setGroupFilter(e.target.value)}
+                className="w-full h-8 px-2.5 rounded-md border bg-slate-50 text-[13px] focus:outline-none focus:ring-2 focus:ring-slate-900"
+              >
+                <option value="ALL">Barcha guruhlar</option>
+                {groups.map(g => (
+                  <option key={g.id} value={g.id}>{g.name} · {g.course}-kurs</option>
+                ))}
+              </select>
+            )}
           </div>
           <div className="overflow-auto" style={{ maxHeight: 520 }}>
             {filteredList.length === 0 ? (
