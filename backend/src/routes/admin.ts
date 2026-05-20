@@ -124,15 +124,16 @@ adminRouter.get('/grants', async (_req, res) => {
 adminRouter.post('/grants/:id/grant', async (req, res) => {
   const s = await prisma.student.update({
     where: { id: req.params.id },
-    data: { grantStatus: 'GRANTED' },
+    data: { grantStatus: 'GRANTED', grantReason: 'GRANTED_OK' },
   });
   res.json(s);
 });
 
 adminRouter.post('/grants/:id/revoke', async (req, res) => {
+  // GRANTED_OK sababini saqlaymiz — bu admin qarorini keyingi recalc'dan himoya qiladi
   const s = await prisma.student.update({
     where: { id: req.params.id },
-    data: { grantStatus: 'NOT_GRANTED' },
+    data: { grantStatus: 'NOT_GRANTED', grantReason: 'GRANTED_OK' },
   });
   res.json(s);
 });

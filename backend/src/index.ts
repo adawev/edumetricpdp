@@ -26,6 +26,7 @@ app.use('/api/mentor', mentorRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/public', publicRouter);
 app.use('/api/integrations', integrationsRouter);
+// @ts-expect-error swagger-ui-express bundles its own @types/express causing overload conflict
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

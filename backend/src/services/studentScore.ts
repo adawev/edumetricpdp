@@ -25,7 +25,7 @@ export async function recalcStudent(studentId: string) {
   };
 
   const breakdown = calculateGrantScore(input);
-  const decision = getGrantDecision(input, student.grantStatus);
+  const decision = getGrantDecision(input, student.grantStatus, student.grantReason);
 
   return prisma.student.update({
     where: { id: studentId },
