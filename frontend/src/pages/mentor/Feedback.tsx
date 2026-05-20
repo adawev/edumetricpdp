@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { ErrorState } from '@/components/States';
 
-type Student = { id: string; fullName: string; groupId: string };
+type Student = { id: string; fullName: string; groupId: string; tutorScore: number };
 type Group   = { id: string; name: string; course: number; students: Student[] };
 
 type FeedbackItem = {
@@ -212,7 +212,14 @@ export default function MentorFeedback() {
                 >
                   <Avatar name={stu.fullName} size={28} />
                   <div className="flex-1 min-w-0">
-                    <div className="text-[13px] font-medium truncate">{stu.fullName}</div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="text-[13px] font-medium truncate">{stu.fullName}</div>
+                      {stu.tutorScore > 0 && (
+                        <span className="shrink-0 inline-flex items-center px-1.5 py-px rounded text-[9.5px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          ✓
+                        </span>
+                      )}
+                    </div>
                     <div className="text-[11px] text-muted-foreground">{groupNameById.get(stu.groupId)}</div>
                   </div>
                 </div>
