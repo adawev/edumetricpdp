@@ -2,11 +2,15 @@ import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { BadgeCheck, XCircle, Trophy, Users, TrendingUp, Filter, X } from 'lucide-react';
+import {
+  BadgeCheck, XCircle, Trophy, Users, TrendingUp,
+  Filter, X, Award,
+} from 'lucide-react';
 import { api } from '@/lib/api';
 import AdminLayout from './AdminLayout';
 import { Pagination, usePagination } from '@/components/em/Primitives';
 
+/* ── Types ─────────────────────────────────────────────────── */
 type Student = {
   id: string;
   fullName: string;
@@ -16,44 +20,36 @@ type Student = {
   riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
   group: { id: string; name: string; course: number };
 };
+type GrantsData = { pending: Student[]; granted: Student[] };
 
-type GrantsData = {
-  pending: Student[];
-  granted: Student[];
-};
-
-/* ── Avatar helpers ────────────────────────────────────────── */
+/* ── Avatar helpers ─────────────────────────────────────────── */
 const AVATAR_COLORS = [
-  '#6366f1','#8b5cf6','#ec4899','#14b8a6',
-  '#f59e0b','#10b981','#3b82f6','#ef4444',
+  '#6366f1','#8b5cf6','#ec4899','#f43f5e',
+  '#f97316','#eab308','#22c55e','#14b8a6','#06b6d4','#3b82f6',
 ];
-function nameToColor(name: string) {
+function nameToColor(n: string) {
   let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffff;
-  return AVATAR_COLORS[h % AVATAR_COLORS.length];
+  for (let i = 0; i < n.length; i++) h = n.charCodeAt(i) + ((h << 5) - h);
+  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
 }
-function initials(name: string) {
-  const parts = name.trim().split(/\s+/);
-  return (parts.length >= 2 ? parts[0][0] + parts[1][0] : parts[0].slice(0, 2)).toUpperCase();
+function initials(n: string) {
+  const p = n.trim().split(' ');
+  return ((p[0]?.[0] ?? '') + (p[1]?.[0] ?? '')).toUpperCase();
 }
 
-const RISK_CLS: Record<string, string> = {
-  LOW:    'bg-emerald-100 text-emerald-700',
-  MEDIUM: 'bg-amber-100 text-amber-700',
-  HIGH:   'bg-red-100 text-red-600',
+/* ── Risk / Status meta ─────────────────────────────────────── */
+const RISK_META: Record<string, { bg: string; color: string; label: string }> = {
+  LOW:    { bg: '#f0fdf4', color: '#16a34a', label: 'Past'    },
+  MEDIUM: { bg: '#fffbeb', color: '#d97706', label: "O'rta"   },
+  HIGH:   { bg: '#fef2f2', color: '#dc2626', label: 'Yuqori'  },
 };
-const RISK_LABEL: Record<string, string> = {
-  LOW: 'Past', MEDIUM: "O'rta", HIGH: 'Yuqori',
-};
-const STATUS_CLS: Record<string, string> = {
-  GRANTED:     'bg-emerald-100 text-emerald-700',
-  PENDING:     'bg-amber-100 text-amber-700',
-  NOT_GRANTED: 'bg-red-100 text-red-600',
-};
-const STATUS_LABEL: Record<string, string> = {
-  GRANTED: 'Grant berildi', PENDING: 'Kutilmoqda', NOT_GRANTED: "Grant yo'q",
+const STATUS_META: Record<string, { bg: string; color: string; label: string }> = {
+  GRANTED:     { bg: '#f0fdf4', color: '#16a34a', label: 'Grant berildi' },
+  PENDING:     { bg: '#fffbeb', color: '#d97706', label: 'Kutilmoqda'    },
+  NOT_GRANTED: { bg: '#fef2f2', color: '#dc2626', label: "Grant yo'q"    },
 };
 
+/* ══════════════════════════════════════════════════════════════ */
 export default function AdminGrants() {
   const qc = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -63,12 +59,13 @@ export default function AdminGrants() {
     return param ? new Set(param.split(',').filter(Boolean)) : null;
   }, [searchParams]);
 
+  /* Queries */
   const { data, isLoading } = useQuery({
     queryKey: ['admin-grants'],
     queryFn: async () => (await api.get<GrantsData>('/admin/grants')).data,
   });
 
-  // Fetch all students only when filter is active — needed to find NOT_GRANTED students too
+  // Fetch ALL students only when filter is active — to find NOT_GRANTED/UNKNOWN students too
   const { data: allStudents } = useQuery({
     queryKey: ['admin-students'],
     queryFn: async () => (await api.get<Student[]>('/admin/students')).data,
@@ -77,22 +74,23 @@ export default function AdminGrants() {
 
   const pending = useMemo(
     () => [...(data?.pending ?? [])].sort((a, b) => b.grantScore - a.grantScore),
-    [data]
+    [data],
   );
   const granted = useMemo(
     () => [...(data?.granted ?? [])].sort((a, b) => b.grantScore - a.grantScore),
-    [data]
+    [data],
   );
 
+  // When filter active → search ALL students (any status), exclude already-GRANTED ones
   const filteredPending = useMemo(() => {
     if (!selectedIds) return pending;
-    // Search in ALL students (any status), exclude already GRANTED
     const base: Student[] = allStudents ?? pending;
     return base
       .filter(s => selectedIds.has(s.id) && s.grantStatus !== 'GRANTED')
       .sort((a, b) => b.grantScore - a.grantScore);
   }, [pending, selectedIds, allStudents]);
 
+  /* Mutations */
   const grantMutation = useMutation({
     mutationFn: async (id: string) => (await api.post(`/admin/grants/${id}/grant`)).data,
     onSuccess: () => {
@@ -115,213 +113,271 @@ export default function AdminGrants() {
 
   const isBusy = grantMutation.isPending || revokeMutation.isPending;
   const totalCandidates = pending.length + granted.length;
+  const slotPct = totalCandidates > 0
+    ? Math.min((granted.length / totalCandidates) * 100, 100)
+    : 0;
 
   const pagPending = usePagination(filteredPending, 15);
   const pagGranted = usePagination(granted, 15);
 
   return (
     <AdminLayout>
-      <div className="p-6 space-y-5">
+      <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-        {/* Header */}
+        {/* ── Header ──────────────────────────────────────── */}
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Grant qaror</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <h1 style={{ fontSize: 20, fontWeight: 600, color: '#0f172a', margin: 0 }}>
+            Grant qaror
+          </h1>
+          <p style={{ fontSize: 13, color: '#64748b', marginTop: 3, margin: '3px 0 0' }}>
             Kandidatlarni ko'rib chiqib, grant bering yoki bekor qiling
           </p>
         </div>
 
-        {/* Stats + slot progress */}
+        {/* ── KPI Cards ───────────────────────────────────── */}
         {!isLoading && (
-          <div className="bg-white border rounded-xl p-4 space-y-4">
-            <div className="flex flex-wrap gap-6">
-              <div className="flex items-center gap-2">
-                <Trophy className="w-4 h-4 text-emerald-500" />
-                <span className="text-sm text-muted-foreground">Grant berilgan:</span>
-                <span className="text-sm font-bold text-emerald-700 tabular-nums">{granted.length}</span>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14 }}>
+            {/* Grant berilgan */}
+            <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 12, padding: '16px 20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <div style={{ width: 32, height: 32, borderRadius: 8, background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Trophy style={{ width: 15, height: 15, color: '#16a34a' }} />
+                </div>
+                <p style={{ fontSize: 12, color: '#16a34a', fontWeight: 500, margin: 0 }}>Grant berilgan</p>
               </div>
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 text-amber-500" />
-                <span className="text-sm text-muted-foreground">Kutilayotgan:</span>
-                <span className="text-sm font-bold text-amber-700 tabular-nums">{pending.length}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-slate-500" />
-                <span className="text-sm text-muted-foreground">Jami arizachi:</span>
-                <span className="text-sm font-bold text-slate-700 tabular-nums">{totalCandidates}</span>
-              </div>
+              <p style={{ fontSize: 30, fontWeight: 700, color: '#15803d', margin: 0, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
+                {granted.length}
+              </p>
+              <p style={{ fontSize: 11, color: '#22c55e', marginTop: 5, opacity: 0.8 }}>Tasdiqlangan talabalar</p>
             </div>
 
-            {/* Slot progress bar */}
-            <div>
-              <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
-                <span>Slot to'ldirilishi</span>
-                <span className="font-semibold text-slate-700 tabular-nums">
-                  {granted.length} / {Math.max(totalCandidates, 1)} ta
-                </span>
+            {/* Kutilayotgan */}
+            <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 12, padding: '16px 20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <div style={{ width: 32, height: 32, borderRadius: 8, background: '#fef9c3', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Users style={{ width: 15, height: 15, color: '#d97706' }} />
+                </div>
+                <p style={{ fontSize: 12, color: '#d97706', fontWeight: 500, margin: 0 }}>Kutilayotgan</p>
               </div>
-              <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-emerald-500 rounded-full transition-all duration-700"
-                  style={{
-                    width: totalCandidates > 0
-                      ? `${Math.min((granted.length / totalCandidates) * 100, 100)}%`
-                      : '0%',
-                  }}
-                />
+              <p style={{ fontSize: 30, fontWeight: 700, color: '#b45309', margin: 0, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
+                {pending.length}
+              </p>
+              <p style={{ fontSize: 11, color: '#f59e0b', marginTop: 5, opacity: 0.8 }}>Qaror kutayotganlar</p>
+            </div>
+
+            {/* Jami */}
+            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '16px 20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <div style={{ width: 32, height: 32, borderRadius: 8, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <TrendingUp style={{ width: 15, height: 15, color: '#475569' }} />
+                </div>
+                <p style={{ fontSize: 12, color: '#64748b', fontWeight: 500, margin: 0 }}>Jami arizachi</p>
               </div>
+              <p style={{ fontSize: 30, fontWeight: 700, color: '#0f172a', margin: 0, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
+                {totalCandidates}
+              </p>
+              <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 5 }}>Pending + granted</p>
             </div>
           </div>
         )}
 
-        {/* Filter banner — shown when navigated from Rating */}
+        {/* ── Slot progress ────────────────────────────────── */}
+        {!isLoading && (
+          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '16px 20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Award style={{ width: 15, height: 15, color: '#10b981' }} />
+                <span style={{ fontSize: 13, fontWeight: 500, color: '#0f172a' }}>Slot to'ldirilishi</span>
+              </div>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>
+                {granted.length} / {Math.max(totalCandidates, 1)} ta
+              </span>
+            </div>
+            <div style={{ height: 8, background: '#f1f5f9', borderRadius: 999, overflow: 'hidden' }}>
+              <div
+                style={{
+                  height: '100%',
+                  width: `${slotPct}%`,
+                  background: 'linear-gradient(90deg,#10b981,#34d399)',
+                  borderRadius: 999,
+                  transition: 'width .7s cubic-bezier(.4,0,.2,1)',
+                }}
+              />
+            </div>
+            <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 7 }}>
+              {slotPct.toFixed(0)}% slot band — {pending.length} ta talaba hali qaror kutmoqda
+            </p>
+          </div>
+        )}
+
+        {/* ── Filter banner (from Rating navigation) ───────── */}
         {selectedIds && (
-          <div className="flex items-center gap-3 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-lg">
-            <Filter className="w-4 h-4 text-amber-600 shrink-0" />
-            <span className="text-sm text-amber-800 flex-1">
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 12,
+            padding: '10px 16px',
+            background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10,
+          }}>
+            <Filter style={{ width: 15, height: 15, color: '#d97706', flexShrink: 0 }} />
+            <span style={{ fontSize: 13, color: '#92400e', flex: 1 }}>
               Reytingdan{' '}
-              <span className="font-semibold">{selectedIds.size} ta</span>{' '}
+              <strong style={{ fontWeight: 600 }}>{selectedIds.size} ta</strong>{' '}
               tanlangan talaba ko'rsatilmoqda
             </span>
             <button
               onClick={() => setSearchParams({})}
-              className="flex items-center gap-1 text-xs font-medium text-amber-700 hover:text-amber-900 transition-colors"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                fontSize: 12, fontWeight: 500, color: '#b45309',
+                background: 'none', border: 'none', cursor: 'pointer',
+                padding: '2px 4px', borderRadius: 4,
+              }}
+              onMouseEnter={e => (e.currentTarget.style.color = '#78350f')}
+              onMouseLeave={e => (e.currentTarget.style.color = '#b45309')}
             >
-              <X className="w-3.5 h-3.5" />
+              <X style={{ width: 13, height: 13 }} />
               Barchasini ko'rish
             </button>
           </div>
         )}
 
-        {/* 2-column layout */}
+        {/* ── 2-Column layout ──────────────────────────────── */}
         {isLoading ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {[0, 1].map(i => (
-              <div key={i} className="space-y-3">
-                <div className="h-7 w-44 bg-slate-100 animate-pulse rounded" />
-                {Array.from({ length: 4 }).map((_, j) => (
-                  <div key={j} className="h-[76px] bg-slate-100 animate-pulse rounded-xl" />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+            {[0, 1].map(col => (
+              <div key={col} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ height: 28, width: 160, borderRadius: 6, background: '#f1f5f9' }} />
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} style={{ height: 76, borderRadius: 12, background: '#f1f5f9' }} />
                 ))}
               </div>
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'start' }}>
 
-            {/* Left — Candidates */}
-            <Column
-              title="Kandidatlar"
-              subtitle={
-                selectedIds
-                  ? `${filteredPending.length} ta tanlangan`
-                  : `${pending.length} ta talaba kutilmoqda`
-              }
-              accent="amber"
-              empty={filteredPending.length === 0}
-              emptyText={
-                selectedIds
-                  ? "Tanlangan talabalar topilmadi"
-                  : "Kutilayotgan kandidat yo'q"
-              }
-            >
-              {pagPending.pageItems.map((s, i) => (
-                <StudentCard
-                  key={s.id}
-                  student={s}
-                  rank={pagPending.startIndex + i + 1}
-                  showStatus={s.grantStatus !== 'PENDING'}
-                  action={
-                    <button
-                      onClick={() => grantMutation.mutate(s.id)}
-                      disabled={isBusy}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 disabled:opacity-50 transition-colors whitespace-nowrap"
-                    >
-                      <BadgeCheck className="w-3.5 h-3.5 shrink-0" />
-                      Grant berish
-                    </button>
-                  }
-                />
-              ))}
-              <Pagination
-                page={pagPending.page}
-                pageCount={pagPending.pageCount}
-                onChange={pagPending.setPage}
-                total={pagPending.total}
-                pageSize={pagPending.pageSize}
-                style={{ border: 0, padding: '8px 0 0', background: 'transparent' }}
-              />
-            </Column>
+            {/* ── Left: Candidates ──────────────────────────── */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {/* Column header */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 2 }}>
+                <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#f59e0b', flexShrink: 0 }} />
+                <h2 style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', margin: 0 }}>Kandidatlar</h2>
+                <span style={{ fontSize: 12, color: '#94a3b8' }}>
+                  —{' '}
+                  {selectedIds
+                    ? `${filteredPending.length} ta tanlangan`
+                    : `${pending.length} ta talaba kutilmoqda`}
+                </span>
+              </div>
 
-            {/* Right — Granted */}
-            <Column
-              title="Grant berilganlar"
-              subtitle={`${granted.length} ta tasdiqlangan`}
-              accent="emerald"
-              empty={granted.length === 0}
-              emptyText="Hali grant berilmagan"
-            >
-              {pagGranted.pageItems.map((s, i) => (
-                <StudentCard
-                  key={s.id}
-                  student={s}
-                  rank={pagGranted.startIndex + i + 1}
-                  granted
-                  action={
-                    <button
-                      onClick={() => revokeMutation.mutate(s.id)}
-                      disabled={isBusy}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-200 text-red-600 text-xs font-semibold hover:bg-red-50 disabled:opacity-50 transition-colors whitespace-nowrap"
-                    >
-                      <XCircle className="w-3.5 h-3.5 shrink-0" />
-                      Bekor qilish
-                    </button>
-                  }
-                />
-              ))}
-              <Pagination
-                page={pagGranted.page}
-                pageCount={pagGranted.pageCount}
-                onChange={pagGranted.setPage}
-                total={pagGranted.total}
-                pageSize={pagGranted.pageSize}
-                style={{ border: 0, padding: '8px 0 0', background: 'transparent' }}
-              />
-            </Column>
+              {filteredPending.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '60px 0', border: '2px dashed #e2e8f0', borderRadius: 12 }}>
+                  <Users style={{ width: 36, height: 36, color: '#cbd5e1', margin: '0 auto 10px' }} />
+                  <p style={{ fontSize: 13, color: '#94a3b8', margin: 0 }}>
+                    {selectedIds ? "Tanlangan talabalar topilmadi" : "Kutilayotgan kandidat yo'q"}
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {pagPending.pageItems.map((s, i) => (
+                    <StudentCard
+                      key={s.id}
+                      student={s}
+                      rank={pagPending.startIndex + i + 1}
+                      showStatus={s.grantStatus !== 'PENDING'}
+                      action={
+                        <button
+                          onClick={() => grantMutation.mutate(s.id)}
+                          disabled={isBusy}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 6,
+                            padding: '6px 12px', borderRadius: 8,
+                            background: isBusy ? '#d1fae5' : '#10b981',
+                            color: '#fff', border: 'none', cursor: isBusy ? 'default' : 'pointer',
+                            fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap',
+                            transition: 'background .15s',
+                          }}
+                          onMouseEnter={e => { if (!isBusy) e.currentTarget.style.background = '#059669'; }}
+                          onMouseLeave={e => { if (!isBusy) e.currentTarget.style.background = '#10b981'; }}
+                        >
+                          <BadgeCheck style={{ width: 13, height: 13 }} />
+                          Grant berish
+                        </button>
+                      }
+                    />
+                  ))}
+                  <Pagination
+                    page={pagPending.page}
+                    pageCount={pagPending.pageCount}
+                    onChange={pagPending.setPage}
+                    total={pagPending.total}
+                    pageSize={pagPending.pageSize}
+                    style={{ border: 0, padding: '4px 0 0', background: 'transparent' }}
+                  />
+                </>
+              )}
+            </div>
+
+            {/* ── Right: Granted ────────────────────────────── */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {/* Column header */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 2 }}>
+                <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#10b981', flexShrink: 0 }} />
+                <h2 style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', margin: 0 }}>Grant berilganlar</h2>
+                <span style={{ fontSize: 12, color: '#94a3b8' }}>— {granted.length} ta tasdiqlangan</span>
+              </div>
+
+              {granted.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '60px 0', border: '2px dashed #e2e8f0', borderRadius: 12 }}>
+                  <Trophy style={{ width: 36, height: 36, color: '#cbd5e1', margin: '0 auto 10px' }} />
+                  <p style={{ fontSize: 13, color: '#94a3b8', margin: 0 }}>Hali grant berilmagan</p>
+                </div>
+              ) : (
+                <>
+                  {pagGranted.pageItems.map((s, i) => (
+                    <StudentCard
+                      key={s.id}
+                      student={s}
+                      rank={pagGranted.startIndex + i + 1}
+                      granted
+                      action={
+                        <button
+                          onClick={() => revokeMutation.mutate(s.id)}
+                          disabled={isBusy}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 6,
+                            padding: '6px 12px', borderRadius: 8,
+                            background: '#fff', color: '#dc2626',
+                            border: '1px solid #fca5a5',
+                            cursor: isBusy ? 'default' : 'pointer',
+                            fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap',
+                            opacity: isBusy ? 0.5 : 1,
+                            transition: 'background .15s',
+                          }}
+                          onMouseEnter={e => { if (!isBusy) e.currentTarget.style.background = '#fef2f2'; }}
+                          onMouseLeave={e => { if (!isBusy) e.currentTarget.style.background = '#fff'; }}
+                        >
+                          <XCircle style={{ width: 13, height: 13 }} />
+                          Bekor qilish
+                        </button>
+                      }
+                    />
+                  ))}
+                  <Pagination
+                    page={pagGranted.page}
+                    pageCount={pagGranted.pageCount}
+                    onChange={pagGranted.setPage}
+                    total={pagGranted.total}
+                    pageSize={pagGranted.pageSize}
+                    style={{ border: 0, padding: '4px 0 0', background: 'transparent' }}
+                  />
+                </>
+              )}
+            </div>
 
           </div>
         )}
       </div>
     </AdminLayout>
-  );
-}
-
-/* ── Column wrapper ────────────────────────────────────────── */
-function Column({
-  title, subtitle, accent, empty, emptyText, children,
-}: {
-  title: string;
-  subtitle: string;
-  accent: 'amber' | 'emerald';
-  empty: boolean;
-  emptyText: string;
-  children: React.ReactNode;
-}) {
-  const dot = accent === 'amber' ? 'bg-amber-400' : 'bg-emerald-500';
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <span className={`w-2.5 h-2.5 rounded-full ${dot} shrink-0`} />
-        <h2 className="font-semibold text-slate-900">{title}</h2>
-        <span className="text-xs text-muted-foreground">— {subtitle}</span>
-      </div>
-      {empty ? (
-        <div className="text-center py-14 border-2 border-dashed rounded-xl">
-          <p className="text-sm text-muted-foreground">{emptyText}</p>
-        </div>
-      ) : (
-        <div className="space-y-2">{children}</div>
-      )}
-    </div>
   );
 }
 
@@ -337,48 +393,82 @@ function StudentCard({
 }) {
   const bg  = nameToColor(s.fullName);
   const ini = initials(s.fullName);
+  const risk = RISK_META[s.riskLevel] ?? RISK_META.LOW;
+  const statusMeta = STATUS_META[s.grantStatus];
 
   return (
     <div
-      className={`bg-white rounded-xl border p-3.5 flex items-center gap-3 hover:shadow-sm transition-shadow ${
-        granted ? 'border-emerald-200 bg-emerald-50/20' : ''
-      }`}
+      style={{
+        background: granted ? '#f0fdf4' : '#fff',
+        border: `1px solid ${granted ? '#bbf7d0' : '#e2e8f0'}`,
+        borderRadius: 12,
+        padding: '12px 14px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+      }}
     >
       {/* Avatar */}
       <div
-        className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 select-none"
-        style={{ background: bg }}
+        style={{
+          width: 36, height: 36, borderRadius: '50%',
+          background: bg, color: '#fff',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 11, fontWeight: 700, flexShrink: 0, userSelect: 'none',
+        }}
       >
         {ini}
       </div>
 
       {/* Info */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <p className="font-medium text-slate-900 text-sm truncate">{s.fullName}</p>
-          <span className="text-[11px] text-slate-400 tabular-nums shrink-0">#{rank}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <p style={{ fontSize: 13, fontWeight: 500, color: '#0f172a', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {s.fullName}
+          </p>
+          <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+            #{rank}
+          </span>
         </div>
-        <p className="text-xs text-muted-foreground truncate">{s.group?.name}</p>
-        <div className="flex items-center gap-2 mt-1 flex-wrap">
-          <span className="text-xs font-bold tabular-nums text-slate-800">
+        <p style={{ fontSize: 11, color: '#94a3b8', margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {s.group?.name}
+        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 5, flexWrap: 'wrap' }}>
+          {/* Ball */}
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>
             {Math.round(s.grantScore * 10) / 10} ball
           </span>
-          <span className={`text-xs tabular-nums ${s.gpa < 80 ? 'text-red-600 font-semibold' : 'text-slate-500'}`}>
+          {/* GPA */}
+          <span style={{ fontSize: 11, color: s.gpa < 80 ? '#dc2626' : '#64748b', fontWeight: s.gpa < 80 ? 600 : 400, fontVariantNumeric: 'tabular-nums' }}>
             GPA {s.gpa.toFixed(1)}%
           </span>
-          <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] font-medium ${RISK_CLS[s.riskLevel] ?? ''}`}>
-            {RISK_LABEL[s.riskLevel] ?? s.riskLevel}
+          {/* Risk */}
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            padding: '2px 7px', borderRadius: 999,
+            background: risk.bg, color: risk.color,
+            fontSize: 11, fontWeight: 600,
+          }}>
+            <span style={{ width: 5, height: 5, borderRadius: '50%', background: risk.color }} />
+            {risk.label}
           </span>
-          {showStatus && (
-            <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] font-medium ${STATUS_CLS[s.grantStatus] ?? ''}`}>
-              {STATUS_LABEL[s.grantStatus] ?? s.grantStatus}
+          {/* Status (only when not PENDING, e.g. NOT_GRANTED candidates from Rating) */}
+          {showStatus && statusMeta && (
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              padding: '2px 7px', borderRadius: 999,
+              background: statusMeta.bg, color: statusMeta.color,
+              fontSize: 11, fontWeight: 600,
+            }}>
+              <span style={{ width: 5, height: 5, borderRadius: '50%', background: statusMeta.color }} />
+              {statusMeta.label}
             </span>
           )}
         </div>
       </div>
 
-      {/* Action */}
-      <div className="shrink-0">{action}</div>
+      {/* Action button */}
+      <div style={{ flexShrink: 0 }}>{action}</div>
     </div>
   );
 }
