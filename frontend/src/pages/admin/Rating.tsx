@@ -580,7 +580,7 @@ export default function AdminRating() {
               {/* Right: actions */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                 <button
-                  onClick={() => setSelected({})}
+                  onClick={() => { setSelected({}); sessionStorage.removeItem('em_grant_session'); }}
                   style={{
                     height: 32, padding: '0 14px', borderRadius: 8,
                     border: '1px solid rgba(255,255,255,.15)',
@@ -595,9 +595,13 @@ export default function AdminRating() {
                 </button>
                 <button
                   onClick={() => {
-                    const ids = Object.keys(selected).filter(id => selected[id]).join(',');
+                    const newIds = Object.keys(selected).filter(id => selected[id]);
+                    const stored = sessionStorage.getItem('em_grant_session');
+                    const existing = stored ? stored.split(',').filter(Boolean) : [];
+                    const merged = [...new Set([...existing, ...newIds])];
+                    sessionStorage.setItem('em_grant_session', merged.join(','));
                     setSelected({});
-                    navigate(`/admin/grants?selected=${ids}`);
+                    navigate(`/admin/grants?selected=${merged.join(',')}`);
                   }}
                   style={{
                     height: 32, padding: '0 16px', borderRadius: 8,

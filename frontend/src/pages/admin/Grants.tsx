@@ -260,7 +260,10 @@ export default function AdminGrants() {
 
   const selectedIds = useMemo(() => {
     const p = searchParams.get('selected');
-    return p ? new Set(p.split(',').filter(Boolean)) : null;
+    if (p) return new Set(p.split(',').filter(Boolean));
+    // Sidebar orqali kelganda sessionStorage dan o'qiymiz
+    const stored = sessionStorage.getItem('em_grant_session');
+    return stored ? new Set(stored.split(',').filter(Boolean)) : null;
   }, [searchParams]);
 
   const hasSelection = !!(selectedIds && selectedIds.size > 0);
@@ -613,6 +616,7 @@ export default function AdminGrants() {
           <>
             <Btn variant="outline" onClick={() => setConfirmFinal(false)}>Bekor qilish</Btn>
             <Btn variant="primary" icon={<Check size={14} />} onClick={() => {
+              sessionStorage.removeItem('em_grant_session');
               setConfirmFinal(false);
               toast.success(`Qaror yakunlandi — ${totalGranted} ta grant berildi`);
             }}>Tasdiqlash</Btn>
