@@ -134,48 +134,9 @@ mentorRouter.post('/feedback', async (req, res) => {
   res.status(existing ? 200 : 201).json(fb);
 });
 
-// Tyutor bahosi — nizom bo'yicha 5 yo'nalish, har biri 0-1, sum = tutorScore (max 5)
-const tutorEvalSchema = z.object({
-  studentId: z.string().uuid(),
-  culture:    z.number().min(0).max(1),  // Korporativ madaniyat va Etika
-  activity:   z.number().min(0).max(1),  // Ijtimoiy va Ma'naviy-ma'rifiy faollik
-  softSkills: z.number().min(0).max(1),  // Soft Skills va Shaxsiy rivojlanish
-  discipline: z.number().min(0).max(1),  // Intizom va Mas'uliyat (Tyutor bilan aloqa)
-  dormitory:  z.number().min(0).max(1),  // Yotoqxona va Universitet hayotidagi faollik
-});
-
-mentorRouter.post('/tutor-evaluation', async (req, res) => {
-  const parsed = tutorEvalSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: 'Invalid input', detail: parsed.error.issues });
-  const mentorId = await getMentorId(req.user!.userId);
-  if (!mentorId) return res.status(404).json({ error: 'Mentor not found' });
-const { studentId, culture, activity, softSkills, discipline, dormitory } = parsed.data;
-
-  const owned = await studentBelongsToMentor(studentId, mentorId);
-  if (owned === null) return res.status(404).json({ error: 'Student not found' });
-  if (!owned) return res.status(403).json({ error: 'Forbidden' });
-
-  const tutorScore = culture + activity + softSkills + discipline + dormitory; // max 5
-
-  await prisma.student.update({
-    where: { id: studentId },
-    data: {
-      tutorScore,
-      tutorEval: { culture, activity, softSkills, discipline, dormitory, by: mentorId, at: new Date().toISOString() } as any,
-    },
-  });
-  await recalcStudent(studentId);
-
-  await prisma.activityLog.create({
-    data: {
-      studentId,
-      action: 'MENTOR_TUTOR_EVAL',
-      meta: { mentorId, tutorScore, culture, activity, softSkills, discipline, dormitory },
-    },
-  });
-
-  res.json({ ok: true, tutorScore, breakdown: { culture, activity, softSkills, discipline, dormitory } });
-});
+// NOTE: tutorScore (grant nizomi "Mentor bahosi", max 5) endi feedback
+// bahosidan keladi — yuqoridagi POST /feedback'ga qarang. Eski 5-yo'nalishli
+// /tutor-evaluation endpoint olib tashlandi (feedback bilan birlashtirildi).
 
 const disciplineSchema = z.object({ studentId: z.string().uuid(), score: z.number().min(0).max(10) });
 
