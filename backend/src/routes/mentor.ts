@@ -16,6 +16,14 @@ async function getMentorId(userId: string) {
   return m?.id ?? null;
 }
 
+async function isMentorStudent(mentorId: string, studentId: string): Promise<boolean> {
+  const student = await prisma.student.findUnique({
+    where: { id: studentId },
+    select: { group: { select: { mentorId: true } } },
+  });
+  return student?.group?.mentorId === mentorId;
+}
+
 mentorRouter.get('/students', async (req, res) => {
   const mentorId = await getMentorId(req.user!.userId);
   if (!mentorId) return res.status(404).json({ error: 'Mentor not found' });
@@ -38,6 +46,9 @@ mentorRouter.post('/feedback', async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: 'Invalid input' });
   const mentorId = await getMentorId(req.user!.userId);
   if (!mentorId) return res.status(404).json({ error: 'Mentor not found' });
+  if (!(await isMentorStudent(mentorId, parsed.data.studentId))) {
+    return res.status(403).json({ error: 'Bu talaba sizning guruhingizda emas' });
+  }
 
   const fb = await prisma.feedback.create({ data: { ...parsed.data, mentorId } });
   res.status(201).json(fb);
@@ -58,6 +69,9 @@ mentorRouter.post('/tutor-evaluation', async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: 'Invalid input', detail: parsed.error.issues });
   const mentorId = await getMentorId(req.user!.userId);
   if (!mentorId) return res.status(404).json({ error: 'Mentor not found' });
+  if (!(await isMentorStudent(mentorId, parsed.data.studentId))) {
+    return res.status(403).json({ error: 'Bu talaba sizning guruhingizda emas' });
+  }
 
   const { studentId, culture, activity, softSkills, discipline, dormitory } = parsed.data;
   const tutorScore = culture + activity + softSkills + discipline + dormitory; // max 5
@@ -79,6 +93,11 @@ const disciplineSchema = z.object({ studentId: z.string().uuid(), score: z.numbe
 mentorRouter.post('/discipline', async (req, res) => {
   const parsed = disciplineSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid input' });
+  const mentorId = await getMentorId(req.user!.userId);
+  if (!mentorId) return res.status(404).json({ error: 'Mentor not found' });
+  if (!(await isMentorStudent(mentorId, parsed.data.studentId))) {
+    return res.status(403).json({ error: 'Bu talaba sizning guruhingizda emas' });
+  }
   await prisma.student.update({ where: { id: parsed.data.studentId }, data: { disciplineScore: parsed.data.score } });
   await recalcStudent(parsed.data.studentId);
   res.json({ ok: true });

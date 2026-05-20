@@ -185,7 +185,7 @@ studentRouter.get('/me/feedbacks', requireRole('STUDENT'), async (req, res) => {
   }));
 });
 
-studentRouter.get('/:id/score', async (req, res) => {
+studentRouter.get('/:id/score', requireRole('ADMIN', 'MENTOR'), async (req, res) => {
   const student = await prisma.student.findUnique({
     where: { id: req.params.id },
     include: { penalties: true },
