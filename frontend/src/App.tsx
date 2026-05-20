@@ -15,6 +15,7 @@ import MentorLayout from './layouts/MentorLayout';
 import MentorDashboard from './pages/mentor/Dashboard';
 import MentorStudents from './pages/mentor/Students';
 import MentorFeedback from './pages/mentor/Feedback';
+import MentorDiscipline from './pages/mentor/Discipline';
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminStudents from './pages/admin/Students';
 import AdminAchievements from './pages/admin/Achievements';
@@ -73,12 +74,13 @@ export default function App() {
       {/* Public student profile — any authenticated role */}
       <Route path="/student/:studentId" element={<RequireAuth><StudentPublicProfile /></RequireAuth>} />
 
-      {/* Mentor panel — nested layout with sidebar + 3 pages */}
+      {/* Mentor panel — nested layout with sidebar + 4 pages */}
       <Route path="/mentor" element={<RoleRoute role="MENTOR"><MentorLayout /></RoleRoute>}>
         <Route index element={<Navigate to="/mentor/dashboard" replace />} />
-        <Route path="dashboard" element={<MentorDashboard />} />
-        <Route path="students" element={<MentorStudents />} />
-        <Route path="feedback" element={<MentorFeedback />} />
+        <Route path="dashboard"   element={<MentorDashboard />} />
+        <Route path="students"    element={<MentorStudents />} />
+        <Route path="feedback"    element={<MentorFeedback />} />
+        <Route path="discipline"  element={<MentorDiscipline />} />
       </Route>
 
       {/* Admin */}
