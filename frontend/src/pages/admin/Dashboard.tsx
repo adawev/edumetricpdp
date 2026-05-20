@@ -232,7 +232,7 @@ export default function AdminDashboard() {
             ) : (
               <div style={{ height: 260 }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={groupData} margin={{ top: 8, right: 8, left: -14, bottom: 0 }}>
+                  <BarChart data={groupData} margin={{ top: 8, right: 8, left: -14, bottom: 0 }} barCategoryGap="20%">
                     <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} />
                     <XAxis
                       dataKey="group"
@@ -255,7 +255,7 @@ export default function AdminDashboard() {
                       }}
                       formatter={(v: number) => [`${v} ball`, "O'rtacha"]}
                     />
-                    <Bar dataKey="ball" radius={[6, 6, 0, 0]} maxBarSize={52}>
+                    <Bar dataKey="ball" radius={[6, 6, 0, 0]} maxBarSize={80}>
                       {groupData.map((d, i) => (
                         <Cell
                           key={i}
