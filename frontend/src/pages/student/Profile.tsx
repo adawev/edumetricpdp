@@ -1,249 +1,521 @@
+import { useMemo, useState } from 'react';
 import { T } from '@/lib/theme';
-import { Card, Avatar, Skeleton } from '@/components/em/Primitives';
+import { Card, Avatar, Button, Skeleton, Dialog, Field, Input, Select, Tooltip } from '@/components/em/Primitives';
 import { Icons } from '@/components/em/Icons';
-import { useStudentMe } from '@/hooks/useStudent';
+import { useStudentMe, useAchievements, useCreateAchievement } from '@/hooks/useStudent';
 import { ErrorState } from '@/components/em/ErrorState';
-import type { GrantStatus } from '@/types/student';
+import type { GrantStatus, AchievementType, Achievement } from '@/types/student';
+import { toast } from 'sonner';
 
-const STATUS_LABEL: Record<GrantStatus, string> = {
-  GRANTED: 'Grant berildi', PENDING: 'Kutilmoqda',
-  NOT_GRANTED: "Grant yo'q", UNKNOWN: 'Aniqlanmagan',
-};
+// ── constants ─────────────────────────────────────────────────────────────
 
-const STATUS_COLORS: Record<GrantStatus, { bg: string; fg: string }> = {
-  GRANTED:     { bg: T.emeraldBg, fg: T.emeraldText },
-  PENDING:     { bg: T.amberBg,   fg: T.amberText },
-  NOT_GRANTED: { bg: T.redBg,     fg: T.redText },
-  UNKNOWN:     { bg: T.bgSubtle,  fg: T.textMuted },
+const STATUS_CFG: Record<GrantStatus, { bg: string; fg: string; label: string }> = {
+  GRANTED:     { bg: T.emeraldBg, fg: T.emeraldText, label: 'Grant berildi' },
+  PENDING:     { bg: T.amberBg,   fg: T.amberText,   label: 'Kutilmoqda' },
+  NOT_GRANTED: { bg: T.redBg,     fg: T.redText,     label: "Grant yo'q" },
+  UNKNOWN:     { bg: T.bgSubtle,  fg: T.textMuted,   label: 'Aniqlanmagan' },
 };
 
 const CRITERIA = [
-  { key: 'academic',   label: 'Akademik (GPA)',   max: 40, color: '#3b82f6' },
-  { key: 'attendance', label: 'Davomat',           max: 20, color: '#10b981' },
-  { key: 'projects',   label: 'Loyihalar',         max: 15, color: '#8b5cf6' },
-  { key: 'activity',   label: 'Faollik',           max: 10, color: '#f59e0b' },
-  { key: 'tutor',      label: 'Tyutor bahosi',     max: 5,  color: '#ec4899' },
-  { key: 'discipline', label: 'Intizom',           max: 10, color: '#64748b' },
+  { key: 'academic',   label: 'Akademik',  max: 40, color: '#10b981', desc: 'GPA asosida hisoblangan' },
+  { key: 'attendance', label: 'Davomat',   max: 20, color: '#34d399', desc: 'LMS darslar qatnashuvi' },
+  { key: 'projects',   label: 'Loyihalar', max: 15, color: '#6ee7b7', desc: 'Loyiha topshiriqlar natijasi' },
+  { key: 'activity',   label: 'Faollik',   max: 10, color: '#a7f3d0', desc: 'Sertifikat, tadbir ishtirok' },
+  { key: 'tutor',      label: 'Tyutor',    max: 5,  color: '#fbbf24', desc: 'Mentor baholagan ball' },
+  { key: 'discipline', label: 'Intizom',   max: 10, color: '#f59e0b', desc: "Intizom va xulq ko'rsatkichi" },
 ];
 
-const PENALTY_TYPE_LABEL: Record<string, string> = {
+const PENALTY_LABEL: Record<string, string> = {
   LIGHT: 'Engil', MEDIUM: "O'rta", HEAVY: "Og'ir",
 };
 
-function ProgressBar({ value, max, color }: { value: number; max: number; color: string }) {
+const CERT_TYPE_OPTIONS: { value: AchievementType; label: string }[] = [
+  { value: 'CERTIFICATE', label: 'Sertifikat' },
+  { value: 'LANGUAGE',    label: 'Til sertifikati' },
+  { value: 'COURSE',      label: 'Kurs sertifikati' },
+  { value: 'OTHER',       label: 'Boshqa' },
+];
+
+type BadgeDef = { slug: string; name: string; icon: string; color: string; category: string; desc: string; howToEarn: string };
+const BADGES: BadgeDef[] = [
+  { slug: 'hackathon-winner', name: "Hakaton g'olibi",   icon: '🏆', color: '#f59e0b', category: 'Musobaqa',   desc: 'Hakatonda 1-o\'rinni egallash.',      howToEarn: 'Hakaton yoki musobaqada 1-o\'rinni egallang.' },
+  { slug: 'silver-medalist',  name: 'Kumush medal',       icon: '🥈', color: '#94a3b8', category: 'Musobaqa',   desc: 'Hakaton yoki musobaqada 2-o\'rin.',   howToEarn: '2-o\'rin egallang.' },
+  { slug: 'bronze-medalist',  name: 'Bronza medal',       icon: '🥉', color: '#a16207', category: 'Musobaqa',   desc: 'Hakaton yoki musobaqada 3-o\'rin.',   howToEarn: '3-o\'rin egallang.' },
+  { slug: 'top-1-student',    name: 'Eng yaxshi talaba',  icon: '⭐', color: '#0ea5e9', category: 'Akademik',   desc: 'Guruh ichida birinchi o\'rinda turish.', howToEarn: 'Semestr oxirida guruhda 1-o\'rin egallang.' },
+  { slug: 'gpa-master',       name: 'GPA ustasi',         icon: '📚', color: '#7c3aed', category: 'Akademik',   desc: 'GPA 95% dan yuqori semestr davomida.',   howToEarn: 'GPA ≥ 95% ushlab turing.' },
+  { slug: 'mentor-helper',    name: 'Yordamchi mentor',   icon: '🤝', color: '#10b981', category: 'Faollik',    desc: 'Boshqa talabalarga doimiy yordam bergan.', howToEarn: '≥ 5 hafta mentorlang.' },
+  { slug: 'event-active',     name: 'Tadbir faollari',    icon: '🎉', color: '#db2777', category: 'Faollik',    desc: 'Tadbirlarda muntazam ishtirok.',           howToEarn: 'Semestrda 5+ tadbirda qatnashing.' },
+  { slug: 'volunteer',        name: 'Volontyor',          icon: '💚', color: '#059669', category: 'Faollik',    desc: 'Volontyorlik faoliyatida ishtirok.',       howToEarn: '≥ 20 soat volontyor ishing.' },
+  { slug: 'club-member',      name: "Klub a'zosi",        icon: '🎯', color: '#7c3aed', category: 'Faollik',    desc: "Universitet klubining faol a'zosi.",       howToEarn: "Rasmiy klubga a'zo bo'ling." },
+  { slug: 'streak-30',        name: '30 kunlik streak',   icon: '🔥', color: '#dc2626', category: 'Jamlovchi',  desc: '30 kun ketma-ket darslarga qatnashish.',   howToEarn: '30 kun 100% davomat.' },
+  { slug: 'cert-collector',   name: 'Sertifikat ustasi',  icon: '📜', color: '#0891b2', category: 'Jamlovchi',  desc: '5 ta tasdiqlangan sertifikat.',            howToEarn: '5 ta sertifikat oling va admin tasdiqlasin.' },
+  { slug: 'all-rounder',      name: 'Har tarafda',        icon: '🌟', color: '#ea580c', category: 'Jamlovchi',  desc: 'Hamma mezonlarda ≥ 80% natija.',           howToEarn: '6 ta mezonning har birida ≥ 80%.' },
+];
+
+// ── helpers ───────────────────────────────────────────────────────────────
+
+function ProgressBar({ value, max, color, height = 5 }: { value: number; max: number; color: string; height?: number }) {
   const pct = Math.min(100, (value / max) * 100);
   return (
-    <div style={{ height: 6, background: T.bgSubtle, borderRadius: 999, overflow: 'hidden' }}>
+    <div style={{ height, background: T.bgSubtle, borderRadius: 999, overflow: 'hidden' }}>
       <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 999, transition: 'width .4s ease' }} />
     </div>
   );
 }
 
+// ── Main ──────────────────────────────────────────────────────────────────
+
 export default function StudentProfile() {
   const { data, isLoading, isError, refetch } = useStudentMe();
+  const { data: achievements } = useAchievements();
 
   if (isLoading) return <ProfileSkeleton />;
   if (isError) return <ErrorState onRetry={refetch} />;
   if (!data) return null;
 
   const { student, breakdown } = data;
-  const sc = STATUS_COLORS[student.grantStatus];
+  const sc = STATUS_CFG[student.grantStatus];
   const penaltyTotal = student.penalties.reduce((s, p) => s + p.ball, 0);
+  const finalScore = breakdown.total;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 720 }}>
-      <h1 style={{ fontSize: 22, fontWeight: 700, color: T.text, letterSpacing: '-0.02em', margin: 0 }}>
-        Profilim
-      </h1>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-      {/* Identity card */}
-      <Card padding={24}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-          <Avatar name={student.fullName} size={60} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 20, fontWeight: 700, color: T.text, letterSpacing: '-0.02em' }}>
-              {student.fullName}
-            </div>
-            <div style={{ display: 'flex', gap: 12, marginTop: 6, flexWrap: 'wrap' }}>
-              <InfoChip icon={Icons.graduation} text={`${student.group.name} · ${student.group.course}-kurs`} />
+      {/* Page title */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 12, marginBottom: 4 }}>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: T.text, letterSpacing: '-0.02em', margin: 0 }}>Mening profilim</h1>
+          <p style={{ fontSize: 13, color: T.textMuted, marginTop: 4 }}>Shaxsiy ma&apos;lumotlar va batafsil ball ko&apos;rsatkichlari</p>
+        </div>
+        <Button variant="outline" size="sm" icon={Icons.edit({ size: 13, stroke: T.textMuted })}>
+          Tahrirlash
+        </Button>
+      </div>
+
+      {/* Profile header card */}
+      <Card padding={0} style={{ overflow: 'hidden', position: 'relative' }}>
+        {/* Dark banner */}
+        <div style={{ height: 76, background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', position: 'relative' }}>
+          <div style={{ position: 'absolute', inset: 0,
+            backgroundImage: `linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px)`,
+            backgroundSize: '24px 24px' }} />
+          <div style={{ position: 'absolute', top: 14, right: 18 }}>
+            <span style={{
+              padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600,
+              background: sc.bg, color: sc.fg,
+            }}>{sc.label}</span>
+          </div>
+        </div>
+
+        {/* Avatar + info */}
+        <div style={{ padding: '0 28px 22px' }}>
+          <Avatar name={student.fullName} size={84}
+            style={{ border: `4px solid ${T.white}`, fontSize: 28, marginTop: -42,
+              boxShadow: '0 4px 12px rgba(15,23,42,.08)', position: 'relative', zIndex: 2 }} />
+          <div style={{ marginTop: 14 }}>
+            <div style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-0.025em', color: T.text }}>{student.fullName}</div>
+            <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              <InfoTag icon={Icons.users} label="Guruh" value={student.group.name} />
+              <InfoTag icon={Icons.cal} label="Kurs" value={`${student.group.course}-kurs`} />
               {student.group.mentor && (
-                <InfoChip icon={Icons.user} text={`Mentor: ${student.group.mentor.fullName}`} />
+                <InfoTag icon={Icons.graduation} label="Mentor" value={student.group.mentor.fullName} />
               )}
             </div>
           </div>
-          {/* Grant status badge */}
-          <div style={{
-            padding: '6px 14px', borderRadius: 999,
-            background: sc.bg, color: sc.fg, fontSize: 13, fontWeight: 600,
-            flexShrink: 0,
-          }}>
-            {STATUS_LABEL[student.grantStatus]}
-          </div>
-        </div>
-
-        {/* Summary row */}
-        <div style={{
-          display: 'flex', gap: 20, marginTop: 20, paddingTop: 20,
-          borderTop: `1px solid ${T.border}`, flexWrap: 'wrap',
-        }}>
-          <SummaryItem label="Grant ball" value={`${breakdown.total.toFixed(1)} / 100`} />
-          <SummaryItem label="GPA" value={`${student.gpa.toFixed(1)}%`} accent={student.gpa < 80 ? T.red : T.emerald} />
-          <SummaryItem label="Davomat" value={`${student.attendance.toFixed(1)}%`} />
-          <SummaryItem label="Ish bonusi" value={student.employmentBonus > 0 ? `+${student.employmentBonus}` : '—'} />
         </div>
       </Card>
 
-      {/* Score breakdown */}
-      <Card padding={24}>
-        <div style={{ fontSize: 15, fontWeight: 600, color: T.text, marginBottom: 18 }}>
-          Ko'rsatkichlar
-        </div>
+      {/* Criteria breakdown + side cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.45fr 1fr', gap: 14 }}>
+
+        {/* Criteria */}
+        <Card padding={0}>
+          <div style={{ padding: '14px 18px', borderBottom: `1px solid ${T.border}` }}>
+            <div style={{ fontSize: 14, fontWeight: 600 }}>Mening ko'rsatkichlarim</div>
+            <div style={{ fontSize: 12.5, color: T.textMuted, marginTop: 2 }}>Grant nizomi 2026.1 — 6 mezon, 100 ballik shkala</div>
+          </div>
+          <div style={{ padding: '4px 18px 14px' }}>
+            {CRITERIA.map((c, i) => {
+              const val = (breakdown as any)[c.key] ?? 0;
+              const pct = Math.round((val / c.max) * 100);
+              const grade = pct >= 90 ? { l: "A'lo", color: T.emerald }
+                          : pct >= 75 ? { l: 'Yaxshi', color: T.amber }
+                          :             { l: 'Past',   color: T.red };
+              return (
+                <div key={c.key} style={{ padding: '14px 0', borderBottom: i < CRITERIA.length - 1 ? `1px solid ${T.border}` : 'none' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <div style={{ width: 30, height: 30, borderRadius: 7, background: c.color + '22', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                      <span style={{ width: 12, height: 12, borderRadius: 4, background: c.color }} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: 13.5, fontWeight: 500 }}>{c.label}</span>
+                        <span style={{ fontSize: 12.5, color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}>
+                          <span style={{ color: T.text, fontWeight: 600, fontSize: 14 }}>{val.toFixed(1)}</span>
+                          {' / '}{c.max}
+                          <span style={{ marginLeft: 8, color: grade.color, fontWeight: 500 }}>{grade.l}</span>
+                        </span>
+                      </div>
+                      <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ flex: 1 }}><ProgressBar value={val} max={c.max} color={c.color} height={5} /></div>
+                        <span style={{ fontSize: 11, color: T.textSubtle, fontVariantNumeric: 'tabular-nums', minWidth: 36, textAlign: 'right' }}>
+                          {pct}%
+                        </span>
+                      </div>
+                      <div style={{ marginTop: 3, fontSize: 11.5, color: T.textSubtle }}>{c.desc}</div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+
+        {/* Side: bonus/penalty + final score */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {CRITERIA.map(c => {
-            const val = (breakdown as any)[c.key] ?? 0;
-            const pct = Math.round((val / c.max) * 100);
+          <Card padding={0}>
+            <div style={{ padding: '14px 18px', borderBottom: `1px solid ${T.border}` }}>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>Bonus va jarima</div>
+              <div style={{ fontSize: 12.5, color: T.textMuted, marginTop: 2 }}>Asosiy mezonlarga qo&apos;shimcha</div>
+            </div>
+            <div style={{ padding: '12px 18px' }}>
+              {[
+                {
+                  icon: Icons.minus,
+                  label: 'Jarima',
+                  value: breakdown.penalty > 0 ? `−${breakdown.penalty.toFixed(1)} ball` : '0 ball',
+                  desc: breakdown.penalty > 0
+                    ? student.penalties.map(p => PENALTY_LABEL[p.type] ?? p.type).join(', ')
+                    : "Hozircha jarima yo'q",
+                  color: breakdown.penalty > 0 ? T.red : T.textMuted,
+                },
+                {
+                  icon: Icons.refresh,
+                  label: 'Reabilitatsiya',
+                  value: breakdown.recovery > 0 ? `+${breakdown.recovery.toFixed(1)} ball` : '+0 ball',
+                  desc: breakdown.recovery > 0 ? 'Bajarildi' : 'Hozircha tayinlanmagan',
+                  color: breakdown.recovery > 0 ? T.emerald : T.textMuted,
+                },
+                {
+                  icon: Icons.briefcase,
+                  label: 'Ish bonusi',
+                  value: breakdown.employment > 0 ? `+${breakdown.employment.toFixed(1)} ball` : '+0 ball',
+                  desc: student.employmentBonus > 0 ? 'Ishga qabul qilindi' : "Hali ish bonusi yo'q",
+                  color: breakdown.employment > 0 ? T.blue : T.textMuted,
+                },
+              ].map((item, i) => (
+                <div key={i} style={{ padding: '10px 0', display: 'flex', alignItems: 'center', gap: 12,
+                  borderBottom: i < 2 ? `1px solid ${T.border}` : 'none' }}>
+                  <div style={{ width: 30, height: 30, borderRadius: 7, background: T.bg, display: 'grid',
+                    placeItems: 'center', border: `1px solid ${T.border}` }}>
+                    {item.icon({ size: 14, stroke: item.color })}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 500 }}>{item.label}</div>
+                    <div style={{ fontSize: 11.5, color: T.textMuted, marginTop: 1 }}>{item.desc}</div>
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: item.color, fontVariantNumeric: 'tabular-nums' }}>
+                    {item.value}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Final score dark card */}
+          <Card padding={0} style={{ background: T.slate900, border: 'none' }}>
+            <div style={{ padding: '18px 20px' }}>
+              <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,.55)', fontWeight: 600,
+                letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 6 }}>Yakuniy ball</div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                <div style={{ fontSize: 44, fontWeight: 600, letterSpacing: '-0.04em', lineHeight: 1,
+                  color: '#fff', fontVariantNumeric: 'tabular-nums' }}>
+                  {finalScore.toFixed(1)}
+                </div>
+                <div style={{ fontSize: 13, color: 'rgba(255,255,255,.6)' }}>/ 100 + bonuslar</div>
+              </div>
+              <div style={{ marginTop: 10, padding: '10px 0 0', borderTop: '1px solid rgba(255,255,255,.12)',
+                fontSize: 12, color: 'rgba(255,255,255,.7)' }}>
+                Asos: {breakdown.base.toFixed(1)} − Jarima: {breakdown.penalty.toFixed(1)} + Recovery: {breakdown.recovery.toFixed(1)} + Ish: {breakdown.employment.toFixed(1)}
+              </div>
+            </div>
+          </Card>
+        </div>
+      </div>
+
+      {/* Penalties detail */}
+      {student.penalties.length > 0 && (
+        <Card padding={0}>
+          <div style={{ padding: '14px 18px', borderBottom: `1px solid ${T.border}` }}>
+            <div style={{ fontSize: 14, fontWeight: 600 }}>Jarimalar</div>
+            <div style={{ fontSize: 12.5, color: T.textMuted, marginTop: 2 }}>
+              Jami: −{penaltyTotal.toFixed(1)} ball
+            </div>
+          </div>
+          <div style={{ padding: '0 18px 8px' }}>
+            {student.penalties.map((p, i) => (
+              <div key={p.id} style={{ padding: '12px 0',
+                borderBottom: i < student.penalties.length - 1 ? `1px solid ${T.border}` : 'none' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: T.redText }}>
+                      {PENALTY_LABEL[p.type] ?? p.type} jarima
+                    </div>
+                    <div style={{ fontSize: 12.5, color: T.textMuted, marginTop: 2 }}>{p.reason}</div>
+                    {p.recoveryTask && (
+                      <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>
+                        Vazifa: {p.recoveryTask}
+                        {p.recoveryDone && <span style={{ marginLeft: 8, color: T.emeraldText, fontWeight: 500 }}>✓ Bajarildi</span>}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: T.red }}>−{p.ball}</span>
+                    {p.recovered > 0 && (
+                      <div style={{ fontSize: 11.5, color: T.emeraldText, marginTop: 2 }}>+{p.recovered} qaytarildi</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Certificates section */}
+      <CertificatesSection
+        certs={(achievements ?? []).filter(a => ['CERTIFICATE','LANGUAGE','COURSE'].includes(a.type))}
+      />
+
+      {/* Badges section */}
+      <BadgesSection student={student} achievements={achievements ?? []} />
+    </div>
+  );
+}
+
+// ── helpers ───────────────────────────────────────────────────────────────
+
+function InfoTag({ icon, label, value }: { icon: (p: any) => JSX.Element; label: string; value: string }) {
+  return (
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px',
+      background: T.bg, borderRadius: 7, fontSize: 12.5, color: T.text, border: `1px solid ${T.border}` }}>
+      {icon({ size: 12, stroke: T.textMuted })}
+      <span style={{ color: T.textMuted }}>{label}:</span>
+      <span style={{ fontWeight: 500 }}>{value}</span>
+    </div>
+  );
+}
+
+// ── CertificatesSection ────────────────────────────────────────────────────
+
+function CertificatesSection({ certs }: { certs: Achievement[] }) {
+  const { mutateAsync, isPending } = useCreateAchievement();
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ type: 'CERTIFICATE' as AchievementType, title: '', description: '' });
+
+  const fmtDate = (s: string) => {
+    const d = new Date(s);
+    const m = ['Yan','Fev','Mar','Apr','May','Iyn','Iyl','Avg','Sen','Okt','Noy','Dek'];
+    return `${d.getDate()} ${m[d.getMonth()]} ${d.getFullYear()}`;
+  };
+
+  const handleSubmit = async () => {
+    if (!form.title.trim()) { toast.error('Sertifikat nomini kiriting'); return; }
+    try {
+      await mutateAsync({ type: form.type, title: form.title.trim(), description: form.description.trim() || undefined });
+      toast.success("Sertifikat yuborildi — admin tasdiqlashini kuting");
+      setForm({ type: 'CERTIFICATE', title: '', description: '' });
+      setOpen(false);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error ?? 'Xatolik yuz berdi');
+    }
+  };
+
+  const SC: Record<string, { bg: string; fg: string; label: string }> = {
+    PENDING:  { bg: T.amberBg,   fg: T.amberText,   label: 'Kutilmoqda' },
+    APPROVED: { bg: T.emeraldBg, fg: T.emeraldText, label: 'Tasdiqlangan' },
+    REJECTED: { bg: T.redBg,     fg: T.redText,     label: 'Rad etilgan' },
+  };
+
+  return (
+    <Card padding={0}>
+      <div style={{ padding: '14px 18px', borderBottom: `1px solid ${T.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 600 }}>Mening sertifikatlarim</div>
+          <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>
+            {certs.length} ta sertifikat · tasdiqlangani grant ballingizga qo'shiladi
+          </div>
+        </div>
+        <Button variant="primary" size="sm" icon={Icons.plus({ size: 13, stroke: '#fff' })} onClick={() => setOpen(true)}>
+          Yangi sertifikat
+        </Button>
+      </div>
+
+      {certs.length === 0 ? (
+        <div style={{ padding: '48px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, textAlign: 'center' }}>
+          {Icons.award({ size: 40, stroke: T.border })}
+          <div style={{ fontSize: 15, fontWeight: 600, color: T.text }}>Hozircha sertifikat yo'q</div>
+          <div style={{ fontSize: 13, color: T.textMuted, maxWidth: 300, lineHeight: 1.6 }}>
+            Til, kurs yoki professional sertifikatlaringizni qo'shing
+          </div>
+          <Button variant="primary" size="sm" icon={Icons.plus({ size: 13, stroke: '#fff' })} onClick={() => setOpen(true)}
+            style={{ marginTop: 4 }}>
+            Sertifikat qo'shish
+          </Button>
+        </div>
+      ) : (
+        <div style={{ padding: 14, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+          {certs.map(c => {
+            const sc = SC[c.status] ?? SC.PENDING;
             return (
-              <div key={c.key}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <span style={{ fontSize: 13.5, color: T.text }}>{c.label}</span>
-                  <span style={{ fontSize: 13.5, fontWeight: 600, color: T.text, fontVariantNumeric: 'tabular-nums' }}>
-                    {val.toFixed(1)}
-                    <span style={{ color: T.textSubtle, fontWeight: 400 }}> / {c.max}</span>
-                    <span style={{ color: T.textSubtle, fontSize: 11.5, marginLeft: 6 }}>({pct}%)</span>
+              <div key={c.id} style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: 14, background: T.white, display: 'flex', flexDirection: 'column' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = T.borderStrong; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 2px 8px rgba(15,23,42,.04)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = T.border; (e.currentTarget as HTMLDivElement).style.boxShadow = 'none'; }}
+              >
+                <div style={{ height: 80, borderRadius: 8, marginBottom: 10, background: '#eff6ff', border: `1px solid ${T.border}`, display: 'grid', placeItems: 'center' }}>
+                  {Icons.fileText({ size: 28, stroke: T.blue })}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 6, marginBottom: 4 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 600, lineHeight: 1.3, flex: 1 }}>{c.title}</div>
+                  <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 999, background: sc.bg, color: sc.fg, fontWeight: 500, whiteSpace: 'nowrap' }}>
+                    {sc.label}
                   </span>
                 </div>
-                <ProgressBar value={val} max={c.max} color={c.color} />
+                <div style={{ fontSize: 11.5, color: T.textMuted, marginBottom: 6 }}>
+                  {fmtDate(c.createdAt)}
+                </div>
+                {c.status === 'APPROVED' && c.ball && c.ball > 0 && (
+                  <div style={{ fontSize: 12, fontWeight: 600, color: T.emeraldDeep }}>+{c.ball} ball</div>
+                )}
+                {c.status === 'REJECTED' && c.rejectReason && (
+                  <div style={{ fontSize: 11.5, color: T.redText, marginTop: 4 }}>
+                    {Icons.alert({ size: 12, stroke: T.red })} {c.rejectReason}
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
-
-        {/* Total */}
-        <div style={{
-          marginTop: 20, paddingTop: 16, borderTop: `1px solid ${T.border}`,
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        }}>
-          <span style={{ fontSize: 14, fontWeight: 500, color: T.text }}>Asosiy ball</span>
-          <span style={{ fontSize: 18, fontWeight: 700, color: T.text }}>{breakdown.base.toFixed(1)} / 100</span>
-        </div>
-      </Card>
-
-      {/* Penalty / Recovery / Employment */}
-      {(penaltyTotal > 0 || student.employmentBonus > 0) && (
-        <Card padding={24}>
-          <div style={{ fontSize: 15, fontWeight: 600, color: T.text, marginBottom: 18 }}>
-            Jarima va bonuslar
-          </div>
-
-          {student.penalties.length > 0 && (
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 500, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 10 }}>
-                Jarimalar
-              </div>
-              {student.penalties.map(p => (
-                <div key={p.id} style={{
-                  padding: '10px 14px', borderRadius: 8,
-                  background: T.redBg, border: `1px solid #fecaca`,
-                  marginBottom: 6,
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                      <span style={{ fontSize: 13, fontWeight: 500, color: T.redText }}>
-                        {PENALTY_TYPE_LABEL[p.type] ?? p.type} jarima
-                      </span>
-                      <p style={{ margin: '3px 0 0', fontSize: 12.5, color: T.textMuted }}>{p.reason}</p>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: T.red }}>−{p.ball}</span>
-                      {p.recovered > 0 && (
-                        <span style={{ fontSize: 11.5, color: T.emeraldText }}>+{p.recovered} qaytarildi</span>
-                      )}
-                    </div>
-                  </div>
-                  {p.recoveryTask && (
-                    <div style={{ marginTop: 6, fontSize: 12, color: T.textMuted }}>
-                      Vazifa: {p.recoveryTask}
-                      {p.recoveryDone && (
-                        <span style={{ marginLeft: 8, color: T.emeraldText, fontWeight: 500 }}>✓ Bajarildi</span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
-              <div style={{ fontSize: 13, color: T.text, marginTop: 8, display: 'flex', justifyContent: 'space-between' }}>
-                <span>Jami jarima:</span>
-                <span style={{ fontWeight: 600, color: T.red }}>−{breakdown.penalty.toFixed(1)}</span>
-              </div>
-              {breakdown.recovery > 0 && (
-                <div style={{ fontSize: 13, color: T.text, marginTop: 4, display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Reabilitatsiya qaytarildi:</span>
-                  <span style={{ fontWeight: 600, color: T.emerald }}>+{breakdown.recovery.toFixed(1)}</span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {student.employmentBonus > 0 && (
-            <div style={{
-              padding: '10px 14px', borderRadius: 8,
-              background: T.blueBg, border: `1px solid #bfdbfe`,
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {Icons.briefcase({ size: 16, stroke: T.blue })}
-                <span style={{ fontSize: 13, fontWeight: 500, color: T.blueText }}>Ish bonusi</span>
-              </div>
-              <span style={{ fontSize: 14, fontWeight: 700, color: T.blue }}>+{student.employmentBonus}</span>
-            </div>
-          )}
-        </Card>
       )}
-    </div>
+
+      <Dialog open={open} onClose={() => setOpen(false)}
+        title="Yangi sertifikat qo'shish"
+        description="Sertifikat ma'lumotlarini kiriting. Admin tasdiqlagandan keyin ball qo'shiladi."
+        footer={<>
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={isPending}>Bekor qilish</Button>
+          <Button variant="primary" onClick={handleSubmit} disabled={isPending}>
+            {isPending ? 'Saqlanmoqda...' : 'Yuborish'}
+          </Button>
+        </>}
+      >
+        <Field label="Tur">
+          <Select value={form.type} onChange={v => setForm(f => ({ ...f, type: v as AchievementType }))}
+            options={CERT_TYPE_OPTIONS} />
+        </Field>
+        <Field label="Sertifikat nomi">
+          <Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+            placeholder="Masalan: IELTS 7.5, AWS Cloud Practitioner" />
+        </Field>
+        <Field label="Tavsif (ixtiyoriy)">
+          <textarea value={form.description}
+            onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+            placeholder="Qachon, qayerda, qanday natija"
+            rows={3}
+            style={{ width: '100%', padding: '8px 12px', borderRadius: 8, resize: 'vertical',
+              border: `1px solid ${T.border}`, fontSize: 13.5, fontFamily: 'inherit',
+              outline: 'none', color: T.text, background: T.white, boxSizing: 'border-box' }} />
+        </Field>
+        {/* Fayl yuklash backend tomonida hali yo'q — keyingi versiyada qo'shiladi.
+            Hozircha admin metadata orqali tasdiqlaydi. */}
+      </Dialog>
+    </Card>
   );
 }
 
-// ── helpers ────────────────────────────────────────────────────────────────
+// ── BadgesSection ──────────────────────────────────────────────────────────
 
-function InfoChip({ icon, text }: { icon: (p: any) => JSX.Element; text: string }) {
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: T.textMuted }}>
-      {icon({ size: 13, stroke: T.textMuted })}
-      {text}
-    </span>
-  );
-}
+function BadgesSection({ student, achievements }: { student: import('@/types/student').Student; achievements: Achievement[] }) {
+  const earnedSlugs = useMemo(() => {
+    const slugs = new Set<string>();
+    const approvedTypes = new Set(achievements.filter(a => a.status === 'APPROVED').map(a => a.type));
+    const approvedCount = achievements.filter(a => a.status === 'APPROVED').length;
+    const certCount = achievements.filter(a => a.status === 'APPROVED' && ['CERTIFICATE','LANGUAGE','COURSE'].includes(a.type)).length;
 
-function SummaryItem({ label, value, accent }: { label: string; value: string; accent?: string }) {
+    if (approvedTypes.has('HACKATHON')) slugs.add('hackathon-winner');
+    if (approvedTypes.has('MENTORING')) slugs.add('mentor-helper');
+    if (approvedTypes.has('VOLUNTEER')) slugs.add('volunteer');
+    if (student.gpa >= 95) slugs.add('gpa-master');
+    if (student.gpa >= 90) slugs.add('top-1-student');
+    if (student.attendance >= 90) slugs.add('streak-30');
+    if (certCount >= 3) slugs.add('cert-collector');
+    if (approvedCount >= 5) slugs.add('all-rounder');
+    if (approvedTypes.has('STARTUP')) slugs.add('event-active');
+    return slugs;
+  }, [student, achievements]);
+
+  const earnedCount = BADGES.filter(b => earnedSlugs.has(b.slug)).length;
+
   return (
-    <div>
-      <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 500, letterSpacing: '.04em', textTransform: 'uppercase', marginBottom: 3 }}>
-        {label}
+    <Card padding={0}>
+      <div style={{ padding: '14px 18px', borderBottom: `1px solid ${T.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 600 }}>Mening badge'larim</div>
+          <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>
+            <span style={{ color: T.text, fontWeight: 600 }}>{earnedCount}</span>
+            {' / '}{BADGES.length} ta badge olingan · avtomatik beriladi
+          </div>
+        </div>
       </div>
-      <div style={{ fontSize: 16, fontWeight: 700, color: accent ?? T.text }}>{value}</div>
-    </div>
+      <div style={{ padding: 14, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+        {BADGES.map(b => {
+          const earned = earnedSlugs.has(b.slug);
+          const tintBg = (earned ? b.color : '#94a3b8') + '1a';
+          return (
+            <Tooltip key={b.slug} content={earned ? `${b.name} · Olingan` : `${b.name} · ${b.howToEarn}`}>
+              <div
+                onMouseEnter={e => { if (earned) (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.transform = 'none'; }}
+                style={{
+                  padding: 14, border: `1px solid ${T.border}`, borderRadius: 12,
+                  background: T.white, display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', textAlign: 'center', gap: 8,
+                  opacity: earned ? 1 : 0.3, filter: earned ? 'none' : 'grayscale(.6)',
+                  transition: 'opacity .15s, transform .15s', cursor: 'help', width: '100%',
+                }}
+              >
+                <div style={{ width: 56, height: 56, borderRadius: 14, background: tintBg,
+                  display: 'grid', placeItems: 'center', fontSize: 28,
+                  border: `1px solid ${(earned ? b.color : '#94a3b8')}33` }}>
+                  {b.icon}
+                </div>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: T.text, lineHeight: 1.3 }}>{b.name}</div>
+                <div style={{ fontSize: 10.5, color: T.textMuted }}>{earned ? 'Olingan ✓' : 'Hali olinmagan'}</div>
+              </div>
+            </Tooltip>
+          );
+        })}
+      </div>
+    </Card>
   );
 }
 
 function ProfileSkeleton() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 720 }}>
-      <Skeleton h={28} w={120} r={8} />
-      <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 12, padding: 24 }}>
-        <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-          <Skeleton h={60} w={60} r={999} />
-          <div style={{ flex: 1 }}>
-            <Skeleton h={22} w={200} r={6} />
-            <Skeleton h={14} w={280} r={4} style={{ marginTop: 10 }} />
-          </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 12, overflow: 'hidden' }}>
+        <Skeleton h={80} r={0} style={{ width: '100%' }} />
+        <div style={{ padding: '16px 28px 22px' }}>
+          <Skeleton h={84} w={84} r={999} style={{ marginTop: -42 }} />
+          <Skeleton h={24} w={240} r={8} style={{ marginTop: 14 }} />
+          <Skeleton h={16} w={380} r={6} style={{ marginTop: 10 }} />
         </div>
       </div>
-      <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 12, padding: 24 }}>
-        {[0, 1, 2, 3, 4, 5].map(i => (
-          <div key={i} style={{ marginBottom: 18 }}>
-            <Skeleton h={14} r={4} style={{ marginBottom: 8 }} />
-            <Skeleton h={6} r={999} />
-          </div>
-        ))}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.45fr 1fr', gap: 14 }}>
+        <Skeleton h={500} r={12} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <Skeleton h={220} r={12} />
+          <Skeleton h={140} r={12} />
+        </div>
       </div>
     </div>
   );

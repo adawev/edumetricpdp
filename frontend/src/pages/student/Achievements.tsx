@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { T } from '@/lib/theme';
-import { Card, Button, Input, Select, Field, Dialog, Skeleton, Tooltip, Pagination, usePagination } from '@/components/em/Primitives';
+import { Card, Button, Input, Select, Field, Dialog, Skeleton, Tooltip, Pagination, usePagination, Tabs } from '@/components/em/Primitives';
 import { Icons } from '@/components/em/Icons';
 import { useAchievements, useCreateAchievement } from '@/hooks/useStudent';
 import { ErrorState } from '@/components/em/ErrorState';
 import type { AchievementType, AchievementStatus } from '@/types/student';
 import { toast } from 'sonner';
 
-// ── constants ───────────────────────────────────────────────────────────────
+// ── constants ─────────────────────────────────────────────────────────────
 
 const TYPE_OPTIONS: { value: AchievementType; label: string }[] = [
   { value: 'CERTIFICATE',  label: 'Sertifikat' },
@@ -25,10 +25,22 @@ const TYPE_LABELS: Record<AchievementType, string> = Object.fromEntries(
   TYPE_OPTIONS.map(o => [o.value, o.label])
 ) as Record<AchievementType, string>;
 
-const STATUS_CONFIG: Record<AchievementStatus, { label: string; bg: string; fg: string }> = {
-  PENDING:  { label: 'Kutilmoqda',    bg: T.amberBg,   fg: T.amberText },
-  APPROVED: { label: 'Tasdiqlangan',  bg: T.emeraldBg, fg: T.emeraldText },
-  REJECTED: { label: 'Rad etilgan',   bg: T.redBg,     fg: T.redText },
+const STATUS_CFG: Record<AchievementStatus, { label: string; bg: string; fg: string }> = {
+  PENDING:  { label: 'Kutilmoqda',   bg: T.amberBg,   fg: T.amberText },
+  APPROVED: { label: 'Tasdiqlangan', bg: T.emeraldBg, fg: T.emeraldText },
+  REJECTED: { label: 'Rad etilgan',  bg: T.redBg,     fg: T.redText },
+};
+
+const TYPE_ICON: Record<AchievementType, (p: any) => JSX.Element> = {
+  CERTIFICATE: Icons.file,
+  HACKATHON:   Icons.flame,
+  STARTUP:     Icons.rocket,
+  EMPLOYMENT:  Icons.briefcase,
+  MENTORING:   Icons.users,
+  LANGUAGE:    Icons.globe,
+  COURSE:      Icons.files,
+  VOLUNTEER:   Icons.sparkles,
+  OTHER:       Icons.star,
 };
 
 const fmtDate = (s: string) => {
@@ -37,7 +49,30 @@ const fmtDate = (s: string) => {
   return `${d.getDate()} ${m[d.getMonth()]} ${d.getFullYear()}`;
 };
 
-// ── Add achievement form ────────────────────────────────────────────────────
+// ── KpiCard ───────────────────────────────────────────────────────────────
+
+function KpiCard({ label, value, sub, accent, icon }: {
+  label: string; value: string | number; sub?: string;
+  accent?: string; icon: (p: any) => JSX.Element;
+}) {
+  const ac = accent ?? T.textMuted;
+  return (
+    <Card padding={18}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ fontSize: 11.5, color: T.textMuted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em' }}>{label}</div>
+        <div style={{ width: 28, height: 28, borderRadius: 7, background: ac + '18', display: 'grid', placeItems: 'center' }}>
+          {icon({ size: 13, stroke: ac })}
+        </div>
+      </div>
+      <div style={{ marginTop: 8 }}>
+        <span style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.03em', color: T.text, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{value}</span>
+        {sub && <span style={{ fontSize: 13, color: T.textMuted, marginLeft: 4 }}>{sub}</span>}
+      </div>
+    </Card>
+  );
+}
+
+// ── Add dialog ────────────────────────────────────────────────────────────
 
 interface FormState {
   type: AchievementType;
@@ -64,9 +99,9 @@ function AddAchievementDialog({ open, onClose }: { open: boolean; onClose: () =>
     onClose();
   };
 
-  const validate = (): boolean => {
+  const validate = () => {
     const e: typeof errors = {};
-    if (!form.title.trim() || form.title.trim().length < 2) e.title = "Kamida 2 ta belgi kiritish kerak";
+    if (!form.title.trim() || form.title.trim().length < 2) e.title = 'Kamida 2 ta belgi kiritish kerak';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -86,15 +121,12 @@ function AddAchievementDialog({ open, onClose }: { open: boolean; onClose: () =>
       setErrors({});
       onClose();
     } catch (err: any) {
-      const msg = err?.response?.data?.error ?? "Xatolik yuz berdi";
-      toast.error(msg);
+      toast.error(err?.response?.data?.error ?? 'Xatolik yuz berdi');
     }
   };
 
   return (
-    <Dialog
-      open={open}
-      onClose={handleClose}
+    <Dialog open={open} onClose={handleClose}
       title="Yangi yutuq qo'shish"
       description="Yutuqingizni kiriting — admin tasdiqlashini kuting"
       size="md"
@@ -102,70 +134,52 @@ function AddAchievementDialog({ open, onClose }: { open: boolean; onClose: () =>
         <>
           <Button variant="outline" onClick={handleClose} disabled={isPending}>Bekor qilish</Button>
           <Button variant="primary" onClick={handleSubmit} disabled={isPending}>
-            {isPending ? "Saqlanmoqda..." : "Yuborish"}
+            {isPending ? 'Saqlanmoqda...' : 'Yuborish'}
           </Button>
         </>
       }
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         <Field label="Yutuq turi" htmlFor="ach-type">
-          <Select
-            value={form.type}
-            onChange={v => set('type', v as AchievementType)}
-            options={TYPE_OPTIONS}
-          />
+          <Select value={form.type} onChange={v => set('type', v as AchievementType)} options={TYPE_OPTIONS} />
         </Field>
 
-        <Field label="Nomi" htmlFor="ach-title" hint={<span style={{ color: errors.title ? T.red : T.textSubtle }}>{form.title.length} / 100</span>}>
-          <Input
-            id="ach-title"
-            value={form.title}
+        <Field label="Nomi" htmlFor="ach-title"
+          hint={<span style={{ color: errors.title ? T.red : T.textSubtle }}>{form.title.length} / 100</span>}>
+          <Input id="ach-title" value={form.title}
             onChange={e => set('title', e.target.value.slice(0, 100))}
             placeholder="Masalan: Google Cloud sertifikati"
-            error={!!errors.title}
-          />
+            error={!!errors.title} />
           {errors.title && <div style={{ fontSize: 12, color: T.red, marginTop: 4 }}>{errors.title}</div>}
         </Field>
 
         <Field label="Tavsif (ixtiyoriy)" htmlFor="ach-desc">
-          <textarea
-            id="ach-desc"
-            value={form.description}
+          <textarea id="ach-desc" value={form.description}
             onChange={e => set('description', e.target.value.slice(0, 500))}
-            placeholder="Qisqacha tavsif..."
-            rows={3}
-            style={{
-              width: '100%', padding: '8px 12px', borderRadius: 8, resize: 'vertical',
+            placeholder="Qisqacha — qachon, qayerda, qanday natija" rows={3}
+            style={{ width: '100%', padding: '8px 12px', borderRadius: 8, resize: 'vertical',
               border: `1px solid ${T.border}`, fontSize: 13.5, fontFamily: 'inherit',
-              outline: 'none', color: T.text, background: T.white, boxSizing: 'border-box',
-            }}
-          />
+              outline: 'none', color: T.text, background: T.white, boxSizing: 'border-box' }} />
         </Field>
 
-        <Field label="Fayl yuklash (ixtiyoriy)" htmlFor="ach-file">
+        <Field label="Hujjat (ixtiyoriy)" htmlFor="ach-file">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <label style={{
-              display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
-              border: `1px dashed ${T.border}`, borderRadius: 8, cursor: 'pointer',
-              fontSize: 13.5, color: T.textMuted, background: T.bgSubtle,
+              display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px',
+              border: `1.5px dashed ${form.file ? T.emerald : T.border}`,
+              borderRadius: 8, cursor: 'pointer', fontSize: 13.5,
+              color: form.file ? T.emeraldText : T.textMuted,
+              background: form.file ? T.emeraldBg : T.bgSubtle,
             }}>
-              {Icons.fileText({ size: 15, stroke: T.textMuted })}
+              {Icons.upload({ size: 15, stroke: form.file ? T.emerald : T.textMuted })}
               {form.file ? form.file.name : 'Fayl tanlang (PDF, rasm)'}
-              <input
-                type="file"
-                id="ach-file"
-                accept=".pdf,.png,.jpg,.jpeg"
-                style={{ display: 'none' }}
-                onChange={e => set('file', e.target.files?.[0] ?? null)}
-              />
+              <input type="file" id="ach-file" accept=".pdf,.png,.jpg,.jpeg" style={{ display: 'none' }}
+                onChange={e => set('file', e.target.files?.[0] ?? null)} />
             </label>
             {!form.file && (
-              <Input
-                value={form.fileUrl}
-                onChange={e => set('fileUrl', e.target.value)}
+              <Input value={form.fileUrl} onChange={e => set('fileUrl', e.target.value)}
                 placeholder="Yoki URL kiriting (https://...)"
-                icon={Icons.link({ size: 14, stroke: T.textSubtle })}
-              />
+                icon={Icons.link({ size: 14, stroke: T.textSubtle })} />
             )}
           </div>
         </Field>
@@ -174,7 +188,7 @@ function AddAchievementDialog({ open, onClose }: { open: boolean; onClose: () =>
   );
 }
 
-// ── Main component ──────────────────────────────────────────────────────────
+// ── Main ──────────────────────────────────────────────────────────────────
 
 export default function StudentAchievements() {
   const { data: achievements, isLoading, isError, refetch } = useAchievements();
@@ -188,89 +202,79 @@ export default function StudentAchievements() {
   const pag = usePagination(filtered, 10, [statusFilter, filtered.length]);
 
   const counts = {
-    ALL: achievements?.length ?? 0,
-    PENDING: achievements?.filter(a => a.status === 'PENDING').length ?? 0,
+    ALL:      achievements?.length ?? 0,
+    PENDING:  achievements?.filter(a => a.status === 'PENDING').length ?? 0,
     APPROVED: achievements?.filter(a => a.status === 'APPROVED').length ?? 0,
     REJECTED: achievements?.filter(a => a.status === 'REJECTED').length ?? 0,
   };
 
+  const totalPoints = achievements?.filter(a => a.status === 'APPROVED')
+    .reduce((s, a) => s + (a.ball ?? 0), 0) ?? 0;
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: T.text, letterSpacing: '-0.02em', margin: 0 }}>
-            Yutuqlarim
-          </h1>
-          <p style={{ fontSize: 13.5, color: T.textMuted, marginTop: 4 }}>
-            Yutuqlaringizni qo'shing — admin tasdiqlashidan so'ng ball qo'shiladi
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: T.text, letterSpacing: '-0.02em', margin: 0 }}>Yutuqlar</h1>
+          <p style={{ fontSize: 13, color: T.textMuted, marginTop: 4 }}>
+            Sertifikat, hakaton, startap, ish va boshqa yutuqlar — tasdiqdan o'tgach grant ballingizga qo'shiladi
           </p>
         </div>
-        <Button
-          variant="primary"
-          icon={Icons.sparkles({ size: 14, stroke: '#fff' })}
-          onClick={() => setDialogOpen(true)}
-        >
-          Yutuq qo'shish
+        <Button variant="primary" icon={Icons.plus({ size: 14, stroke: '#fff' })} onClick={() => setDialogOpen(true)}>
+          Yangi yutuq
         </Button>
       </div>
 
-      {/* Filter tabs */}
-      <div style={{ display: 'flex', gap: 6 }}>
-        {(['ALL', 'PENDING', 'APPROVED', 'REJECTED'] as const).map(s => {
-          const active = statusFilter === s;
-          const labels: Record<string, string> = {
-            ALL: 'Hammasi', PENDING: 'Kutilmoqda', APPROVED: 'Tasdiqlangan', REJECTED: 'Rad etilgan',
-          };
-          return (
-            <button key={s} onClick={() => setStatusFilter(s)} style={{
-              padding: '6px 12px', borderRadius: 8, border: `1px solid ${active ? T.slate900 : T.border}`,
-              background: active ? T.slate900 : T.white,
-              color: active ? '#fff' : T.textMuted,
-              fontSize: 12.5, fontWeight: active ? 500 : 400,
-              cursor: 'pointer', transition: 'all .12s', fontFamily: 'inherit',
-              display: 'inline-flex', alignItems: 'center', gap: 5,
-            }}>
-              {labels[s]}
-              <span style={{
-                fontSize: 10.5, padding: '0 5px', borderRadius: 999,
-                background: active ? 'rgba(255,255,255,.2)' : T.bgSubtle,
-                color: active ? '#fff' : T.textMuted, minWidth: 16, height: 16,
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              }}>{counts[s]}</span>
-            </button>
-          );
-        })}
+      {/* KPI summary cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+        <KpiCard label="Jami yutuqlar"  value={counts.ALL}       icon={Icons.award} />
+        <KpiCard label="Tasdiqlangan"    value={counts.APPROVED}  accent={T.emeraldDeep} icon={Icons.check} />
+        <KpiCard label="Kutilmoqda"      value={counts.PENDING}   accent={T.amberDeep}   icon={Icons.clock} />
+        <KpiCard label="Olingan ball"    value={`+${totalPoints}`} sub="ball" accent={T.emeraldDeep} icon={Icons.bolt} />
       </div>
 
-      {/* List */}
-      {isLoading ? (
-        <AchievementsSkeleton />
-      ) : isError ? (
-        <ErrorState onRetry={refetch} />
-      ) : filtered.length === 0 ? (
-        <EmptyState onAdd={() => setDialogOpen(true)} filtered={statusFilter !== 'ALL'} />
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {pag.pageItems.map(a => {
-            const sc = STATUS_CONFIG[a.status];
-            return (
-              <Card key={a.id} padding={18}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-                  {/* Type icon */}
-                  <div style={{
-                    width: 40, height: 40, borderRadius: 10, flexShrink: 0,
-                    background: T.bgSubtle, display: 'grid', placeItems: 'center',
-                  }}>
-                    {Icons.award({ size: 18, stroke: T.textMuted })}
+      {/* List card */}
+      <Card padding={0}>
+        <div style={{ padding: '14px 18px', borderBottom: `1px solid ${T.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Tabs
+            value={statusFilter}
+            onChange={v => setStatusFilter(v as AchievementStatus | 'ALL')}
+            items={[
+              { id: 'ALL',      label: 'Hammasi',      count: counts.ALL },
+              { id: 'PENDING',  label: 'Kutilmoqda',   count: counts.PENDING },
+              { id: 'APPROVED', label: 'Tasdiqlangan', count: counts.APPROVED },
+              { id: 'REJECTED', label: 'Rad etilgan',  count: counts.REJECTED },
+            ]}
+          />
+        </div>
+
+        {isLoading ? (
+          <AchievementsSkeleton />
+        ) : isError ? (
+          <ErrorState onRetry={refetch} />
+        ) : filtered.length === 0 ? (
+          <EmptyState onAdd={() => setDialogOpen(true)} filtered={statusFilter !== 'ALL'} />
+        ) : (
+          <div>
+            {pag.pageItems.map((a, i) => {
+              const sc = STATUS_CFG[a.status];
+              return (
+                <div key={a.id} style={{ padding: '16px 18px', display: 'flex', alignItems: 'flex-start', gap: 14,
+                  borderBottom: i < pag.pageItems.length - 1 ? `1px solid ${T.border}` : 'none' }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 9, background: T.bg,
+                    border: `1px solid ${T.border}`, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                    {(TYPE_ICON[a.type] ?? Icons.award)({ size: 17, stroke: T.textMuted })}
                   </div>
 
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 14.5, fontWeight: 600, color: T.text }}>{a.title}</span>
-                      <span style={{
-                        fontSize: 11, padding: '2px 8px', borderRadius: 999,
-                        background: T.bgSubtle, color: T.textMuted, fontWeight: 500,
-                      }}>{TYPE_LABELS[a.type]}</span>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: T.text }}>{a.title}</span>
+                      <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 999,
+                        background: T.bgSubtle, color: T.textMuted, fontWeight: 500 }}>
+                        {TYPE_LABELS[a.type]}
+                      </span>
                     </div>
 
                     {a.description && (
@@ -279,75 +283,68 @@ export default function StudentAchievements() {
                       </p>
                     )}
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 12, color: T.textSubtle }}>
-                        {Icons.cal({ size: 12, stroke: T.textSubtle })} {' '}
-                        {fmtDate(a.createdAt)}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 12, color: T.textSubtle, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        {Icons.cal({ size: 12, stroke: T.textSubtle })} {fmtDate(a.createdAt)}
                       </span>
                       {a.fileUrl && (
-                        <a href={a.fileUrl} target="_blank" rel="noreferrer" style={{
-                          fontSize: 12, color: T.blue, display: 'inline-flex', alignItems: 'center', gap: 4,
-                        }}>
+                        <a href={a.fileUrl} target="_blank" rel="noreferrer"
+                          style={{ fontSize: 12, color: T.blue, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                           {Icons.link({ size: 12, stroke: T.blue })} Fayl
                         </a>
                       )}
                     </div>
 
                     {a.status === 'REJECTED' && a.rejectReason && (
-                      <div style={{
-                        marginTop: 8, padding: '6px 10px', borderRadius: 6,
+                      <div style={{ marginTop: 8, padding: '6px 10px', borderRadius: 6,
                         background: T.redBg, border: `1px solid #fecaca`,
-                        fontSize: 12.5, color: T.redText,
-                        display: 'flex', alignItems: 'center', gap: 6,
-                      }}>
+                        fontSize: 12.5, color: T.redText, display: 'flex', alignItems: 'center', gap: 6 }}>
                         {Icons.alert({ size: 13, stroke: T.red })}
                         Rad sababi: {a.rejectReason}
                       </div>
                     )}
                   </div>
 
-                  {/* Status + ball */}
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
                     {a.status === 'REJECTED' && a.rejectReason ? (
                       <Tooltip content={`Rad sababi: ${a.rejectReason}`}>
-                        <span style={{
-                          fontSize: 11.5, padding: '3px 10px', borderRadius: 999,
-                          background: sc.bg, color: sc.fg, fontWeight: 500, cursor: 'help',
-                        }}>{sc.label}</span>
+                        <span style={{ fontSize: 11.5, padding: '3px 10px', borderRadius: 999,
+                          background: sc.bg, color: sc.fg, fontWeight: 500, cursor: 'help' }}>
+                          {sc.label}
+                        </span>
                       </Tooltip>
                     ) : (
-                      <span style={{
-                        fontSize: 11.5, padding: '3px 10px', borderRadius: 999,
-                        background: sc.bg, color: sc.fg, fontWeight: 500,
-                      }}>{sc.label}</span>
+                      <span style={{ fontSize: 11.5, padding: '3px 10px', borderRadius: 999,
+                        background: sc.bg, color: sc.fg, fontWeight: 500 }}>
+                        {sc.label}
+                      </span>
                     )}
                     {a.status === 'APPROVED' && a.ball > 0 && (
-                      <span style={{ fontSize: 13, fontWeight: 700, color: T.emerald }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: T.emeraldDeep, fontVariantNumeric: 'tabular-nums' }}>
                         +{a.ball} ball
                       </span>
                     )}
                   </div>
                 </div>
-              </Card>
-            );
-          })}
-          <Pagination page={pag.page} pageCount={pag.pageCount} onChange={pag.setPage} total={pag.total} pageSize={pag.pageSize} style={{ borderTop: 0, padding: '4px 0 0', background: 'transparent' }} />
-        </div>
-      )}
+              );
+            })}
+            <Pagination page={pag.page} pageCount={pag.pageCount} onChange={pag.setPage}
+              total={pag.total} pageSize={pag.pageSize}
+              style={{ borderTop: 0, padding: '4px 0 0', background: 'transparent' }} />
+          </div>
+        )}
+      </Card>
 
       <AddAchievementDialog open={dialogOpen} onClose={() => setDialogOpen(false)} />
     </div>
   );
 }
 
-// ── sub components ──────────────────────────────────────────────────────────
+// ── sub-components ────────────────────────────────────────────────────────
 
 function EmptyState({ onAdd, filtered }: { onAdd: () => void; filtered: boolean }) {
   return (
-    <div style={{
-      padding: '60px 24px', display: 'flex', flexDirection: 'column',
-      alignItems: 'center', gap: 12, textAlign: 'center',
-    }}>
+    <div style={{ padding: '60px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, textAlign: 'center' }}>
       {Icons.award({ size: 48, stroke: T.border })}
       <div style={{ fontSize: 16, fontWeight: 600, color: T.text }}>
         {filtered ? "Bu kategoriyada yutuq yo'q" : "Hozircha yutuq yo'q"}
@@ -368,9 +365,9 @@ function EmptyState({ onAdd, filtered }: { onAdd: () => void; filtered: boolean 
 
 function AchievementsSkeleton() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
       {[0, 1, 2].map(i => (
-        <div key={i} style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 12, padding: 18 }}>
+        <div key={i} style={{ padding: 18, borderBottom: `1px solid ${T.border}` }}>
           <div style={{ display: 'flex', gap: 14 }}>
             <Skeleton h={40} w={40} r={10} />
             <div style={{ flex: 1 }}>

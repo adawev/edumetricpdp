@@ -161,8 +161,11 @@ model Feedback {
   mentorId  String
   mentor    Mentor   @relation(fields: [mentorId], references: [id], onDelete: Cascade)
   text      String
-  score     Int
+  score     Float
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, mentorId])
 }
 
 model AttendanceRecord {

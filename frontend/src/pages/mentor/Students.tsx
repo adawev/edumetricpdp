@@ -14,6 +14,7 @@ import { statusBadge, riskBadge, type GrantStatus, type GrantReason, type RiskLe
 type Student = {
   id: string;
   fullName: string;
+  email: string;
   groupId: string;
   gpa: number;
   attendance: number;
@@ -240,10 +241,12 @@ export default function MentorStudents() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery]         = useState('');
   const [statusFilter, setStatus] = useState<string>('ALL');
-  const [groupFilter, setGroup]   = useState<string>('ALL');
+  const [groupFilter, setGroupFilter] = useState<string>('ALL');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sortKey, setSortKey]     = useState<SortKey>('grantScore');
   const [sortDir, setSortDir]     = useState<SortDir>('desc');
+  const [page, setPage]           = useState(1);
+  const PAGE_SIZE = 15;
 
   useEffect(() => {
     const id = searchParams.get('student');
@@ -294,6 +297,15 @@ export default function MentorStudents() {
     [allStudents, selectedId],
   );
 
+  // Pagination
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const paginated = useMemo(
+    () => filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [filtered, currentPage],
+  );
+  useEffect(() => { setPage(1); }, [query, statusFilter, groupFilter]);
+
   function SortIcon({ k }: { k: SortKey }) {
     if (sortKey !== k) return <ChevronUp className="w-3 h-3 opacity-20" />;
     return sortDir === 'desc'
@@ -313,7 +325,9 @@ export default function MentorStudents() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Talabalar</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {isLoading ? 'Yuklanmoqda...' : `${filtered.length} ta · ${allStudents.length} dan`}
+          {isLoading
+            ? 'Yuklanmoqda...'
+            : `Sizning ${allStudents.length} ta talabangiz — qatorga bosing batafsil ko'rish uchun`}
         </p>
       </div>
 
@@ -353,11 +367,14 @@ export default function MentorStudents() {
           {/* Group filter */}
           {data && data.length > 1 && (
             <select
-              value={groupFilter} onChange={e => setGroup(e.target.value)}
+              value={groupFilter}
+              onChange={e => setGroupFilter(e.target.value)}
               className="h-9 px-3 rounded-md border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
             >
               <option value="ALL">Barcha guruhlar</option>
-              {data.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+              {data.map(g => (
+                <option key={g.id} value={g.id}>{g.name} · {g.course}-kurs</option>
+              ))}
             </select>
           )}
         </div>
@@ -421,7 +438,7 @@ export default function MentorStudents() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((s, i) => {
+                {paginated.map((s, i) => {
                   const st = statusBadge(s.grantStatus, s.grantReason);
                   return (
                     <tr
@@ -429,13 +446,15 @@ export default function MentorStudents() {
                       onClick={() => setSelectedId(s.id)}
                       className="border-t hover:bg-slate-50 transition-colors cursor-pointer"
                     >
-                      <td className="px-4 py-3 text-muted-foreground tabular-nums text-xs">{i + 1}</td>
+                      <td className="px-4 py-3 text-muted-foreground tabular-nums text-xs">{(currentPage - 1) * PAGE_SIZE + i + 1}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5">
                           <Avatar name={s.fullName} size={30} />
                           <div>
                             <div className="font-medium text-[13.5px]">{s.fullName}</div>
-                            <div className="text-[11px] text-muted-foreground">{groupNameById.get(s.groupId) ?? '—'}</div>
+                            {s.email && (
+                              <div className="text-[11px] text-muted-foreground">{s.email}</div>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -463,6 +482,33 @@ export default function MentorStudents() {
               </tbody>
             </table>
           </div>
+
+          {pageCount > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t bg-slate-50">
+              <div className="text-xs text-muted-foreground tabular-nums">
+                {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} / {filtered.length}
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="h-8 px-3 rounded-md border bg-white text-xs font-medium hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Oldingi
+                </button>
+                <span className="px-3 text-xs text-muted-foreground tabular-nums">
+                  {currentPage} / {pageCount}
+                </span>
+                <button
+                  onClick={() => setPage(p => Math.min(pageCount, p + 1))}
+                  disabled={currentPage === pageCount}
+                  className="h-8 px-3 rounded-md border bg-white text-xs font-medium hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Keyingi
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

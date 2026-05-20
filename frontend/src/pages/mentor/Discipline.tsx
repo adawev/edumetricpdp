@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Info, RefreshCw, CheckCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
@@ -47,8 +47,11 @@ function scoreTone(v: number) {
   return           { text: 'text-red-700',       bg: 'bg-red-50',     accent: '#ef4444' };
 }
 
+const GRID = '32px 1fr 130px 360px';
+
 // ─────────────────────────────────────────────────────────────────────────────
 export default function MentorDiscipline() {
+  const qc = useQueryClient();
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['mentor-students'],
     queryFn: async () => (await api.get<Group[]>('/mentor/students')).data,
@@ -56,9 +59,9 @@ export default function MentorDiscipline() {
 
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
   const [scores, setScores]   = useState<Record<string, number>>({});
-  const [notes, setNotes]     = useState<Record<string, string>>({});
   const [saving, setSaving]   = useState<string | null>(null);
-  const [dirty, setDirty]     = useState(false);
+  const [page, setPage]       = useState(1);
+  const PAGE_SIZE = 15;
 
   // Init scores when data loads
   useEffect(() => {
@@ -76,13 +79,13 @@ export default function MentorDiscipline() {
   const selectedGroup = data?.find(g => g.id === selectedGroupId);
   const groupStudents = selectedGroup?.students ?? [];
 
+  const pageCount = Math.max(1, Math.ceil(groupStudents.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const paginatedStudents = groupStudents.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  useEffect(() => { setPage(1); }, [selectedGroupId]);
+
   const setOne = (id: string, v: number) => {
     setScores(p => ({ ...p, [id]: Math.max(0, Math.min(10, v)) }));
-    setDirty(true);
-  };
-  const setNote = (id: string, v: string) => {
-    setNotes(p => ({ ...p, [id]: v }));
-    setDirty(true);
   };
   const setAll = (v: number) => {
     setScores(p => {
@@ -90,7 +93,6 @@ export default function MentorDiscipline() {
       groupStudents.forEach(s => { next[s.id] = v; });
       return next;
     });
-    setDirty(true);
   };
 
   // Save individual student
@@ -98,6 +100,7 @@ export default function MentorDiscipline() {
     setSaving(studentId);
     try {
       await api.post('/mentor/discipline', { studentId, score: scores[studentId] ?? 0 });
+      await qc.invalidateQueries({ queryKey: ['mentor-students'] });
       toast.success('Saqlandi');
     } catch (e: any) {
       toast.error(e.response?.data?.error || 'Xato');
@@ -115,8 +118,8 @@ export default function MentorDiscipline() {
           api.post('/mentor/discipline', { studentId: s.id, score: scores[s.id] ?? 0 })
         )
       );
+      await qc.invalidateQueries({ queryKey: ['mentor-students'] });
       toast.success(`${selectedGroup?.name} guruhi · ${groupStudents.length} ta talaba saqlandi`);
-      setDirty(false);
     } catch {
       toast.error('Saqlashda xato');
     } finally {
@@ -124,11 +127,27 @@ export default function MentorDiscipline() {
     }
   };
 
+  // Reset to original (server) values
+  const resetScores = () => {
+    if (!data) return;
+    const next: Record<string, number> = {};
+    data.flatMap(g => g.students).forEach(s => { next[s.id] = s.disciplineScore; });
+    setScores(next);
+  };
+
   const avg = groupStudents.length
     ? (groupStudents.reduce((a, s) => a + (scores[s.id] ?? 0), 0) / groupStudents.length)
     : 0;
 
   const avgTone = scoreTone(avg);
+
+  // Dirty — joriy ballar serverdagi qiymatdan farq qiladimi (hisoblanadi, state emas)
+  const dirty = useMemo(() => {
+    if (!data) return false;
+    const orig = new Map<string, number>();
+    data.flatMap(g => g.students).forEach(s => orig.set(s.id, s.disciplineScore));
+    return Object.entries(scores).some(([id, v]) => orig.has(id) && orig.get(id) !== v);
+  }, [scores, data]);
 
   return (
     <div className="p-8 space-y-5">
@@ -206,16 +225,15 @@ export default function MentorDiscipline() {
           ))}
         </div>
       ) : !isError && (
-        <div className="bg-white rounded-xl border overflow-hidden" style={{ paddingBottom: 72 }}>
+        <div className="bg-white rounded-xl border overflow-hidden">
           {/* Table header */}
           <div className="grid items-center border-b bg-slate-50 px-5 py-2.5 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground"
-            style={{ gridTemplateColumns: '28px 1fr 100px 220px 1fr' }}
+            style={{ gridTemplateColumns: GRID }}
           >
             <span>#</span>
             <span>Talaba</span>
             <span className="text-right">LMS davomat</span>
             <span className="text-center">Intizom (0–10)</span>
-            <span>Izoh (ixtiyoriy)</span>
           </div>
 
           {groupStudents.length === 0 && (
@@ -224,25 +242,35 @@ export default function MentorDiscipline() {
             </div>
           )}
 
-          {groupStudents.map((stu, i) => {
+          {paginatedStudents.map((stu, i) => {
             const cur   = scores[stu.id] ?? 0;
             const tone  = scoreTone(cur);
-            const note  = notes[stu.id] ?? '';
             const isSaving = saving === stu.id || saving === 'all';
 
             return (
               <div
                 key={stu.id}
-                className="grid items-center px-5 py-3 border-b last:border-b-0"
-                style={{ gridTemplateColumns: '28px 1fr 100px 220px 1fr' }}
+                className="grid items-center px-5 py-3 border-b"
+                style={{ gridTemplateColumns: GRID }}
               >
-                <span className="text-xs text-slate-400 tabular-nums">{i + 1}</span>
+                <span className="text-xs text-slate-400 tabular-nums">{(currentPage - 1) * PAGE_SIZE + i + 1}</span>
 
                 {/* Student */}
                 <div className="flex items-center gap-3 min-w-0">
                   <Avatar name={stu.fullName} size={32} />
                   <div className="min-w-0">
-                    <div className="text-[13.5px] font-medium truncate">{stu.fullName}</div>
+                    <div className="flex items-center gap-2">
+                      <div className="text-[13.5px] font-medium truncate">{stu.fullName}</div>
+                      {stu.disciplineScore > 0 ? (
+                        <span className="shrink-0 inline-flex items-center px-1.5 py-px rounded text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          Baholangan
+                        </span>
+                      ) : (
+                        <span className="shrink-0 inline-flex items-center px-1.5 py-px rounded text-[10px] font-medium bg-slate-50 text-slate-500 border border-slate-200">
+                          Yangi
+                        </span>
+                      )}
+                    </div>
                     <div className="text-[11.5px] text-muted-foreground">
                       GPA <span className={`font-medium ${stu.gpa < 80 ? 'text-red-600' : ''}`}>{Math.round(stu.gpa)}%</span>
                       {' · '}Ball <span className="font-medium">{Math.round(stu.grantScore)}</span>
@@ -273,62 +301,67 @@ export default function MentorDiscipline() {
                     {isSaving ? '...' : cur.toFixed(1)}
                   </button>
                 </div>
-
-                {/* Note */}
-                <input
-                  type="text"
-                  placeholder="Masalan: Faol, intizomli..."
-                  value={note}
-                  onChange={e => setNote(stu.id, e.target.value)}
-                  className="w-full h-8 px-3 rounded-md border bg-slate-50 text-[12.5px] focus:outline-none focus:ring-1 focus:ring-slate-400"
-                />
               </div>
             );
           })}
-        </div>
-      )}
 
-      {/* Sticky save bar */}
-      {!isLoading && !isError && groupStudents.length > 0 && (
-        <div
-          className="fixed bottom-0 left-0 right-0 z-30 px-8 py-3.5 flex items-center justify-between"
-          style={{
-            background: 'rgba(255,255,255,0.92)',
-            backdropFilter: 'blur(8px)',
-            borderTop: '1px solid #e2e8f0',
-          }}
-        >
-          <div className="text-sm text-muted-foreground">
-            {dirty ? (
-              <span className="text-amber-600 font-medium">● Saqlanmagan o'zgarishlar bor</span>
-            ) : (
-              <span>Barcha o'zgarishlar saqlangan</span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                // Reset to original
-                if (data) {
-                  const next: Record<string, number> = {};
-                  data.flatMap(g => g.students).forEach(s => { next[s.id] = s.disciplineScore; });
-                  setScores(next);
-                  setDirty(false);
-                }
-              }}
-              className="h-9 px-4 rounded-md border bg-white text-sm font-medium hover:bg-slate-50 transition-colors"
-            >
-              Bekor qilish
-            </button>
-            <button
-              disabled={!dirty || saving === 'all'}
-              onClick={saveAll}
-              className="inline-flex items-center gap-2 h-9 px-4 bg-slate-900 text-white text-sm font-medium rounded-md hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <CheckCheck className="w-4 h-4" />
-              {saving === 'all' ? 'Saqlanmoqda...' : 'Barchasini saqlash'}
-            </button>
-          </div>
+          {/* Pagination */}
+          {pageCount > 1 && (
+            <div className="flex items-center justify-between px-5 py-2.5 border-t bg-white">
+              <div className="text-xs text-muted-foreground tabular-nums">
+                {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, groupStudents.length)} / {groupStudents.length}
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="h-8 px-3 rounded-md border bg-white text-xs font-medium hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Oldingi
+                </button>
+                <span className="px-3 text-xs text-muted-foreground tabular-nums">
+                  {currentPage} / {pageCount}
+                </span>
+                <button
+                  onClick={() => setPage(p => Math.min(pageCount, p + 1))}
+                  disabled={currentPage === pageCount}
+                  className="h-8 px-3 rounded-md border bg-white text-xs font-medium hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Keyingi
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Save bar — card ichida, pastda */}
+          {groupStudents.length > 0 && (
+            <div className="flex items-center justify-between px-5 py-3 border-t bg-slate-50">
+              <div className="text-sm text-muted-foreground">
+                {dirty ? (
+                  <span className="text-amber-600 font-medium">● Saqlanmagan o'zgarishlar bor</span>
+                ) : (
+                  <span>Barcha o'zgarishlar saqlangan</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={resetScores}
+                  disabled={!dirty}
+                  className="h-9 px-4 rounded-md border bg-white text-sm font-medium hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Bekor qilish
+                </button>
+                <button
+                  disabled={!dirty || saving === 'all'}
+                  onClick={saveAll}
+                  className="inline-flex items-center gap-2 h-9 px-4 bg-slate-900 text-white text-sm font-medium rounded-md hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <CheckCheck className="w-4 h-4" />
+                  {saving === 'all' ? 'Saqlanmoqda...' : 'Barchasini saqlash'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

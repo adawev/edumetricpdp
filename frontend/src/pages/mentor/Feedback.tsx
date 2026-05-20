@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { ErrorState } from '@/components/States';
 
-type Student = { id: string; fullName: string; groupId: string };
+type Student = { id: string; fullName: string; groupId: string; tutorScore: number };
 type Group   = { id: string; name: string; course: number; students: Student[] };
 
 type FeedbackItem = {
@@ -39,38 +39,51 @@ function Avatar({ name, size = 36 }: { name: string; size?: number }) {
   );
 }
 
-// ── Stars ─────────────────────────────────────────────────────────────────────
-function StarPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
-  const [hover, setHover] = useState(0);
-  const active = hover || value;
+// ── Score input/display ───────────────────────────────────────────────────────
+// 1.0 – 5.0, 0.1 qadam. Yulduzcha emas — kasr qiymat (4.3 kabi) kiritish uchun.
+function ScorePicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const clamp = (n: number) => Math.max(0, Math.min(5, Math.round(n * 10) / 10));
   return (
-    <div className="flex items-center gap-1" onMouseLeave={() => setHover(0)}>
-      {[1, 2, 3, 4, 5].map(n => (
-        <button
-          key={n}
-          type="button"
-          onMouseEnter={() => setHover(n)}
-          onClick={() => onChange(n)}
-          className="p-0.5 rounded hover:bg-slate-100 transition-colors"
-          aria-label={`${n} yulduz`}
-        >
-          <Star className={`w-6 h-6 transition-colors ${n <= active ? 'fill-amber-400 text-amber-400' : 'text-slate-200'}`} />
-        </button>
-      ))}
-      <span className="ml-2 text-sm text-muted-foreground tabular-nums">
-        {value > 0 ? `${value} / 5` : 'Baho tanlang'}
-      </span>
+    <div className="space-y-2">
+      <div className="flex items-center gap-3">
+        <input
+          type="range"
+          min={1}
+          max={5}
+          step={0.1}
+          value={value || 1}
+          onChange={e => onChange(clamp(Number(e.target.value)))}
+          className="flex-1 accent-slate-900"
+          aria-label="Baho"
+        />
+        <input
+          type="number"
+          min={1}
+          max={5}
+          step={0.1}
+          value={value || ''}
+          placeholder="0.0"
+          onChange={e => {
+            const n = Number(e.target.value);
+            onChange(Number.isFinite(n) ? clamp(n) : 0);
+          }}
+          className="w-20 h-9 px-2 rounded-md border bg-white text-sm text-center tabular-nums focus:outline-none focus:ring-2 focus:ring-slate-900"
+        />
+        <span className="text-sm text-muted-foreground tabular-nums w-8">/ 5</span>
+      </div>
+      <p className="text-[11.5px] text-muted-foreground">
+        Diapazon: 1.0 – 5.0 (masalan, 4.3)
+      </p>
     </div>
   );
 }
 
-function StarsDisplay({ score }: { score: number }) {
+function ScoreBadge({ score }: { score: number }) {
   return (
-    <div className="flex items-center gap-0.5">
-      {[1, 2, 3, 4, 5].map(n => (
-        <Star key={n} className={`w-3 h-3 ${n <= score ? 'fill-amber-400 text-amber-400' : 'text-slate-200'}`} />
-      ))}
-    </div>
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-medium tabular-nums">
+      <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+      {score.toFixed(1)} / 5
+    </span>
   );
 }
 
@@ -88,6 +101,7 @@ export default function MentorFeedback() {
   const [score, setScore]         = useState(0);
   const [text, setText]           = useState('');
   const [listSearch, setListSearch] = useState('');
+  const [groupFilter, setGroupFilter] = useState<string>('ALL');
 
   const { data: groups } = useQuery({
     queryKey: ['mentor-students'],
@@ -113,14 +127,29 @@ export default function MentorFeedback() {
     enabled: !!studentId,
   });
 
+  // Bitta mentor → bitta talaba uchun bitta feedback. Avval yozilgan bo'lsa — tahrirlanadi.
+  const myFeedback = useMemo(() => history?.find(f => f.isMine) ?? null, [history]);
+  const isEditing = !!myFeedback;
+
+  // Talaba almashganda yoki feedback ID o'zgarganda formani to'ldiradi.
+  // Deps'da `myFeedback` obyekti emas, faqat `id` — refetch'da forma reset bo'lmasin.
+  useEffect(() => {
+    if (myFeedback) {
+      setText(myFeedback.text);
+      setScore(myFeedback.score);
+    } else {
+      setText('');
+      setScore(0);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myFeedback?.id, studentId]);
+
   const submit = useMutation({
     mutationFn: async () => {
       await api.post('/mentor/feedback', { studentId, text: text.trim(), score });
     },
     onSuccess: () => {
-      toast.success('Feedback yuborildi');
-      setText('');
-      setScore(0);
+      toast.success(isEditing ? 'Feedback yangilandi' : 'Feedback yuborildi');
       qc.invalidateQueries({ queryKey: ['mentor-feedbacks', studentId] });
       qc.invalidateQueries({ queryKey: ['mentor-students'] });
     },
@@ -135,8 +164,11 @@ export default function MentorFeedback() {
   const selectedStudent = allStudents.find(s => s.id === studentId) ?? null;
 
   const filteredList = useMemo(() =>
-    allStudents.filter(s => s.fullName.toLowerCase().includes(listSearch.toLowerCase())),
-    [allStudents, listSearch],
+    allStudents.filter(s =>
+      (groupFilter === 'ALL' || s.groupId === groupFilter) &&
+      s.fullName.toLowerCase().includes(listSearch.toLowerCase())
+    ),
+    [allStudents, listSearch, groupFilter],
   );
 
   return (
@@ -150,7 +182,7 @@ export default function MentorFeedback() {
 
         {/* ─── Left: student list ─── */}
         <div className="bg-white rounded-xl border overflow-hidden self-start">
-          <div className="p-3 border-b">
+          <div className="p-3 border-b space-y-2">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
               <input
@@ -161,8 +193,20 @@ export default function MentorFeedback() {
                 className="w-full h-8 pl-8 pr-3 rounded-md border bg-slate-50 text-[13px] focus:outline-none focus:ring-2 focus:ring-slate-900"
               />
             </div>
+            {groups && groups.length > 1 && (
+              <select
+                value={groupFilter}
+                onChange={e => setGroupFilter(e.target.value)}
+                className="w-full h-8 px-2.5 rounded-md border bg-slate-50 text-[13px] focus:outline-none focus:ring-2 focus:ring-slate-900"
+              >
+                <option value="ALL">Barcha guruhlar</option>
+                {groups.map(g => (
+                  <option key={g.id} value={g.id}>{g.name} · {g.course}-kurs</option>
+                ))}
+              </select>
+            )}
           </div>
-          <div className="overflow-auto" style={{ maxHeight: 520 }}>
+          <div className="overflow-auto" style={{ maxHeight: 'calc(100vh - 220px)', minHeight: 520 }}>
             {filteredList.length === 0 ? (
               <div className="py-10 text-center text-sm text-muted-foreground">Talaba topilmadi</div>
             ) : filteredList.map(stu => {
@@ -181,7 +225,14 @@ export default function MentorFeedback() {
                 >
                   <Avatar name={stu.fullName} size={28} />
                   <div className="flex-1 min-w-0">
-                    <div className="text-[13px] font-medium truncate">{stu.fullName}</div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="text-[13px] font-medium truncate">{stu.fullName}</div>
+                      {stu.tutorScore > 0 && (
+                        <span className="shrink-0 inline-flex items-center px-1.5 py-px rounded text-[9.5px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          ✓
+                        </span>
+                      )}
+                    </div>
                     <div className="text-[11px] text-muted-foreground">{groupNameById.get(stu.groupId)}</div>
                   </div>
                 </div>
@@ -211,9 +262,19 @@ export default function MentorFeedback() {
               </div>
             )}
 
+            {isEditing && (
+              <div className="text-[12.5px] text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                Siz bu talabaga avval feedback yozgansiz — har talabaga bittadan feedback.
+                Saqlasangiz eski yozuv yangilanadi.
+              </div>
+            )}
+
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Baho (1–5)</label>
-              <StarPicker value={score} onChange={setScore} />
+              <label className="text-sm font-medium">Mentor bahosi (1.0–5.0)</label>
+              <ScorePicker value={score} onChange={setScore} />
+              <p className="text-[11.5px] text-muted-foreground">
+                Bu baho grant ballidagi "Mentor bahosi" mezoni — max 5 ball
+              </p>
             </div>
 
             <div className="space-y-1.5">
@@ -250,7 +311,9 @@ export default function MentorFeedback() {
                 className="inline-flex items-center gap-2 h-9 px-4 bg-slate-900 text-white text-sm font-medium rounded-md hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <Send className="w-3.5 h-3.5" />
-                {submit.isPending ? 'Yuborilmoqda...' : 'Yuborish'}
+                {submit.isPending
+                  ? 'Saqlanmoqda...'
+                  : isEditing ? 'Yangilash' : 'Yuborish'}
               </button>
             </div>
           </div>
@@ -301,7 +364,7 @@ export default function MentorFeedback() {
                               siz
                             </span>
                           )}
-                          <StarsDisplay score={item.score} />
+                          <ScoreBadge score={item.score} />
                           <span className="text-xs text-muted-foreground ml-auto">{formatDate(item.createdAt)}</span>
                         </div>
                         <p className="mt-1.5 text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{item.text}</p>

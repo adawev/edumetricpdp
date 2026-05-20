@@ -238,13 +238,14 @@ export const Field = ({ label, hint, children, htmlFor }: { label: string; hint?
 );
 
 // ===== Avatar =====
-export const Avatar = ({ name, color, size = 32 }: { name: string; color?: string; size?: number }) => {
+export const Avatar = ({ name, color, size = 32, style }: { name: string; color?: string; size?: number; style?: CSSProperties }) => {
   const initials = name ? name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() : '?';
   return (
     <div style={{
       width: size, height: size, borderRadius: 999, background: color || '#fde68a',
       display: 'grid', placeItems: 'center', fontWeight: 600,
       fontSize: Math.round(size * 0.38), color: '#7c2d12', flexShrink: 0,
+      ...style,
     }}>{initials}</div>
   );
 };

@@ -9,9 +9,7 @@ export function PublicChrome({ children, loginModal }: { children: ReactNode; lo
   const navigate = useNavigate();
   const loc = useLocation();
   const user = useAuth(s => s.user);
-  const active = loc.pathname.includes('about') ? 'about'
-               : loc.pathname.includes('badges') ? 'badges'
-               : 'rating';
+  const active = loc.pathname.includes('about') ? 'about' : 'rating';
 
   // Login bo'lganlar uchun panel marshruti
   const panelPath = user?.role === 'STUDENT' ? '/student/dashboard'
@@ -37,8 +35,7 @@ export function PublicChrome({ children, loginModal }: { children: ReactNode; lo
           </Link>
           <nav style={{ display: 'flex', gap: 4 }}>
             {[{ id: 'rating', label: 'Reyting', path: '/public/rating' },
-              { id: 'about',  label: 'Grant haqida', path: '/public/about' },
-              { id: 'badges', label: "Badge'lar", path: '/public/badges' }].map(item => {
+              { id: 'about',  label: 'Grant haqida', path: '/public/about' }].map(item => {
               const isActive = active === item.id;
               return (
                 <Link key={item.id} to={item.path} style={{
@@ -109,11 +106,14 @@ function PublicFooter() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 22, fontSize: 12.5 }}>
           {[
-            { l: 'Grant nizomi', icon: <Icons.fileText size={12} /> },
-            { l: 'Telegram',     icon: <Icons.send size={12} /> },
-            { l: 'GitHub',       icon: <Icons.link size={12} /> },
+            { l: 'Grant nizomi', icon: <Icons.fileText size={12} />, href: 'https://docs.google.com/document/d/e/2PACX-1vQedNX-bqPPlrPgh2IvISdK2mYuNqQ4bYigcorbbwEXU8gJf6osRO4K1DWPjDQGIg/pub' },
+            { l: 'Telegram',     icon: <Icons.send size={12} />,     href: '#' },
+            { l: 'GitHub',       icon: <Icons.link size={12} />,     href: '#' },
           ].map((it, i) => (
-            <a key={i} href="#" onClick={(e) => e.preventDefault()}
+            <a key={i} href={it.href}
+              target={it.href !== '#' ? '_blank' : undefined}
+              rel={it.href !== '#' ? 'noopener noreferrer' : undefined}
+              onClick={it.href === '#' ? (e) => e.preventDefault() : undefined}
               style={{ color: T.textMuted, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
               {it.icon}{it.l}
             </a>

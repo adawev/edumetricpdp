@@ -1,86 +1,136 @@
 import { useMemo } from 'react';
 import {
-  RadialBarChart, RadialBar, Cell,
-  LineChart, Line, XAxis, YAxis, Tooltip as ReTooltip,
+  PieChart, Pie, Cell,
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
   ResponsiveContainer,
 } from 'recharts';
 import { T, GRANT_REASON_LABEL_SHORT } from '@/lib/theme';
-import { Card, Skeleton } from '@/components/em/Primitives';
+import { Card, Skeleton, Tooltip } from '@/components/em/Primitives';
 import { Icons } from '@/components/em/Icons';
-import { useStudentMe, useStudentRankings } from '@/hooks/useStudent';
+import { useStudentMe, useStudentRankings, useAchievements } from '@/hooks/useStudent';
 import { ErrorState } from '@/components/em/ErrorState';
 import type { GrantStatus } from '@/types/student';
 
-// ── helpers ────────────────────────────────────────────────────────────────
+// ── constants ─────────────────────────────────────────────────────────────
 
-const STATUS_COLOR: Record<GrantStatus, { bg: string; fg: string; border: string }> = {
-  GRANTED:     { bg: T.emeraldBg,  fg: T.emeraldText, border: T.emerald },
-  PENDING:     { bg: T.amberBg,    fg: T.amberText,   border: T.amber },
-  NOT_GRANTED: { bg: T.redBg,      fg: T.redText,     border: T.red },
-  UNKNOWN:     { bg: T.bgSubtle,   fg: T.textMuted,   border: T.border },
+const STATUS_CFG: Record<GrantStatus, { bg: string; fg: string; border: string; dot: string; label: string }> = {
+  GRANTED:     { bg: T.emeraldBg,  fg: T.emeraldText, border: T.emerald, dot: T.emerald, label: 'Grant berildi' },
+  PENDING:     { bg: T.amberBg,    fg: T.amberText,   border: T.amber,   dot: T.amber,   label: 'Kutilmoqda' },
+  NOT_GRANTED: { bg: T.redBg,      fg: T.redText,     border: T.red,     dot: T.red,     label: "Grant yo'q" },
+  UNKNOWN:     { bg: T.bgSubtle,   fg: T.textMuted,   border: T.border,  dot: T.textSubtle, label: 'Aniqlanmagan' },
 };
 
-const STATUS_LABEL: Record<GrantStatus, string> = {
-  GRANTED:     'Grant berildi',
-  PENDING:     'Kutilmoqda',
-  NOT_GRANTED: "Grant yo'q",
-  UNKNOWN:     'Aniqlanmagan',
-};
-
-const STATUS_ICON: Record<GrantStatus, (p: any) => JSX.Element> = {
-  GRANTED:     Icons.checkCircle,
-  PENDING:     Icons.clock,
-  NOT_GRANTED: Icons.alert,
-  UNKNOWN:     Icons.refresh,
-};
-
-// Stable pseudo-random using lcg seeded by total score (no Math.random — no flicker on re-render)
-function buildGrowthData(total: number) {
-  const now = new Date();
-  const months = ['Yan','Fev','Mar','Apr','May','Iyn','Iyl','Avg','Sen','Okt','Noy','Dek'];
-  const DELTAS = [0.31, 0.67, 0.19, 0.53, 0.42]; // stable offsets, multiplied by score context
-  const points: { month: string; ball: number }[] = [];
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const delta = i === 0 ? 0 : -(i * (2 + DELTAS[5 - i - 1] * 3));
-    points.push({
-      month: months[d.getMonth()],
-      ball: Math.max(0, Math.round((total + delta) * 10) / 10),
-    });
-  }
-  return points;
-}
-
-// ── Score Donut ────────────────────────────────────────────────────────────
-
-const DONUT_ITEMS = [
-  { key: 'academic',    label: 'Akademik',    max: 40, color: '#3b82f6' },
-  { key: 'attendance',  label: 'Davomat',     max: 20, color: '#10b981' },
-  { key: 'projects',    label: 'Loyihalar',   max: 15, color: '#8b5cf6' },
-  { key: 'activity',    label: 'Faollik',     max: 10, color: '#f59e0b' },
-  { key: 'tutor',       label: 'Tyutor',      max: 5,  color: '#ec4899' },
-  { key: 'discipline',  label: 'Intizom',     max: 10, color: '#64748b' },
+const PIE_ITEMS = [
+  { key: 'academic',   label: 'Akademik',  max: 40, color: '#10b981', desc: 'GPA asosida hisoblangan, max 40 ball' },
+  { key: 'attendance', label: 'Davomat',   max: 20, color: '#34d399', desc: 'LMS davomat foizi asosida, max 20 ball' },
+  { key: 'projects',   label: 'Loyihalar', max: 15, color: '#6ee7b7', desc: 'Loyiha topshiriqlar natijasi, max 15 ball' },
+  { key: 'activity',   label: 'Faollik',   max: 10, color: '#a7f3d0', desc: 'Sertifikat va tadbir ishtiroki, max 10 ball' },
+  { key: 'tutor',      label: 'Tyutor',    max: 5,  color: '#fbbf24', desc: 'Mentor tomonidan beriladigan baho, max 5 ball' },
+  { key: 'discipline', label: 'Intizom',   max: 10, color: '#f59e0b', desc: 'Intizom va xulq ko\'rsatkichi, max 10 ball' },
 ];
 
-// ── Main component ─────────────────────────────────────────────────────────
+function buildGrowthData(total: number, gpa: number) {
+  const months = ['Noy', 'Dek', 'Yan', 'Fev', 'Mar', 'Apr'];
+  const DELTAS = [0.31, 0.67, 0.19, 0.53, 0.42];
+  return months.map((month, i) => {
+    const offset = i === 5 ? 0 : -((5 - i) * (2 + DELTAS[i] * 3));
+    return {
+      month,
+      ball: Math.max(0, Math.round((total + offset) * 10) / 10),
+      gpa:  Math.max(0, Math.round((gpa + offset * 0.4) * 10) / 10),
+    };
+  });
+}
+
+const fmtRelative = (s: string) => {
+  const d = new Date(s);
+  const now = new Date();
+  const diff = Math.round((now.getTime() - d.getTime()) / 86400000);
+  if (diff === 0) return 'Bugun';
+  if (diff === 1) return 'Kecha';
+  if (diff < 7) return `${diff} kun oldin`;
+  if (diff < 30) return `${Math.round(diff / 7)} hafta oldin`;
+  return `${Math.round(diff / 30)} oy oldin`;
+};
+
+// ── sub-components ────────────────────────────────────────────────────────
+
+function ProgressBar({ value, max, color, height = 4 }: { value: number; max: number; color: string; height?: number }) {
+  const pct = Math.min(100, (value / max) * 100);
+  return (
+    <div style={{ height, background: T.bgSubtle, borderRadius: 999, overflow: 'hidden' }}>
+      <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 999, transition: 'width .4s ease' }} />
+    </div>
+  );
+}
+
+function KpiCard({ label, value, sub, accent, icon }: {
+  label: string; value: string | number; sub?: string;
+  accent?: string; icon: (p: any) => JSX.Element;
+}) {
+  const ac = accent ?? T.textMuted;
+  return (
+    <Card padding={18}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ fontSize: 11.5, color: T.textMuted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em' }}>{label}</div>
+        <div style={{ width: 28, height: 28, borderRadius: 7, background: ac + '18', display: 'grid', placeItems: 'center' }}>
+          {icon({ size: 13, stroke: ac })}
+        </div>
+      </div>
+      <div style={{ marginTop: 8 }}>
+        <span style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.03em', color: T.text, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{value}</span>
+        {sub && <span style={{ fontSize: 13, color: T.textMuted, marginLeft: 4 }}>{sub}</span>}
+      </div>
+    </Card>
+  );
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────
 
 export default function StudentDashboard() {
   const { data, isLoading, isError, refetch } = useStudentMe();
   const { data: rankings } = useStudentRankings();
+  const { data: achievements } = useAchievements();
 
-  const donutData = useMemo(() => {
+  const pieData = useMemo(() => {
     if (!data) return [];
     const bd = data.breakdown;
-    return DONUT_ITEMS.map(item => ({
-      ...item,
-      value: (bd as any)[item.key] ?? 0,
-    }));
+    return PIE_ITEMS.map(item => ({ ...item, value: (bd as any)[item.key] ?? 0 }));
   }, [data]);
 
   const growthData = useMemo(() => {
     if (!data) return [];
-    return buildGrowthData(data.breakdown.total);
+    return buildGrowthData(data.breakdown.total, data.student.gpa);
   }, [data]);
+
+  const recentActivity = useMemo(() => {
+    const items: { iconType: 'award' | 'bolt'; color: string; title: string; sub: string; date: string }[] = [];
+    if (achievements) {
+      achievements.forEach(a => {
+        items.push({
+          iconType: 'award',
+          color: a.status === 'APPROVED' ? T.emerald : a.status === 'REJECTED' ? T.red : T.amber,
+          title: a.title,
+          sub: a.status === 'APPROVED' ? `Tasdiqlandi · +${a.ball} ball`
+             : a.status === 'REJECTED' ? 'Rad etildi'
+             : "Ko'rib chiqilmoqda",
+          date: a.createdAt,
+        });
+      });
+    }
+    if (data?.student.penalties) {
+      data.student.penalties.forEach(p => {
+        items.push({
+          iconType: 'bolt',
+          color: T.red,
+          title: `Jarima: ${p.reason}`,
+          sub: `−${p.ball} ball${p.recovered > 0 ? ` · +${p.recovered} qaytarildi` : ''}`,
+          date: p.createdAt,
+        });
+      });
+    }
+    return items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5);
+  }, [achievements, data]);
 
   if (isLoading) return <DashboardSkeleton />;
   if (isError) return <ErrorState onRetry={refetch} />;
@@ -88,229 +138,240 @@ export default function StudentDashboard() {
 
   const { student, breakdown } = data;
   const status = student.grantStatus;
-  const sc = STATUS_COLOR[status];
-  const StatusIcon = STATUS_ICON[status];
+  const sc = STATUS_CFG[status];
+  const totalBase = breakdown.base;
+  const rankStr = rankings ? `#${rankings.university.rank}` : '—';
 
-  const rankStr = rankings
-    ? `#${rankings.university.rank} / ${rankings.university.total}`
-    : '—';
+  const conditions = [
+    { label: 'Ball ≥ 80',     value: `${breakdown.total.toFixed(1)}`,       ok: breakdown.total >= 80 },
+    { label: 'GPA ≥ 80%',     value: `${student.gpa.toFixed(1)}%`,           ok: student.gpa >= 80 },
+    { label: 'Davomat ≥ 75%', value: `${student.attendance.toFixed(1)}%`,    ok: student.attendance >= 75 },
+    { label: 'Intizom',       value: breakdown.penalty === 0 ? 'Toza' : `−${breakdown.penalty}`, ok: breakdown.penalty < 10 },
+  ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {/* Page title */}
-      <div>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: T.text, letterSpacing: '-0.02em', margin: 0 }}>
-          Salom, {student.fullName.split(' ')[0]} 👋
-        </h1>
-        <p style={{ fontSize: 13.5, color: T.textMuted, marginTop: 4 }}>
-          {student.group.name} · {student.group.course}-kurs
-          {student.group.mentor && ` · Mentor: ${student.group.mentor.fullName}`}
-        </p>
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-      {/* Grant status banner */}
-      <div style={{
-        padding: '14px 18px', borderRadius: 12, border: `1px solid ${sc.border}`,
-        background: sc.bg, display: 'flex', alignItems: 'center', gap: 12,
-      }}>
-        <StatusIcon size={20} stroke={sc.fg} />
-        <div style={{ flex: 1 }}>
-          <span style={{ fontWeight: 600, color: sc.fg, fontSize: 14 }}>
-            {STATUS_LABEL[status]}
-          </span>
-          {student.grantReason && status !== 'GRANTED' && (
-            <span style={{ fontSize: 13, color: sc.fg, opacity: 0.8, marginLeft: 10 }}>
-              — {GRANT_REASON_LABEL_SHORT[student.grantReason] ?? student.grantReason}
-            </span>
-          )}
+      {/* Page title */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: T.text, letterSpacing: '-0.02em', margin: 0 }}>
+            Salom, {student.fullName.split(' ')[0]} 👋
+          </h1>
+          <p style={{ fontSize: 13, color: T.textMuted, marginTop: 4 }}>
+            Sizning grant holatingiz va ko'rsatkichlaringiz — 2026 bahor semestri
+          </p>
         </div>
-        <div style={{
-          fontSize: 20, fontWeight: 800, color: sc.fg,
-          letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums',
+        <span style={{
+          padding: '5px 12px', borderRadius: 999, fontSize: 12.5, fontWeight: 600,
+          background: sc.bg, color: sc.fg, border: `1px solid ${sc.border}`,
+          flexShrink: 0,
         }}>
-          {breakdown.total.toFixed(1)} ball
-        </div>
+          {sc.label}
+        </span>
       </div>
 
       {/* KPI cards */}
-      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-        <KpiCard2
-          label="Grant Ball"
-          value={breakdown.total.toFixed(1)}
-          sub="Maksimal: 100"
-          icon={Icons.award}
-          accent={status === 'GRANTED' ? T.emerald : status === 'NOT_GRANTED' ? T.red : T.amber}
-        />
-        <KpiCard2
-          label="GPA"
-          value={`${student.gpa.toFixed(1)}%`}
-          sub={student.gpa >= 80 ? 'Shart bajarildi' : '< 80% — grant yo\'q'}
-          icon={Icons.graduation}
-          accent={student.gpa >= 80 ? T.emerald : T.red}
-        />
-        <KpiCard2
-          label="Davomat"
-          value={`${student.attendance.toFixed(1)}%`}
-          sub={`${breakdown.attendance.toFixed(1)} / 20 ball`}
-          icon={Icons.cal}
-          accent={T.blue}
-        />
-        <KpiCard2
-          label="Reyting"
-          value={rankStr}
-          sub={rankings ? `Guruh: #${rankings.group.rank}/${rankings.group.total}` : ''}
-          icon={Icons.trophy}
-          accent="#8b5cf6"
-        />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+        <KpiCard label="Grant ball"     value={breakdown.total.toFixed(1)} sub="/ 100"
+          accent={T.emerald} icon={Icons.trophy} />
+        <KpiCard label="GPA"             value={`${student.gpa.toFixed(1)}%`} icon={Icons.graduation} />
+        <KpiCard label="Davomat"         value={`${student.attendance.toFixed(1)}%`} icon={Icons.cal} />
+        <KpiCard label="Reytingda o'rin" value={rankStr}
+          sub={rankings ? `/ ${rankings.university.total}` : ''} icon={Icons.bar} />
       </div>
 
-      {/* Charts row */}
-      <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
-        {/* Donut breakdown */}
-        <Card padding={20} style={{ flex: '0 0 320px' }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: T.text, marginBottom: 16 }}>
-            Ball taqsimoti
+      {/* Donut chart + grant status card */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.55fr 1fr', gap: 14 }}>
+        <Card padding={20}>
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 14, fontWeight: 600 }}>Grant ball — taqsimot</div>
+            <div style={{ fontSize: 12.5, color: T.textMuted, marginTop: 2 }}>
+              Har bir mezon bo'yicha ulush — kursor olib boring batafsil ma'lumot uchun
+            </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div style={{ position: 'relative', width: 120, height: 120, flexShrink: 0 }}>
-              <ResponsiveContainer width={120} height={120}>
-                <RadialBarChart
-                  innerRadius={30} outerRadius={55}
-                  data={donutData} startAngle={90} endAngle={-270}
-                  cx="50%" cy="50%"
-                >
-                  <RadialBar dataKey="value" cornerRadius={3} background={{ fill: T.bgSubtle }}>
-                    {donutData.map((item, i) => (
-                      <Cell key={i} fill={item.color} />
-                    ))}
-                  </RadialBar>
-                </RadialBarChart>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+            <div style={{ width: 200, height: 200, position: 'relative', flexShrink: 0 }}>
+              <ResponsiveContainer width={200} height={200}>
+                <PieChart>
+                  <Pie data={pieData} dataKey="value" innerRadius={62} outerRadius={92}
+                       paddingAngle={2} stroke="none" animationDuration={800}>
+                    {pieData.map((item, i) => <Cell key={i} fill={item.color} />)}
+                  </Pie>
+                </PieChart>
               </ResponsiveContainer>
-              <div style={{
-                position: 'absolute', inset: 0, display: 'flex',
-                flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <div style={{ fontSize: 18, fontWeight: 800, color: T.text, lineHeight: 1 }}>
-                  {breakdown.base.toFixed(0)}
+              <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', pointerEvents: 'none' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 32, fontWeight: 600, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums' }}>
+                    {totalBase.toFixed(0)}
+                  </div>
+                  <div style={{ fontSize: 11, color: T.textMuted }}>/ 100 ball</div>
                 </div>
-                <div style={{ fontSize: 9.5, color: T.textSubtle, marginTop: 2 }}>asosiy</div>
               </div>
             </div>
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {donutData.map(item => (
-                <div key={item.key} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: 2, background: item.color, flexShrink: 0 }} />
-                  <span style={{ fontSize: 11.5, color: T.textMuted, flex: 1 }}>{item.label}</span>
-                  <span style={{ fontSize: 11.5, fontWeight: 600, color: T.text, fontVariantNumeric: 'tabular-nums' }}>
-                    {item.value.toFixed(1)}<span style={{ color: T.textSubtle, fontWeight: 400 }}>/{item.max}</span>
-                  </span>
-                </div>
+            <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, columnGap: 22 }}>
+              {pieData.map((item, i) => (
+                <Tooltip key={i} content={item.desc}>
+                  <div style={{ width: '100%' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12.5, marginBottom: 5 }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                        <span style={{ width: 9, height: 9, borderRadius: 3, background: item.color }} />
+                        <span>{item.label}</span>
+                      </span>
+                      <span style={{ color: T.textMuted, fontVariantNumeric: 'tabular-nums', fontSize: 12 }}>
+                        <span style={{ color: T.text, fontWeight: 500 }}>{item.value.toFixed(1)}</span> / {item.max}
+                      </span>
+                    </div>
+                    <ProgressBar value={item.value} max={item.max} color={item.color} height={4} />
+                  </div>
+                </Tooltip>
               ))}
             </div>
           </div>
-          {/* Penalties/bonuses row */}
-          {(breakdown.penalty > 0 || breakdown.recovery > 0 || breakdown.employment > 0) && (
-            <div style={{
-              marginTop: 14, paddingTop: 14, borderTop: `1px solid ${T.border}`,
-              display: 'flex', gap: 12, flexWrap: 'wrap',
-            }}>
-              {breakdown.penalty > 0 && (
-                <span style={{ fontSize: 11.5, color: T.redText, fontWeight: 500 }}>
-                  Jarima: −{breakdown.penalty.toFixed(1)}
+        </Card>
+
+        {/* Grant status */}
+        <Card padding={0} style={{ overflow: 'hidden' }}>
+          <div style={{
+            padding: '18px 20px',
+            background: `linear-gradient(180deg, ${sc.bg} 0%, #ffffff 100%)`,
+            borderBottom: `1px solid ${T.border}`,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <span style={{ width: 8, height: 8, borderRadius: 999, background: sc.dot,
+                boxShadow: `0 0 0 4px ${sc.dot}33` }} />
+              <span style={{ fontSize: 11.5, fontWeight: 600, color: sc.fg, letterSpacing: '.06em', textTransform: 'uppercase' }}>
+                {sc.label}
+              </span>
+            </div>
+            <div style={{ fontSize: 18, fontWeight: 600, letterSpacing: '-0.02em' }}>2026 bahor semestri</div>
+            <div style={{ fontSize: 12.5, color: T.textMuted, marginTop: 4 }}>
+              {status === 'GRANTED'
+                ? 'Avtomatik qaror · Barcha shartlar bajarildi'
+                : student.grantReason
+                  ? (GRANT_REASON_LABEL_SHORT[student.grantReason] ?? student.grantReason)
+                  : 'Grant holati aniqlanmoqda'}
+            </div>
+          </div>
+          <div style={{ padding: '14px 20px' }}>
+            <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 8, color: T.textMuted,
+              textTransform: 'uppercase', letterSpacing: '.06em' }}>Shartlar</div>
+            {conditions.map((row, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0', fontSize: 12.5 }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: T.text }}>
+                  {row.ok
+                    ? Icons.check({ size: 13, stroke: T.emerald, strokeWidth: 2.5 })
+                    : Icons.x({ size: 13, stroke: T.red, strokeWidth: 2.5 })}
+                  {row.label}
                 </span>
-              )}
-              {breakdown.recovery > 0 && (
-                <span style={{ fontSize: 11.5, color: T.emeraldText, fontWeight: 500 }}>
-                  Reabilitatsiya: +{breakdown.recovery.toFixed(1)}
+                <span style={{ color: T.textMuted, fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>
+                  {row.value}
                 </span>
-              )}
-              {breakdown.employment > 0 && (
-                <span style={{ fontSize: 11.5, color: T.blueText, fontWeight: 500 }}>
-                  Ish: +{breakdown.employment.toFixed(1)}
-                </span>
-              )}
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      {/* Growth chart + activity feed */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.55fr 1fr', gap: 14 }}>
+        <Card padding={20}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                6 oylik o'sish dinamikasi
+                <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 999, background: T.amberBg, color: T.amberText, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em' }}>Demo</span>
+              </div>
+              <div style={{ fontSize: 12.5, color: T.textMuted, marginTop: 2 }}>Tarixiy ma'lumot mavjud bo'lganda almashtiriladi</div>
+            </div>
+            <div style={{ display: 'flex', gap: 14, fontSize: 12, color: T.textMuted }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ width: 12, height: 2.5, background: T.emerald, borderRadius: 999 }} /> Grant ball
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ width: 12, height: 2.5, background: T.slate900, borderRadius: 999 }} /> GPA %
+              </span>
+            </div>
+          </div>
+          <div style={{ height: 220 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={growthData} margin={{ top: 8, right: 12, left: -14, bottom: 0 }}>
+                <CartesianGrid stroke={T.border} strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="month" stroke={T.textSubtle} fontSize={11.5} tickLine={false} axisLine={false} />
+                <YAxis stroke={T.textSubtle} fontSize={11.5} tickLine={false} axisLine={false} domain={[60, 100]} />
+                <ReTooltip
+                  contentStyle={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 8, fontSize: 12, padding: '8px 10px' }}
+                  formatter={(v: number, name: string) => [v, name === 'ball' ? 'Grant ball' : 'GPA %']}
+                />
+                <Line type="monotone" dataKey="ball" stroke={T.emerald} strokeWidth={2.5}
+                  dot={{ r: 4, fill: T.emerald, strokeWidth: 0 }} activeDot={{ r: 6 }} animationDuration={900} />
+                <Line type="monotone" dataKey="gpa" stroke={T.slate900} strokeWidth={2}
+                  dot={{ r: 3, fill: T.white, stroke: T.slate900, strokeWidth: 1.5 }} animationDuration={900} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
+        {/* Activity feed */}
+        <Card padding={0}>
+          <div style={{ padding: '14px 18px', borderBottom: `1px solid ${T.border}` }}>
+            <div style={{ fontSize: 14, fontWeight: 600 }}>So'nggi faollik</div>
+          </div>
+          {recentActivity.length === 0 ? (
+            <div style={{ padding: '40px 18px', textAlign: 'center', color: T.textSubtle, fontSize: 13 }}>
+              Hali faollik yo'q
+            </div>
+          ) : (
+            <div>
+              {recentActivity.map((a, i) => (
+                <div key={i} style={{ padding: '12px 18px', display: 'flex', alignItems: 'flex-start', gap: 10,
+                  borderBottom: i < recentActivity.length - 1 ? `1px solid ${T.border}` : 'none' }}>
+                  <div style={{ width: 28, height: 28, borderRadius: 7, background: T.bg, display: 'grid',
+                    placeItems: 'center', flexShrink: 0, border: `1px solid ${T.border}` }}>
+                    {a.iconType === 'bolt'
+                      ? Icons.bolt({ size: 14, stroke: a.color })
+                      : Icons.award({ size: 14, stroke: a.color })}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.3,
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {a.title}
+                    </div>
+                    <div style={{ fontSize: 11.5, color: T.textMuted, marginTop: 2 }}>{a.sub}</div>
+                  </div>
+                  <div style={{ fontSize: 11, color: T.textSubtle, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                    {fmtRelative(a.date)}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </Card>
-
-        {/* Line chart — growth */}
-        <Card padding={20} style={{ flex: 1, minWidth: 240 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <span style={{ fontSize: 14, fontWeight: 600, color: T.text }}>6 oylik dinamika</span>
-            <span style={{
-              fontSize: 10, padding: '2px 7px', borderRadius: 999,
-              background: T.amberBg, color: T.amberText, fontWeight: 500,
-            }}>Demo</span>
-          </div>
-          <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 16 }}>
-            Haqiqiy tarix mavjud bo'lganda almashtiriladi
-          </div>
-          <ResponsiveContainer width="100%" height={160}>
-            <LineChart data={growthData} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
-              <XAxis dataKey="month" tick={{ fontSize: 11, fill: T.textMuted }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: T.textMuted }} axisLine={false} tickLine={false} domain={['auto', 'auto']} />
-              <ReTooltip
-                contentStyle={{ fontSize: 12, borderRadius: 8, border: `1px solid ${T.border}`, boxShadow: '0 4px 12px rgba(0,0,0,.08)' }}
-                formatter={(v: number) => [`${v} ball`, 'Ball']}
-              />
-              <Line
-                type="monotone" dataKey="ball" stroke={T.emerald} strokeWidth={2.5}
-                dot={{ r: 3.5, fill: T.emerald, strokeWidth: 0 }}
-                activeDot={{ r: 5, fill: T.emerald }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </Card>
       </div>
+
     </div>
   );
 }
 
-// ── KpiCard2 (inline icon render) ──────────────────────────────────────────
-
-function KpiCard2({ label, value, sub, icon, accent }: {
-  label: string; value: string | number; sub?: string;
-  icon: (p: any) => JSX.Element; accent: string;
-}) {
-  return (
-    <Card padding={20} style={{ flex: '1 1 160px', minWidth: 0 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 500, marginBottom: 6, letterSpacing: '.04em', textTransform: 'uppercase' }}>
-            {label}
-          </div>
-          <div style={{ fontSize: 26, fontWeight: 700, color: T.text, letterSpacing: '-0.03em', lineHeight: 1 }}>
-            {value}
-          </div>
-          {sub && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 5 }}>{sub}</div>}
-        </div>
-        <div style={{
-          width: 38, height: 38, borderRadius: 9,
-          background: accent + '18', display: 'grid', placeItems: 'center', flexShrink: 0,
-        }}>
-          {icon({ size: 17, stroke: accent })}
-        </div>
-      </div>
-    </Card>
-  );
-}
-
-// ── Skeleton ───────────────────────────────────────────────────────────────
+// ── Skeleton ──────────────────────────────────────────────────────────────
 
 function DashboardSkeleton() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <div>
-        <Skeleton h={28} w={200} r={8} />
-        <Skeleton h={16} w={280} r={6} style={{ marginTop: 8 }} />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <div><Skeleton h={28} w={200} r={8} /><Skeleton h={16} w={300} r={6} style={{ marginTop: 8 }} /></div>
+        <Skeleton h={32} w={180} r={8} />
       </div>
-      <Skeleton h={56} r={12} />
-      <div style={{ display: 'flex', gap: 16 }}>
-        {[0, 1, 2, 3].map(i => <Skeleton key={i} h={100} r={12} style={{ flex: 1 }} />)}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+        {[0, 1, 2, 3].map(i => <Skeleton key={i} h={96} r={12} />)}
       </div>
-      <div style={{ display: 'flex', gap: 20 }}>
-        <Skeleton h={240} w={320} r={12} />
-        <Skeleton h={240} r={12} style={{ flex: 1 }} />
+      <div style={{ display: 'grid', gridTemplateColumns: '1.55fr 1fr', gap: 14 }}>
+        <Skeleton h={280} r={12} />
+        <Skeleton h={280} r={12} />
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.55fr 1fr', gap: 14 }}>
+        <Skeleton h={300} r={12} />
+        <Skeleton h={300} r={12} />
       </div>
     </div>
   );
