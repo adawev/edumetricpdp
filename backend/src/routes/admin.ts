@@ -9,6 +9,13 @@ import { calculateGrantScore } from '../services/grantEngine.js';
 export const adminRouter = Router();
 adminRouter.use(requireAuth, requireRole('ADMIN'));
 
+adminRouter.get('/groups', async (_req, res) => {
+  const groups = await prisma.group.findMany({
+    orderBy: { name: 'asc' },
+  });
+  res.json(groups);
+});
+
 adminRouter.get('/students', async (_req, res) => {
   const students = await prisma.student.findMany({
     include: { group: true },

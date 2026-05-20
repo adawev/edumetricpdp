@@ -20,6 +20,8 @@ type Student = {
   group: { id: string; name: string; course: number };
 };
 
+type Group = { id: string; name: string; course: number };
+
 type Achievement = { id: string };
 type Penalty     = { id: string; recoveryDone: boolean };
 
@@ -48,6 +50,10 @@ export default function AdminDashboard() {
     queryKey: ['admin-penalties'],
     queryFn: async () => (await api.get<Penalty[]>('/admin/penalties')).data,
   });
+  const { data: allGroups = [] } = useQuery({
+    queryKey: ['admin-groups'],
+    queryFn: async () => (await api.get<Group[]>('/admin/groups')).data,
+  });
 
   const stats = useMemo(() => {
     if (!students.length) return null;
@@ -68,18 +74,21 @@ export default function AdminDashboard() {
   }, [stats]);
 
   const groupData = useMemo(() => {
-    const map: Record<string, { total: number; count: number }> = {};
+    const scoreMap: Record<string, { total: number; count: number }> = {};
     for (const s of students) {
-      const k = s.group?.name ?? 'Noma\'lum';
-      if (!map[k]) map[k] = { total: 0, count: 0 };
-      map[k].total += s.grantScore;
-      map[k].count++;
+      const k = s.group?.name ?? 'Nomaʼlum';
+      if (!scoreMap[k]) scoreMap[k] = { total: 0, count: 0 };
+      scoreMap[k].total += s.grantScore;
+      scoreMap[k].count++;
     }
-    return Object.entries(map).map(([group, { total, count }]) => ({
-      group,
-      ball: Math.round((total / count) * 10) / 10,
-    }));
-  }, [students]);
+    const groups = allGroups.length
+      ? allGroups.map(g => g.name)
+      : Object.keys(scoreMap);
+    return groups.map(group => {
+      const d = scoreMap[group];
+      return { group, ball: d ? Math.round((d.total / d.count) * 10) / 10 : 0 };
+    });
+  }, [students, allGroups]);
 
   const activePenalties = penalties.filter(p => !p.recoveryDone).length;
   const total = stats?.total ?? 0;
@@ -119,13 +128,14 @@ export default function AdminDashboard() {
             <KpiCard
               label="Jami talabalar"
               value={stats?.total ?? 0}
-              sub={`${stats?.total ?? 0} jami`}
+              trend={`${stats?.total ?? 0} jami`}
               icon={<Users className="w-3.5 h-3.5" />}
             />
             <KpiCard
               label="Grant olganlar"
               value={stats?.granted ?? 0}
-              sub={`${total ? Math.round((stats!.granted / total) * 100) : 0}%`}
+              sub={`/ ${total}`}
+              trend={`${total ? Math.round((stats!.granted / total) * 100) : 0}%`}
               trendUp
               accent="#10b981"
               icon={<Trophy className="w-3.5 h-3.5" />}
@@ -133,14 +143,14 @@ export default function AdminDashboard() {
             <KpiCard
               label="Kutilmoqda"
               value={stats?.pending ?? 0}
-              sub="ko'rib chiqilmoqda"
+              trend="ko'rib chiqilmoqda"
               accent="#d97706"
               icon={<Clock className="w-3.5 h-3.5" />}
             />
             <KpiCard
               label="Grant yo'q"
               value={stats?.notGranted ?? 0}
-              sub={`${total ? Math.round((stats!.notGranted / total) * 100) : 0}%`}
+              trend={`${total ? Math.round((stats!.notGranted / total) * 100) : 0}%`}
               trendUp={false}
               accent="#dc2626"
               icon={<XCircle className="w-3.5 h-3.5" />}
@@ -149,9 +159,11 @@ export default function AdminDashboard() {
               label="O'rtacha ball"
               value={stats?.avg ?? 0}
               sub="/ 100"
+              trend="+3 oxirgi oyda"
               trendUp
               icon={<BarChart2 className="w-3.5 h-3.5" />}
             />
+
           </div>
         )}
 
@@ -230,9 +242,9 @@ export default function AdminDashboard() {
             {isLoading ? (
               <div className="bg-slate-100 animate-pulse rounded-lg" style={{ height: 260 }} />
             ) : (
-              <div style={{ height: 260 }}>
+              <div style={{ height: 220 }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={groupData} margin={{ top: 8, right: 8, left: -14, bottom: 0 }} barCategoryGap="20%">
+                  <BarChart data={groupData} margin={{ top: 8, right: 8, left: -14, bottom: 0 }}>
                     <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} />
                     <XAxis
                       dataKey="group"
@@ -255,7 +267,7 @@ export default function AdminDashboard() {
                       }}
                       formatter={(v: number) => [`${v} ball`, "O'rtacha"]}
                     />
-                    <Bar dataKey="ball" radius={[6, 6, 0, 0]} maxBarSize={80}>
+                    <Bar dataKey="ball" radius={[6, 6, 0, 0]}>
                       {groupData.map((d, i) => (
                         <Cell
                           key={i}
@@ -307,11 +319,12 @@ export default function AdminDashboard() {
 
 /* ── KPI Card ─────────────────────────────────────────── */
 function KpiCard({
-  label, value, sub, trendUp, accent, icon,
+  label, value, sub, trend, trendUp, accent, icon,
 }: {
   label: string;
   value: number;
   sub?: string;
+  trend?: string;
   trendUp?: boolean | null;
   accent?: string;
   icon?: React.ReactNode;
@@ -322,17 +335,22 @@ function KpiCard({
         <span className="text-[11.5px] font-medium text-slate-500 leading-tight">{label}</span>
         <span className="text-slate-400">{icon}</span>
       </div>
-      <p
-        className="text-[28px] font-semibold tabular-nums leading-none tracking-tight"
-        style={{ color: accent ?? '#0f172a' }}
-      >
-        {value}
-      </p>
-      {sub && (
+      <div className="flex items-baseline gap-1.5">
+        <p
+          className="text-[28px] font-semibold tabular-nums leading-none tracking-tight"
+          style={{ color: accent ?? '#0f172a' }}
+        >
+          {value}
+        </p>
+        {sub && (
+          <span className="text-[12px] text-slate-400 tabular-nums">{sub}</span>
+        )}
+      </div>
+      {trend && (
         <p className="text-[11.5px] mt-1.5 tabular-nums"
           style={{ color: trendUp === true ? '#10b981' : trendUp === false ? '#ef4444' : '#94a3b8' }}
         >
-          {sub}
+          {trend}
         </p>
       )}
     </div>
