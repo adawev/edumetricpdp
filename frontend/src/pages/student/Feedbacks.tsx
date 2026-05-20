@@ -150,7 +150,7 @@ export default function StudentFeedbacks() {
               </div>
               <div style={{ flex: 1, minWidth: 180, paddingBottom: 14 }}>
                 {[5, 4, 3, 2, 1].map(s => {
-                  const cnt = filtered.filter(f => f.score === s).length;
+                  const cnt = filtered.filter(f => Math.floor(f.score) === s).length;
                   const pct = filtered.length ? (cnt / filtered.length) * 100 : 0;
                   return (
                     <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
@@ -179,9 +179,9 @@ export default function StudentFeedbacks() {
                       </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Stars score={f.score} size={15} />
+                      <Stars score={Math.round(f.score)} size={15} />
                       <span style={{ fontSize: 13, fontWeight: 600, fontVariantNumeric: 'tabular-nums', marginLeft: 4 }}>
-                        {f.score}/5
+                        {f.score.toFixed(1)}/5
                       </span>
                     </div>
                   </div>
