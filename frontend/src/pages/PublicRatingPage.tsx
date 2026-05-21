@@ -80,14 +80,10 @@ export default function PublicRatingPage() {
     );
   }, [data, q, group, course, groups]);
 
-  const hasFilter = q.trim() !== '' || group !== 'all' || course !== 'all';
   const hasGroupFilter = group !== 'all' || course !== 'all';
-  const top3 = filtered.slice(0, 3);
-  const rest = hasFilter ? filtered : filtered.slice(3);
-  const baseRank = hasFilter ? 1 : 4;
   const loading = isLoading || skeletonDelay;
 
-  const pag = usePagination(rest, 20, [q, group, course]);
+  const pag = usePagination(filtered, 20, [q, group, course]);
 
   return (
     <PublicChrome loginModal={{ open: showLoginModal, onClose: () => setShowLoginModal(false) }}>
@@ -133,22 +129,12 @@ export default function PublicRatingPage() {
           </Card>
 
           {loading ? (
-            <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 24 }}>
-                {[0, 1, 2].map(i => <Skeleton key={i} h={170} r={14} />)}
-              </div>
-              <Skeleton h={400} r={12} />
-            </>
-          ) : (
-            <>
-              {!hasFilter && top3.length === 3 && <Top3Podium rows={top3} period={period} onClick={handleRowClick} />}
-              {rest.length === 0 ? <PublicEmptyState /> : (
-                <Card padding={0}>
-                  <RatingTable rows={pag.pageItems} startIndex={baseRank + pag.startIndex} useLocalRank={hasGroupFilter} period={period} onRowClick={handleRowClick} />
-                  <Pagination page={pag.page} pageCount={pag.pageCount} onChange={pag.setPage} total={pag.total} pageSize={pag.pageSize} />
-                </Card>
-              )}
-            </>
+            <Skeleton h={400} r={12} />
+          ) : filtered.length === 0 ? <PublicEmptyState /> : (
+            <Card padding={0}>
+              <RatingTable rows={pag.pageItems} startIndex={1 + pag.startIndex} useLocalRank={hasGroupFilter} period={period} onRowClick={handleRowClick} />
+              <Pagination page={pag.page} pageCount={pag.pageCount} onChange={pag.setPage} total={pag.total} pageSize={pag.pageSize} />
+            </Card>
           )}
 
           <div style={{ marginTop: 24, marginBottom: 24, fontSize: 12, color: T.textSubtle, textAlign: 'center' }}>
@@ -165,143 +151,6 @@ export default function PublicRatingPage() {
   );
 }
 
-function Top3Podium({ rows, period, onClick }: { rows: Row[]; period: Period; onClick: (id?: string) => void }) {
-  const showPeriodBall = period !== 'all';
-  // Olympic podium order: #2 chap, #1 markaz (katta), #3 o'ng
-  const order: { stu: Row; place: 1 | 2 | 3 }[] = [
-    { stu: rows[1], place: 2 },
-    { stu: rows[0], place: 1 },
-    { stu: rows[2], place: 3 },
-  ];
-  const styles: Record<1 | 2 | 3, { bg: string; border: string; placeColor: string; iconBg: string; icon: JSX.Element; ribbon: string }> = {
-    1: {
-      bg: 'linear-gradient(180deg, #fef3c7 0%, #fde68a 100%)',
-      border: '#f59e0b', placeColor: '#a16207',
-      iconBg: 'linear-gradient(135deg, #fbbf24 0%, #d97706 100%)',
-      icon: <Icons.trophy size={28} stroke="#fff" strokeWidth={2.4} />,
-      ribbon: '#a16207',
-    },
-    2: {
-      bg: 'linear-gradient(180deg, #f1f5f9 0%, #e2e8f0 100%)',
-      border: '#94a3b8', placeColor: '#475569',
-      iconBg: 'linear-gradient(135deg, #cbd5e1 0%, #64748b 100%)',
-      icon: <Icons.medal size={24} stroke="#fff" strokeWidth={2.4} />,
-      ribbon: '#475569',
-    },
-    3: {
-      bg: 'linear-gradient(180deg, #ffedd5 0%, #fed7aa 100%)',
-      border: '#ea580c', placeColor: '#9a3412',
-      iconBg: 'linear-gradient(135deg, #fb923c 0%, #c2410c 100%)',
-      icon: <Icons.award size={24} stroke="#fff" strokeWidth={2.4} />,
-      ribbon: '#9a3412',
-    },
-  };
-
-  return (
-    <div style={{
-      display: 'grid', gridTemplateColumns: '1fr 1.15fr 1fr', gap: 14, marginBottom: 28,
-      alignItems: 'end',
-    }}>
-      {order.map(({ stu, place }, i) => {
-        const st = styles[place];
-        const isCenter = place === 1;
-        const padding = isCenter ? 26 : 20;
-        const placeFontSize = isCenter ? 52 : 38;
-        const nameFontSize = isCenter ? 19 : 16;
-        const scoreFontSize = isCenter ? 42 : 30;
-        const iconSize = isCenter ? 54 : 44;
-
-        return (
-          <div key={stu.id} onClick={() => onClick(stu.id)} style={{
-            background: st.bg, border: `2px solid ${st.border}`, borderRadius: 16,
-            padding, position: 'relative', overflow: 'hidden',
-            transform: isCenter ? 'translateY(-12px)' : 'none',
-            boxShadow: isCenter
-              ? `0 16px 40px ${st.border}55, 0 2px 8px rgba(15,23,42,.06)`
-              : '0 4px 12px rgba(15,23,42,.06)',
-            animation: 'em-slide-up 0.55s cubic-bezier(.2,.7,.3,1) backwards',
-            animationDelay: `${0.06 + i * 0.09}s`, cursor: 'pointer',
-            transition: 'transform .2s, box-shadow .2s',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = isCenter ? 'translateY(-18px)' : 'translateY(-6px)';
-            e.currentTarget.style.boxShadow = isCenter
-              ? `0 24px 50px ${st.border}77, 0 2px 8px rgba(15,23,42,.08)`
-              : '0 12px 28px rgba(15,23,42,.14)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = isCenter ? 'translateY(-12px)' : 'none';
-            e.currentTarget.style.boxShadow = isCenter
-              ? `0 16px 40px ${st.border}55, 0 2px 8px rgba(15,23,42,.06)`
-              : '0 4px 12px rgba(15,23,42,.06)';
-          }}>
-            {/* Crown ribbon for #1 */}
-            {isCenter && (
-              <span style={{
-                position: 'absolute', top: -1, left: '50%', transform: 'translateX(-50%)',
-                background: st.ribbon, color: '#fff', fontSize: 10, fontWeight: 800,
-                padding: '4px 14px 5px', borderRadius: '0 0 8px 8px',
-                letterSpacing: '.12em', boxShadow: '0 2px 6px rgba(0,0,0,.18)',
-              }}>👑 GRAND PRIX</span>
-            )}
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: isCenter ? 12 : 0 }}>
-              <div style={{
-                fontSize: placeFontSize, fontWeight: 800, letterSpacing: '-0.05em',
-                color: st.placeColor, lineHeight: 0.85, fontVariantNumeric: 'tabular-nums',
-              }}>#{place}</div>
-              <div style={{
-                width: iconSize, height: iconSize, borderRadius: 14,
-                background: st.iconBg,
-                display: 'grid', placeItems: 'center',
-                boxShadow: `0 6px 16px ${st.border}88, inset 0 -2px 5px rgba(0,0,0,.15), inset 0 2px 5px rgba(255,255,255,.4)`,
-              }}>{st.icon}</div>
-            </div>
-
-            <div style={{ marginTop: isCenter ? 22 : 18 }}>
-              <div style={{ fontSize: nameFontSize, fontWeight: 700, letterSpacing: '-0.02em', color: T.text, lineHeight: 1.25 }}>
-                {stu.fullName}
-              </div>
-              <div style={{ fontSize: 12.5, color: T.textMuted, marginTop: 4 }}>{stu.group}</div>
-            </div>
-
-            <div style={{ marginTop: isCenter ? 20 : 16, display: 'flex', alignItems: 'baseline', gap: 6 }}>
-              <div style={{
-                fontSize: scoreFontSize, fontWeight: 800, letterSpacing: '-0.04em',
-                color: T.text, fontVariantNumeric: 'tabular-nums', lineHeight: 1,
-              }}>{(showPeriodBall ? (stu.periodBall ?? 0) : stu.grantScore).toFixed(1)}</div>
-              <div style={{ fontSize: 13, color: T.textMuted, fontWeight: 500 }}>
-                {showPeriodBall ? PERIOD_LABEL[period].toLowerCase() : 'ball'}
-              </div>
-            </div>
-
-            <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <BadgeRowMark badge={stu.badge} count={stu.badgeCount} size={isCenter ? 32 : 26} />
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// HolatBadge — faqat ijobiy holatlar (GRANTED/PENDING). Kontrakt yashirilgan.
-function HolatBadge({ status }: { status: string }) {
-  const map: Record<string, { bg: string; fg: string; bd: string; label: string }> = {
-    GRANTED: { bg: T.emeraldBg, fg: T.emeraldText, bd: '#a7f3d0', label: 'Grant' },
-    PENDING: { bg: T.amberBg,   fg: T.amberText,   bd: '#fde68a', label: 'Kutilmoqda' },
-  };
-  const c = map[status];
-  if (!c) return <span style={{ color: T.textSubtle, fontSize: 12 }}>—</span>;
-  return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 5,
-      padding: '4px 10px', borderRadius: 999,
-      background: c.bg, color: c.fg, border: `1px solid ${c.bd}`,
-      fontSize: 11.5, fontWeight: 600, whiteSpace: 'nowrap', letterSpacing: '.01em',
-    }}>{c.label}</span>
-  );
-}
 
 // Faollik chizig'i — oxirgi 7 kunda olingan ballarning vizual ko'rsatkichi
 function ActivityBar({ value, max }: { value: number; max: number }) {
@@ -327,17 +176,6 @@ function ActivityBar({ value, max }: { value: number; max: number }) {
   );
 }
 
-const RISK_SOLID: Record<string, { bg: string; label: string }> = {
-  LOW:    { bg: '#10b981', label: 'Past'   },
-  MEDIUM: { bg: '#f59e0b', label: "O'rta"  },
-  HIGH:   { bg: '#ef4444', label: 'Yuqori' },
-};
-const RISK_ICON: Record<string, (p: any) => JSX.Element> = {
-  HIGH:   (p) => <Icons.alert  {...p} />,
-  MEDIUM: (p) => <Icons.clock  {...p} />,
-  LOW:    (p) => <Icons.check  {...p} />,
-};
-
 function RatingTable({ rows, startIndex, useLocalRank, period, onRowClick }: { rows: Row[]; startIndex: number; useLocalRank?: boolean; period: Period; onRowClick: (id?: string) => void }) {
   const maxActivity = Math.max(1, ...rows.map(r => r.weeklyActivity ?? 0));
   const showPeriodBall = period !== 'all';
@@ -352,8 +190,6 @@ function RatingTable({ rows, startIndex, useLocalRank, period, onRowClick }: { r
               { l: 'Guruh',   a: 'left',   w: 130 },
               { l: 'Faollik', a: 'left',   w: 120 },
               { l: 'Ball',    a: 'right',  w: 90 },
-              { l: 'Holat',   a: 'left',   w: 120 },
-              { l: 'Risk',    a: 'left',   w: 90 },
             ].map((h, i) => (
               <th key={i} style={{
                 textAlign: h.a as any, padding: '11px 16px', fontSize: 11.5,
@@ -401,23 +237,6 @@ function RatingTable({ rows, startIndex, useLocalRank, period, onRowClick }: { r
                 </td>
                 <td className="em-hov" style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontSize: 14, letterSpacing: '-0.01em' }}>
                   {(showPeriodBall ? (stu.periodBall ?? 0) : stu.grantScore).toFixed(1)}
-                </td>
-                <td className="em-hov" style={{ padding: '12px 16px' }}>
-                  <HolatBadge status={stu.grantStatus} />
-                </td>
-                <td style={{
-                  padding: '10px 16px',
-                  background: RISK_SOLID[stu.riskLevel]?.bg ?? 'transparent',
-                  color: RISK_SOLID[stu.riskLevel] ? '#fff' : T.textSubtle,
-                  fontSize: 12, fontWeight: 600, letterSpacing: '.02em',
-                  borderBottom: i < rows.length - 1 ? '1px solid rgba(0,0,0,.1)' : 'none',
-                }}>
-                  {RISK_SOLID[stu.riskLevel] ? (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                      {RISK_ICON[stu.riskLevel]?.({ size: 12, stroke: '#fff', strokeWidth: 2.5 })}
-                      {RISK_SOLID[stu.riskLevel].label}
-                    </span>
-                  ) : '—'}
                 </td>
               </tr>
             );

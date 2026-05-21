@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Download, Plus, MoreVertical, Eye, Trophy, AlertTriangle, Trash2, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import AdminLayout from './AdminLayout';
+import { Pagination, usePagination } from '@/components/em/Primitives';
 
 type Student = {
   id: string;
@@ -167,6 +168,8 @@ export default function AdminStudents() {
     setSelected(next);
   };
 
+  const pag = usePagination(filtered, 20, [q, group, status, gpaMin]);
+
   return (
     <AdminLayout>
       <div className="p-6 space-y-4">
@@ -302,11 +305,11 @@ export default function AdminStudents() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((stu, i) => (
+                  {pag.pageItems.map((stu, i) => (
                     <tr
                       key={stu.id}
                       style={{
-                        borderBottom: i < filtered.length - 1 ? '1px solid #f1f5f9' : 'none',
+                        borderBottom: i < pag.pageItems.length - 1 ? '1px solid #f1f5f9' : 'none',
                         background: selected[stu.id] ? '#f8fafc' : 'transparent',
                         transition: 'background .1s',
                       }}
@@ -371,6 +374,13 @@ export default function AdminStudents() {
                 </tbody>
               </table>
             </div>
+            <Pagination
+              page={pag.page}
+              pageCount={pag.pageCount}
+              onChange={pag.setPage}
+              total={pag.total}
+              pageSize={pag.pageSize}
+            />
           </div>
         )}
       </div>

@@ -107,7 +107,8 @@ function scenarioFields(s: Scenario): ScoreFields {
     case 'CANDIDATE':
       return { gpa: rand(84, 90), attendance: rand(86, 94), projectScore: rand(10, 12), activityScore: rand(6, 8), tutorScore: rand(3.5, 4.5), disciplineScore: rand(7.5, 9), employmentBonus: rand(0, 3), paymentOverdue: false };
     case 'ACADEMIC_FAIL':
-      return { gpa: rand(60, 79), attendance: rand(85, 98), projectScore: rand(12, 15), activityScore: rand(8, 10), tutorScore: rand(4, 5), disciplineScore: rand(8, 10), employmentBonus: rand(5, 10), paymentOverdue: false };
+      // GPA past — odatda boshqa ko'rsatkichlar ham past bo'ladi. Reytingda tepaga chiqmasin.
+      return { gpa: rand(60, 79), attendance: rand(65, 80), projectScore: rand(6, 10), activityScore: rand(3, 6), tutorScore: rand(2, 3.5), disciplineScore: rand(5, 7), employmentBonus: 0, paymentOverdue: false };
     case 'LOW_SCORE':
       return { gpa: rand(80, 86), attendance: rand(70, 82), projectScore: rand(5, 9), activityScore: rand(2, 5), tutorScore: rand(2, 3.5), disciplineScore: rand(4, 7), employmentBonus: 0, paymentOverdue: false };
     case 'PAYMENT_OVERDUE':

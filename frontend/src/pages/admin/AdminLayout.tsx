@@ -85,10 +85,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const initials = user?.email?.[0]?.toUpperCase() ?? 'A';
 
   return (
-    <div className="flex min-h-screen bg-[#f8fafc]">
+    <div className="flex h-screen overflow-hidden bg-[#f8fafc]">
       {/* Sidebar */}
       <aside
-        className={`flex flex-col bg-white border-r border-slate-200 shrink-0 transition-all duration-200 ${
+        className={`flex flex-col bg-white border-r border-slate-200 shrink-0 h-screen transition-all duration-200 ${
           collapsed ? 'w-16' : 'w-[244px]'
         }`}
       >
@@ -181,7 +181,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </aside>
 
       {/* Right column */}
-      <div className="flex-1 min-w-0 flex flex-col">
+      <div className="flex-1 min-w-0 flex flex-col h-screen overflow-hidden">
         {/* Top header */}
         <header className="h-14 shrink-0 bg-white border-b border-slate-200 flex items-center px-5 gap-3.5">
           {/* Breadcrumb */}

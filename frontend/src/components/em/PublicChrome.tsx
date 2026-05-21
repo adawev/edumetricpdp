@@ -35,7 +35,6 @@ export function PublicChrome({ children, loginModal }: { children: ReactNode; lo
           </Link>
           <nav style={{ display: 'flex', gap: 4 }}>
             {[{ id: 'rating',  label: 'Reyting',       path: '/public/rating' },
-              { id: 'badges',  label: "Badge'lar",      path: '/public/badges' },
               { id: 'about',   label: 'Grant haqida',   path: '/public/about' }].map(item => {
               const isActive = active === item.id;
               return (

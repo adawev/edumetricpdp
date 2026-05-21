@@ -4,23 +4,9 @@ import { T } from '@/lib/theme';
 import { Card, Skeleton, Tabs } from '@/components/em/Primitives';
 import { Icons } from '@/components/em/Icons';
 import { ErrorState } from '@/components/em/ErrorState';
-import { StudentsTable, NameCell, StatusPill, ScoreCell, RankCell, type Column } from '@/components/em/StudentsTable';
+import { StudentsTable, NameCell, ScoreCell, RankCell, type Column } from '@/components/em/StudentsTable';
 import { useStudentMe, useStudentRankings, usePublicRating } from '@/hooks/useStudent';
-import type { GrantStatus, PublicRatingRow } from '@/types/student';
-
-// ── constants ─────────────────────────────────────────────────────────────
-
-const STATUS_COLORS: Record<GrantStatus, { bg: string; fg: string }> = {
-  GRANTED:     { bg: T.emeraldBg, fg: T.emeraldText },
-  PENDING:     { bg: T.amberBg,   fg: T.amberText },
-  NOT_GRANTED: { bg: T.redBg,     fg: T.redText },
-  UNKNOWN:     { bg: T.bgSubtle,  fg: T.textMuted },
-};
-
-const STATUS_LABEL: Record<GrantStatus, string> = {
-  GRANTED: 'Grant berildi', PENDING: 'Kutilmoqda',
-  NOT_GRANTED: "Grant yo'q",  UNKNOWN: 'Aniqlanmagan',
-};
+import type { PublicRatingRow } from '@/types/student';
 
 // ── RankCard ──────────────────────────────────────────────────────────────
 
@@ -95,11 +81,6 @@ export default function StudentRating() {
       render: r => <span style={{ color: T.textMuted }}>{r.group}</span> },
     { key: 'score', label: 'Ball', align: 'right', width: 80,
       render: r => <ScoreCell value={r.grantScore.toFixed(1)} /> },
-    { key: 'status', label: 'Status', width: 160,
-      render: r => {
-        const sc = STATUS_COLORS[r.grantStatus];
-        return <StatusPill bg={sc.bg} fg={sc.fg} label={STATUS_LABEL[r.grantStatus]} />;
-      } },
   ];
 
   return (

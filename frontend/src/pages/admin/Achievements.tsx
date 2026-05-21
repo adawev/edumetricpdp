@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import AdminLayout from './AdminLayout';
+import { Pagination, usePagination } from '@/components/em/Primitives';
 
 type Achievement = {
   id: string;
@@ -165,6 +166,8 @@ export default function AdminAchievements() {
   const activeList = tab === 'PENDING' ? pending : tab === 'APPROVED' ? approved : rejected;
   const isLoading  = tab === 'PENDING' ? lPending : tab === 'APPROVED' ? lApproved : lRejected;
 
+  const pag = usePagination(activeList, 12, [tab]);
+
   return (
     <AdminLayout>
       <div className="p-6 space-y-4">
@@ -231,20 +234,29 @@ export default function AdminAchievements() {
               <p className="text-[13px] text-slate-400">Bu bo'limda yutuq yo'q</p>
             </div>
           ) : (
-            <div style={{ padding: 14, display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-              {activeList.map(a => (
-                <AchCard
-                  key={a.id}
-                  a={a}
-                  ball={ballMap[a.id] ?? ''}
-                  onBallChange={v => setBallMap(m => ({ ...m, [a.id]: v }))}
-                  onApprove={() => handleApprove(a)}
-                  onReject={() => { setRejectTarget(a); setRejectReason(''); }}
-                  onReopen={() => {}}
-                  loading={reviewMutation.isPending}
-                />
-              ))}
-            </div>
+            <>
+              <div style={{ padding: 14, display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+                {pag.pageItems.map(a => (
+                  <AchCard
+                    key={a.id}
+                    a={a}
+                    ball={ballMap[a.id] ?? ''}
+                    onBallChange={v => setBallMap(m => ({ ...m, [a.id]: v }))}
+                    onApprove={() => handleApprove(a)}
+                    onReject={() => { setRejectTarget(a); setRejectReason(''); }}
+                    onReopen={() => {}}
+                    loading={reviewMutation.isPending}
+                  />
+                ))}
+              </div>
+              <Pagination
+                page={pag.page}
+                pageCount={pag.pageCount}
+                onChange={pag.setPage}
+                total={pag.total}
+                pageSize={pag.pageSize}
+              />
+            </>
           )}
         </div>
       </div>

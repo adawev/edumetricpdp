@@ -48,14 +48,14 @@ export default function StudentLayout({ children }: { children?: React.ReactNode
   const pageTitle = PAGE_TITLES[location.pathname] ?? 'Student Panel';
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: T.bg, fontFamily: 'inherit' }}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: T.bg, fontFamily: 'inherit' }}>
       {/* Sidebar */}
       <aside style={{
-        width: sidebarW, minHeight: '100vh', flexShrink: 0,
+        width: sidebarW, height: '100vh', flexShrink: 0,
         background: T.white, borderRight: `1px solid ${T.border}`,
         display: 'flex', flexDirection: 'column',
         transition: 'width .2s ease',
-        position: 'sticky', top: 0, height: '100vh', overflowY: 'auto', overflowX: 'hidden',
+        overflow: 'hidden',
       }}>
         {/* Logo + collapse toggle */}
         <div style={{
@@ -86,7 +86,7 @@ export default function StudentLayout({ children }: { children?: React.ReactNode
         </div>
 
         {/* Nav sections */}
-        <nav style={{ flex: 1, padding: '8px 8px', display: 'flex', flexDirection: 'column', gap: 0 }}>
+        <nav style={{ flex: 1, padding: '8px 8px', display: 'flex', flexDirection: 'column', gap: 0, overflowY: 'auto', minHeight: 0 }}>
           {NAV_SECTIONS.map((section, si) => (
             <div key={si}>
               {si > 0 && (
