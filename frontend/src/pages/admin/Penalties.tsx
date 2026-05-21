@@ -59,6 +59,7 @@ export default function AdminPenalties() {
   // New penalty form state
   const [newOpen, setNewOpen]       = useState(false);
   const [nStudentId, setNStudentId] = useState('');
+  const [nGroup, setNGroup]         = useState('all');
   const [nType, setNType]           = useState<'LIGHT' | 'MEDIUM' | 'HEAVY' | 'HEAVY_PLUS' | 'HEAVY_PLUS_PLUS'>('LIGHT');
   const [nBall, setNBall]           = useState(1);
   const [nReason, setNReason]       = useState('');
@@ -79,6 +80,15 @@ export default function AdminPenalties() {
     queryFn: async () => (await api.get<StudentFull[]>('/admin/students')).data,
   });
 
+  const groupNames = useMemo(
+    () => [...new Set(students.map(s => s.group?.name).filter(Boolean))].sort(),
+    [students],
+  );
+  const formStudents = useMemo(
+    () => nGroup === 'all' ? students : students.filter(s => s.group?.name === nGroup),
+    [students, nGroup],
+  );
+
   const kpi = useMemo(() => ({
     total:      penalties.length,
     active:     penalties.filter(p => !p.recoveryTask && !p.recoveryDone).length,
@@ -93,7 +103,7 @@ export default function AdminPenalties() {
       qc.invalidateQueries({ queryKey: ['admin-students'] });
       toast.success("Jarima qo'shildi");
       setNewOpen(false);
-      setNStudentId(''); setNType('LIGHT'); setNBall(1); setNReason('');
+      setNGroup('all'); setNStudentId(''); setNType('LIGHT'); setNBall(1); setNReason('');
     },
     onError: () => toast.error('Xatolik yuz berdi'),
   });
@@ -365,9 +375,32 @@ export default function AdminPenalties() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Group filter */}
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: 6 }}>Guruh</label>
+                <select
+                  value={nGroup}
+                  onChange={e => { setNGroup(e.target.value); setNStudentId(''); }}
+                  style={{
+                    width: '100%', height: 36, padding: '0 12px',
+                    borderRadius: 8, border: '1px solid #e2e8f0',
+                    fontSize: 13, color: '#0f172a', outline: 'none', background: '#fff',
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  <option value="all">Barcha guruhlar</option>
+                  {groupNames.map(g => (
+                    <option key={g} value={g}>{g}</option>
+                  ))}
+                </select>
+              </div>
+
               {/* Student */}
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: 6 }}>Talaba</label>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: 6 }}>
+                  Talaba
+                  <span style={{ color: '#94a3b8', fontWeight: 400 }}> · {formStudents.length} ta</span>
+                </label>
                 <select
                   value={nStudentId}
                   onChange={e => setNStudentId(e.target.value)}
@@ -379,8 +412,10 @@ export default function AdminPenalties() {
                   }}
                 >
                   <option value="">— Tanlang —</option>
-                  {students.map(s => (
-                    <option key={s.id} value={s.id}>{s.fullName} ({s.group?.name})</option>
+                  {formStudents.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.fullName}{nGroup === 'all' ? ` (${s.group?.name})` : ''}
+                    </option>
                   ))}
                 </select>
               </div>
