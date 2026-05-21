@@ -253,32 +253,21 @@ async function main() {
     // Yutuq namunalari — har xil darajalar
     if (spec.scenario === 'TOP_GRANTED') {
       // TOP'larga ko'p yutuq — Champion + Founder + Polyglot + Collector imkoniyati
+      // NB: CERTIFICATE / LANGUAGE / COURSE seed qilinmaydi — ular fayl yuklash
+      // talab qiladi, talaba o'zi qo'shadi (admin tasdiqlaydi).
       await prisma.achievement.create({ data: { studentId: student.id, type: 'HACKATHON', title: 'PDP Unicorn Hackathon — 1-o\'rin', ball: 7, status: 'APPROVED', reviewedAt: new Date() } });
       await prisma.achievement.create({ data: { studentId: student.id, type: 'STARTUP',   title: 'EduMetric CRM startup', ball: 6, status: 'APPROVED', reviewedAt: new Date() } });
-      await prisma.achievement.create({ data: { studentId: student.id, type: 'LANGUAGE',  title: 'IELTS 7.5', ball: 5, status: 'APPROVED', reviewedAt: new Date() } });
       await prisma.achievement.create({ data: { studentId: student.id, type: 'MENTORING', title: '3 ta talabaga mentorlik', ball: 3, status: 'APPROVED', reviewedAt: new Date() } });
-      await prisma.achievement.create({ data: { studentId: student.id, type: 'CERTIFICATE', title: 'AWS Cloud Practitioner', ball: 3, status: 'APPROVED', reviewedAt: new Date() } });
-      await prisma.achievement.create({ data: { studentId: student.id, type: 'COURSE',     title: 'PDP Academy offline', ball: 3, status: 'APPROVED', reviewedAt: new Date() } });
-      await prisma.achievement.create({ data: { studentId: student.id, type: 'CERTIFICATE', title: 'Google Cloud Digital Leader', ball: 2, status: 'APPROVED', reviewedAt: new Date() } });
       await prisma.achievement.create({ data: { studentId: student.id, type: 'VOLUNTEER',  title: 'ICT Week ko\'ngillisi', ball: 2, status: 'APPROVED', reviewedAt: new Date() } });
     } else if (spec.scenario === 'CANDIDATE') {
-      // Kandidatlarga 2-3 ta
       await prisma.achievement.create({ data: { studentId: student.id, type: 'HACKATHON', title: 'Ideathon 2026', ball: 3, status: 'APPROVED', reviewedAt: new Date() } });
-      if (i % 2 === 0) {
-        await prisma.achievement.create({ data: { studentId: student.id, type: 'CERTIFICATE', title: 'CS50 sertifikati', ball: 2, status: 'APPROVED', reviewedAt: new Date() } });
-      }
     } else if (spec.scenario === 'ACADEMIC_FAIL') {
-      await prisma.achievement.create({ data: { studentId: student.id, type: 'CERTIFICATE', title: 'IELTS 7.0', ball: 5, status: 'PENDING' } });
+      // Yutuq yo'q — akademik fail
     } else {
-      // Qolgan senariylar uchun 0-3 ta tasodifiy yutuq
+      // Qolgan senariylar uchun 0-2 ta tasodifiy non-cert yutuq
       const pool: { type: any; title: string; ball: number }[] = [
-        { type: 'CERTIFICATE', title: 'CS50 sertifikati', ball: 2 },
-        { type: 'CERTIFICATE', title: 'AWS CCP', ball: 3 },
-        { type: 'LANGUAGE', title: 'IELTS 6.5', ball: 3 },
-        { type: 'LANGUAGE', title: 'CEFR B2', ball: 2 },
         { type: 'HACKATHON', title: 'PDP Hackathon — finalist', ball: 4 },
         { type: 'HACKATHON', title: 'Ideathon ishtirokchi', ball: 2 },
-        { type: 'COURSE', title: 'Coursera ML', ball: 2 },
         { type: 'VOLUNTEER', title: 'Open Day ko\'ngillisi', ball: 1 },
         { type: 'MENTORING', title: 'Junior talabaga yordam', ball: 2 },
         { type: 'STARTUP', title: 'Pet-project MVP', ball: 3 },

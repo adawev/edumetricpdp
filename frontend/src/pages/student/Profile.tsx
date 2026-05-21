@@ -1,13 +1,17 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { T } from '@/lib/theme';
-import { Card, Avatar, Button, Skeleton, Dialog, Field, Input, Select } from '@/components/em/Primitives';
+import { Card, Avatar, Button, Skeleton, Dialog, Field, Input, Select, Tooltip } from '@/components/em/Primitives';
 import { Icons } from '@/components/em/Icons';
 import { useStudentMe, useAchievements, useCreateAchievement, useStudentBadges } from '@/hooks/useStudent';
 import { ErrorState } from '@/components/em/ErrorState';
 import type { GrantStatus, AchievementType, Achievement } from '@/types/student';
 import { api } from '@/lib/api';
-import { BadgeGrid, type BadgeDef, type EarnedBadge } from '@/components/em/Badges';
+import { BadgeMedal, BADGE_RARITY_LABEL, type BadgeDef, type EarnedBadge, type BadgeRarity } from '@/components/em/Badges';
+
+const RARITY_COLOR: Record<BadgeRarity, string> = {
+  legendary: '#a16207', epic: '#6d28d9', rare: '#1d4ed8', common: '#475569',
+};
 import { toast } from 'sonner';
 
 // ── constants ─────────────────────────────────────────────────────────────
@@ -473,6 +477,7 @@ function BadgesSection() {
   const { data: catalog } = useBadgeCatalog();
   const { data: badgesData } = useStudentBadges();
   const earned = (badgesData?.earned ?? []) as EarnedBadge[];
+  const earnedMap = Object.fromEntries(earned.map(b => [b.slug, b]));
   const earnedCount = earned.length;
   const total = catalog?.length ?? 0;
 
@@ -489,9 +494,43 @@ function BadgesSection() {
       </div>
       <div style={{ padding: 14 }}>
         {catalog && catalog.length > 0 ? (
-          <BadgeGrid catalog={catalog} earned={earned} columns={3} />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
+            {catalog.map(b => {
+              const e = earnedMap[b.slug];
+              const isEarned = !!e;
+              const rc = RARITY_COLOR[b.rarity];
+              return (
+                <Tooltip key={b.slug} content={isEarned ? `${b.name} · Olingan` : `${b.name} · ${b.howToEarn}`}>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 14,
+                    padding: '14px 16px', borderRadius: 12,
+                    border: `1px solid ${isEarned ? b.color + '55' : T.border}`,
+                    background: isEarned ? `linear-gradient(135deg, ${b.color}10 0%, ${T.white} 60%)` : T.white,
+                    minHeight: 92, cursor: 'help',
+                    opacity: isEarned ? 1 : 0.55,
+                  }}>
+                    <BadgeMedal badge={b} size={56} earned={isEarned} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: T.text, lineHeight: 1.2 }}>{b.name}</span>
+                        <span style={{
+                          fontSize: 9.5, fontWeight: 700, padding: '2px 7px', borderRadius: 4,
+                          background: rc + (isEarned ? '15' : '10'), color: rc,
+                          border: `1px solid ${rc}33`, letterSpacing: '.08em', whiteSpace: 'nowrap',
+                        }}>{BADGE_RARITY_LABEL[b.rarity].toUpperCase()}</span>
+                      </div>
+                      <div style={{ fontSize: 11.5, color: T.textMuted, lineHeight: 1.45,
+                        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        {isEarned ? b.description : b.howToEarn}
+                      </div>
+                    </div>
+                  </div>
+                </Tooltip>
+              );
+            })}
+          </div>
         ) : (
-          <Skeleton h={180} r={12} />
+          <Skeleton h={200} r={12} />
         )}
       </div>
     </Card>
