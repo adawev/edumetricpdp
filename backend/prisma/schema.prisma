@@ -123,6 +123,7 @@ model Student {
   feedbacks        Feedback[]
   activityLogs     ActivityLog[]
   attendances      AttendanceRecord[]
+  snapshots        ScoreSnapshot[]
   createdAt        DateTime      @default(now())
 }
 
@@ -183,6 +184,17 @@ model ActivityLog {
   action    String
   meta      Json?
   createdAt DateTime @default(now())
+}
+
+model ScoreSnapshot {
+  id        String   @id @default(uuid())
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  score     Float
+  gpa       Float
+  createdAt DateTime @default(now())
+
+  @@index([studentId, createdAt])
 }
 
 model ApiKey {

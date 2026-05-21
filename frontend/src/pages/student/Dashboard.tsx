@@ -7,9 +7,9 @@ import {
 import { T, GRANT_REASON_LABEL_SHORT } from '@/lib/theme';
 import { Card, Button, Skeleton, Dialog, Tooltip } from '@/components/em/Primitives';
 import { Icons } from '@/components/em/Icons';
-import { useStudentMe, useStudentRankings, useAchievements } from '@/hooks/useStudent';
+import { useStudentMe, useStudentRankings, useAchievements, useFeedbacks, useScoreHistory } from '@/hooks/useStudent';
 import { ErrorState } from '@/components/em/ErrorState';
-import type { GrantStatus } from '@/types/student';
+import type { GrantStatus, LmsData, LmsSubject } from '@/types/student';
 
 // ── constants ─────────────────────────────────────────────────────────────
 
@@ -29,89 +29,26 @@ const PIE_ITEMS = [
   { key: 'discipline', label: 'Intizom',   max: 10, color: '#f59e0b', desc: 'Intizom va xulq ko\'rsatkichi, max 10 ball' },
 ];
 
-// ── LMS static demo data ─────────────────────────────────────────────────
+// ── parsed LMS subjects helper ────────────────────────────────────────────
 
-type LmsLog = { date: string; time: string; status: 'attended' | 'absent'; reason: string | null };
-type LmsSubject = { name: string; teacher: string; total: number; attended: number; absent: number; pct: number; logs: LmsLog[] };
+type ParsedSubject = { name: string; teacher: string; total: number; attended: number; absent: number; pct: number; logs: { date: string; time: string; status: 'attended' | 'absent'; reason: string | null }[] };
 
-const LMS_SUBJECTS: LmsSubject[] = [
-  {
-    name: "Ma'lumotlar strukturasi",
-    teacher: 'D. Eshmuradov',
-    total: 30, attended: 28, absent: 2, pct: 93.3,
-    logs: [
-      { date: '2026-05-14', time: '09:00', status: 'attended', reason: null },
-      { date: '2026-05-12', time: '09:00', status: 'attended', reason: null },
-      { date: '2026-05-09', time: '09:00', status: 'absent',   reason: 'Kasalligi sababli' },
-      { date: '2026-05-07', time: '09:00', status: 'attended', reason: null },
-      { date: '2026-05-05', time: '09:00', status: 'attended', reason: null },
-      { date: '2026-05-02', time: '09:00', status: 'absent',   reason: 'Sertifikat imtihoni' },
-      { date: '2026-04-30', time: '09:00', status: 'attended', reason: null },
-    ],
-  },
-  {
-    name: 'Web dasturlash (JavaScript)',
-    teacher: 'A. Saidov',
-    total: 25, attended: 24, absent: 1, pct: 96.0,
-    logs: [
-      { date: '2026-05-13', time: '11:00', status: 'attended', reason: null },
-      { date: '2026-05-11', time: '11:00', status: 'attended', reason: null },
-      { date: '2026-05-08', time: '11:00', status: 'attended', reason: null },
-      { date: '2026-05-06', time: '11:00', status: 'absent',   reason: 'Universitet tadbiri' },
-      { date: '2026-05-04', time: '11:00', status: 'attended', reason: null },
-      { date: '2026-05-01', time: '11:00', status: 'attended', reason: null },
-    ],
-  },
-  {
-    name: 'Frontend frameworks (React)',
-    teacher: 'A. Saidov',
-    total: 25, attended: 23, absent: 2, pct: 92.0,
-    logs: [
-      { date: '2026-05-15', time: '14:00', status: 'attended', reason: null },
-      { date: '2026-05-13', time: '14:00', status: 'attended', reason: null },
-      { date: '2026-05-10', time: '14:00', status: 'absent',   reason: 'Kasalligi sababli' },
-      { date: '2026-05-08', time: '14:00', status: 'attended', reason: null },
-      { date: '2026-05-06', time: '14:00', status: 'absent',   reason: 'Kasalligi sababli' },
-      { date: '2026-05-03', time: '14:00', status: 'attended', reason: null },
-    ],
-  },
-  {
-    name: "Ma'lumotlar bazasi (PostgreSQL)",
-    teacher: 'D. Rahmatova',
-    total: 20, attended: 19, absent: 1, pct: 95.0,
-    logs: [
-      { date: '2026-05-14', time: '15:30', status: 'attended', reason: null },
-      { date: '2026-05-12', time: '15:30', status: 'attended', reason: null },
-      { date: '2026-05-07', time: '15:30', status: 'attended', reason: null },
-      { date: '2026-05-05', time: '15:30', status: 'absent',   reason: 'Sabab ko\'rsatilmagan' },
-      { date: '2026-05-02', time: '15:30', status: 'attended', reason: null },
-    ],
-  },
-  {
-    name: 'Soft skills va loyiha menejmenti',
-    teacher: 'N. Qodirova',
-    total: 20, attended: 20, absent: 0, pct: 100.0,
-    logs: [
-      { date: '2026-05-15', time: '10:00', status: 'attended', reason: null },
-      { date: '2026-05-13', time: '10:00', status: 'attended', reason: null },
-      { date: '2026-05-08', time: '10:00', status: 'attended', reason: null },
-      { date: '2026-05-06', time: '10:00', status: 'attended', reason: null },
-      { date: '2026-05-01', time: '10:00', status: 'attended', reason: null },
-    ],
-  },
-];
-
-function buildGrowthData(total: number, gpa: number) {
-  const months = ['Noy', 'Dek', 'Yan', 'Fev', 'Mar', 'Apr'];
-  const DELTAS = [0.31, 0.67, 0.19, 0.53, 0.42];
-  return months.map((month, i) => {
-    const offset = i === 5 ? 0 : -((5 - i) * (2 + DELTAS[i] * 3));
-    return {
-      month,
-      ball: Math.max(0, Math.round((total + offset) * 10) / 10),
-      gpa:  Math.max(0, Math.round((gpa + offset * 0.4) * 10) / 10),
-    };
-  });
+function parseLmsSubjects(lmsData: LmsData | null | undefined): ParsedSubject[] {
+  if (!lmsData?.subjects?.length) return [];
+  return lmsData.subjects.map(s => ({
+    name: s.subject_name ?? 'Fan',
+    teacher: s.teacher ?? '—',
+    total: s.subject_summary?.total ?? 0,
+    attended: s.subject_summary?.attended ?? 0,
+    absent: s.subject_summary?.absent ?? (s.subject_summary ? s.subject_summary.total - s.subject_summary.attended : 0),
+    pct: s.subject_summary?.percentage ?? 0,
+    logs: (s.logs ?? []).map(l => ({
+      date: l.date,
+      time: l.time ?? '',
+      status: (l.status === 'attended' ? 'attended' : 'absent') as 'attended' | 'absent',
+      reason: l.reason ?? null,
+    })),
+  }));
 }
 
 const fmtRelative = (s: string) => {
@@ -172,16 +109,20 @@ export default function StudentDashboard() {
   const { data, isLoading, isError, refetch } = useStudentMe();
   const { data: rankings } = useStudentRankings();
   const { data: achievements } = useAchievements();
+  const { data: feedbacks } = useFeedbacks();
+  const { data: scoreHistory } = useScoreHistory();
+
+  const trends = useMemo(() => {
+    if (!scoreHistory || scoreHistory.length < 2) return { score: null, gpa: null };
+    const last = scoreHistory[scoreHistory.length - 1];
+    const prev = scoreHistory[scoreHistory.length - 2];
+    return { score: last.score - prev.score, gpa: last.gpa - prev.gpa };
+  }, [scoreHistory]);
 
   const pieData = useMemo(() => {
     if (!data) return [];
     const bd = data.breakdown;
     return PIE_ITEMS.map(item => ({ ...item, value: (bd as any)[item.key] ?? 0 }));
-  }, [data]);
-
-  const growthData = useMemo(() => {
-    if (!data) return [];
-    return buildGrowthData(data.breakdown.total, data.student.gpa);
   }, [data]);
 
   const recentActivity = useMemo(() => {
@@ -199,12 +140,68 @@ export default function StudentDashboard() {
         });
       });
     }
-    items.push(
-      { iconType: 'message', color: T.textMuted, title: 'Mentor feedback olindi', sub: 'Akbar Saidov · 5/5', date: new Date(Date.now() - 15 * 86400000).toISOString() },
-      { iconType: 'bolt',    color: T.amber,     title: 'Jarima qaydi: Yengil',   sub: 'Kechikish · −1 ball',  date: new Date(Date.now() - 35 * 86400000).toISOString() },
-    );
+    if (feedbacks) {
+      feedbacks.slice(0, 2).forEach(f => {
+        items.push({
+          iconType: 'message',
+          color: T.textMuted,
+          title: 'Mentor feedback olindi',
+          sub: `${f.mentor.fullName} · ${f.score}/5`,
+          date: f.createdAt,
+        });
+      });
+    }
+    if (data?.student.penalties) {
+      data.student.penalties.slice(0, 2).forEach(p => {
+        items.push({
+          iconType: 'bolt',
+          color: T.amber,
+          title: `Jarima: ${p.type === 'LIGHT' ? 'Yengil' : p.type === 'MEDIUM' ? "O'rtacha" : 'Og\'ir'}`,
+          sub: `${p.reason} · −${p.ball} ball`,
+          date: p.createdAt,
+        });
+      });
+    }
     return items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5);
-  }, [achievements]);
+  }, [achievements, feedbacks, data]);
+
+  const handleExport = () => {
+    if (!data) return;
+    const { student, breakdown } = data;
+    const csvRows = [
+      ['Maydon', 'Qiymat'],
+      ["To'liq ism", student.fullName],
+      ['Guruh', student.group.name],
+      ['Kurs', String(student.group.course)],
+      ['Grant holati', student.grantStatus],
+      ['Grant ball', breakdown.total.toFixed(2)],
+      ['GPA', `${student.gpa.toFixed(2)}%`],
+      ['Davomat', `${student.attendance.toFixed(2)}%`],
+      ['Akademik ball', breakdown.academic.toFixed(2)],
+      ['Davomat ball', breakdown.attendance.toFixed(2)],
+      ['Loyihalar ball', breakdown.projects.toFixed(2)],
+      ['Faollik ball', breakdown.activity.toFixed(2)],
+      ['Tyutor ball', breakdown.tutor.toFixed(2)],
+      ['Intizom ball', breakdown.discipline.toFixed(2)],
+      ['Asosiy ball', breakdown.base.toFixed(2)],
+      ['Jarima', `-${breakdown.penalty.toFixed(2)}`],
+      ['Tiklanish', `+${breakdown.recovery.toFixed(2)}`],
+      ['Ish bonus', `+${breakdown.employment.toFixed(2)}`],
+      ...(rankings ? [
+        ["Guruhdagi o'rin", `${rankings.group.rank} / ${rankings.group.total}`],
+        ["Kursdagi o'rin", `${rankings.course.rank} / ${rankings.course.total}`],
+        ["Universitetdagi o'rin", `${rankings.university.rank} / ${rankings.university.total}`],
+      ] : []),
+    ];
+    const csv = csvRows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `grant-hisobot-${student.fullName.replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   if (isLoading) return <DashboardSkeleton />;
   if (isError) return <ErrorState onRetry={refetch} />;
@@ -237,7 +234,7 @@ export default function StudentDashboard() {
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
-          <Button variant="outline" size="sm" icon={Icons.download({ size: 13, stroke: T.textMuted })}>
+          <Button variant="outline" size="sm" icon={Icons.download({ size: 13, stroke: T.textMuted })} onClick={handleExport}>
             Hisobotni yuklab olish
           </Button>
           <span style={{
@@ -252,13 +249,27 @@ export default function StudentDashboard() {
       {/* KPI cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
         <KpiCard label="Grant ball"     value={breakdown.total.toFixed(1)} sub="/ 100"
-          trend="+4 oxirgi oyda" trendUp accent={T.emerald} icon={Icons.trophy} />
+          trend={trends.score !== null
+            ? trends.score > 0 ? `+${trends.score.toFixed(1)} oxirgi oyga nisbatan`
+            : trends.score < 0 ? `${trends.score.toFixed(1)} oxirgi oyga nisbatan`
+            : "O'zgarmadi"
+            : undefined}
+          trendUp={trends.score !== null ? trends.score > 0 ? true : trends.score < 0 ? false : null : undefined}
+          accent={T.emerald} icon={Icons.trophy} />
         <KpiCard label="GPA"             value={`${student.gpa.toFixed(1)}%`}
-          trend="+2% oxirgi oyda" trendUp icon={Icons.graduation} />
+          trend={trends.gpa !== null
+            ? trends.gpa > 0 ? `+${trends.gpa.toFixed(1)}% oxirgi oyga nisbatan`
+            : trends.gpa < 0 ? `${trends.gpa.toFixed(1)}% oxirgi oyga nisbatan`
+            : "O'zgarmadi"
+            : undefined}
+          trendUp={trends.gpa !== null ? trends.gpa > 0 ? true : trends.gpa < 0 ? false : null : undefined}
+          icon={Icons.graduation} />
         <KpiCard label="Davomat"         value={`${student.attendance.toFixed(1)}%`}
-          trend="Barqaror" trendUp={null} icon={Icons.cal} />
+          trend={student.attendance >= 90 ? "A'lo davomat" : student.attendance >= 75 ? 'Yaxshi davomat' : 'Past davomat'}
+          trendUp={student.attendance >= 75 ? true : false}
+          icon={Icons.cal} />
         <KpiCard label="Reytingda o'rin" value={rankStr}
-          sub={rankings ? `/ ${rankings.university.total}` : ''} trend="↑ 2 pog'ona" trendUp icon={Icons.bar} />
+          sub={rankings ? `/ ${rankings.university.total} talaba` : ''} icon={Icons.bar} />
       </div>
 
       {/* Donut chart + grant status card */}
@@ -373,15 +384,19 @@ export default function StudentDashboard() {
           </div>
           <div style={{ height: 220 }}>
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={growthData} margin={{ top: 8, right: 12, left: -14, bottom: 0 }}>
+              <LineChart data={scoreHistory ?? []} margin={{ top: 8, right: 12, left: -14, bottom: 0 }}>
                 <CartesianGrid stroke={T.border} strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="month" stroke={T.textSubtle} fontSize={11.5} tickLine={false} axisLine={false} />
-                <YAxis stroke={T.textSubtle} fontSize={11.5} tickLine={false} axisLine={false} domain={[60, 100]} />
+                <YAxis stroke={T.textSubtle} fontSize={11.5} tickLine={false} axisLine={false}
+                  domain={[
+                    (d: number) => Math.max(0, Math.floor((d - 5) / 10) * 10),
+                    (d: number) => Math.min(110, Math.ceil((d + 5) / 10) * 10),
+                  ]} />
                 <ReTooltip
                   contentStyle={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 8, fontSize: 12, padding: '8px 10px' }}
-                  formatter={(v: number, name: string) => [v, name === 'ball' ? 'Grant ball' : 'GPA %']}
+                  formatter={(v: number, name: string) => [v, name === 'score' ? 'Grant ball' : 'GPA %']}
                 />
-                <Line type="monotone" dataKey="ball" stroke={T.emerald} strokeWidth={2.5}
+                <Line type="monotone" dataKey="score" stroke={T.emerald} strokeWidth={2.5}
                   dot={{ r: 4, fill: T.emerald, strokeWidth: 0 }} activeDot={{ r: 6 }} animationDuration={900} />
                 <Line type="monotone" dataKey="gpa" stroke={T.slate900} strokeWidth={2}
                   dot={{ r: 3, fill: T.white, stroke: T.slate900, strokeWidth: 1.5 }} animationDuration={900} />
@@ -431,18 +446,19 @@ export default function StudentDashboard() {
       </div>
 
       {/* LMS attendance by subject */}
-      <LmsAttendanceSection attendance={student.attendance} />
+      <LmsAttendanceSection attendance={student.attendance} lmsData={student.lmsData} />
     </div>
   );
 }
 
 // ── LMS Attendance by subject ─────────────────────────────────────────────
 
-function LmsAttendanceSection({ attendance }: { attendance: number }) {
-  const [openSubject, setOpenSubject] = useState<LmsSubject | null>(null);
+function LmsAttendanceSection({ attendance, lmsData }: { attendance: number; lmsData?: LmsData | null }) {
+  const [openSubject, setOpenSubject] = useState<ParsedSubject | null>(null);
+  const subjects = parseLmsSubjects(lmsData);
   const overall = attendance;
-  const totalLessons = LMS_SUBJECTS.reduce((s, sub) => s + sub.total, 0);
-  const attendedLessons = Math.round(totalLessons * attendance / 100);
+  const totalLessons = subjects.reduce((s, sub) => s + sub.total, 0);
+  const attendedLessons = subjects.reduce((s, sub) => s + sub.attended, 0);
   const tone = (p: number) => p >= 90 ? T.emerald : p >= 75 ? T.amber : T.red;
   const toneText = (p: number) => p >= 90 ? T.emeraldDeep : p >= 75 ? T.amberDeep : T.redDeep;
   const toneBg = (p: number) => p >= 90 ? T.emeraldBg : p >= 75 ? T.amberBg : T.redBg;
@@ -467,26 +483,33 @@ function LmsAttendanceSection({ attendance }: { attendance: number }) {
               {overall.toFixed(1)}%
             </div>
           </div>
-          <div style={{ width: 92, height: 92, position: 'relative', flexShrink: 0 }}>
-            <svg width="92" height="92" viewBox="0 0 92 92">
-              <circle cx="46" cy="46" r={r} fill="none" stroke={T.bgSubtle} strokeWidth="8" />
-              <circle cx="46" cy="46" r={r} fill="none" stroke={tone(overall)} strokeWidth="8"
-                strokeLinecap="round"
-                strokeDasharray={`${circ * overall / 100} ${circ}`}
-                transform="rotate(-90 46 46)" />
-            </svg>
-            <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', pointerEvents: 'none', textAlign: 'center' }}>
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: T.text, fontVariantNumeric: 'tabular-nums' }}>{attendedLessons}</div>
-                <div style={{ fontSize: 10, color: T.textSubtle }}>/ {totalLessons}</div>
+          {totalLessons > 0 && (
+            <div style={{ width: 92, height: 92, position: 'relative', flexShrink: 0 }}>
+              <svg width="92" height="92" viewBox="0 0 92 92">
+                <circle cx="46" cy="46" r={r} fill="none" stroke={T.bgSubtle} strokeWidth="8" />
+                <circle cx="46" cy="46" r={r} fill="none" stroke={tone(overall)} strokeWidth="8"
+                  strokeLinecap="round"
+                  strokeDasharray={`${circ * overall / 100} ${circ}`}
+                  transform="rotate(-90 46 46)" />
+              </svg>
+              <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', pointerEvents: 'none', textAlign: 'center' }}>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: T.text, fontVariantNumeric: 'tabular-nums' }}>{attendedLessons}</div>
+                  <div style={{ fontSize: 10, color: T.textSubtle }}>/ {totalLessons}</div>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
-      <div style={{ padding: 14, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-        {LMS_SUBJECTS.map((sub, i) => {
+      {subjects.length === 0 && (
+        <div style={{ padding: '32px 20px', textAlign: 'center', color: T.textSubtle, fontSize: 13 }}>
+          LMS'dan hali ma'lumot kelmagan. Integratsiya ulangach fanlar ko'rinadi.
+        </div>
+      )}
+      <div style={{ padding: subjects.length ? 14 : 0, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+        {subjects.map((sub, i) => {
           const p = sub.pct;
           return (
             <div key={i}
@@ -527,7 +550,7 @@ function LmsAttendanceSection({ attendance }: { attendance: number }) {
   );
 }
 
-function SubjectDetailDialog({ subject, onClose }: { subject: LmsSubject | null; onClose: () => void }) {
+function SubjectDetailDialog({ subject, onClose }: { subject: ParsedSubject | null; onClose: () => void }) {
   if (!subject) return null;
   const fmtD = (s: string) => {
     const d = new Date(s);

@@ -27,7 +27,7 @@ export async function recalcStudent(studentId: string) {
   const breakdown = calculateGrantScore(input);
   const decision = getGrantDecision(input, student.grantStatus);
 
-  return prisma.student.update({
+  const updated = await prisma.student.update({
     where: { id: studentId },
     data: {
       grantScore: breakdown.total,
@@ -37,4 +37,18 @@ export async function recalcStudent(studentId: string) {
       lastRecalc: new Date(),
     },
   });
+
+  // Kuniga bir marta snapshot saqlash (growth chart uchun)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const existing = await prisma.scoreSnapshot.findFirst({
+    where: { studentId, createdAt: { gte: today } },
+  });
+  if (!existing) {
+    await prisma.scoreSnapshot.create({
+      data: { studentId, score: breakdown.total, gpa: student.gpa },
+    });
+  }
+
+  return updated;
 }

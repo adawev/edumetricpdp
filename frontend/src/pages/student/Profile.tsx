@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { T } from '@/lib/theme';
 import { Card, Avatar, Button, Skeleton, Dialog, Field, Input, Select, Tooltip } from '@/components/em/Primitives';
 import { Icons } from '@/components/em/Icons';
-import { useStudentMe, useAchievements, useCreateAchievement } from '@/hooks/useStudent';
+import { useStudentMe, useAchievements, useCreateAchievement, useStudentBadges, useBadgeCatalog } from '@/hooks/useStudent';
 import { ErrorState } from '@/components/em/ErrorState';
 import type { GrantStatus, AchievementType, Achievement } from '@/types/student';
 import { toast } from 'sonner';
@@ -36,21 +36,6 @@ const CERT_TYPE_OPTIONS: { value: AchievementType; label: string }[] = [
   { value: 'OTHER',       label: 'Boshqa' },
 ];
 
-type BadgeDef = { slug: string; name: string; icon: string; color: string; category: string; desc: string; howToEarn: string };
-const BADGES: BadgeDef[] = [
-  { slug: 'hackathon-winner', name: "Hakaton g'olibi",   icon: '🏆', color: '#f59e0b', category: 'Musobaqa',   desc: 'Hakatonda 1-o\'rinni egallash.',      howToEarn: 'Hakaton yoki musobaqada 1-o\'rinni egallang.' },
-  { slug: 'silver-medalist',  name: 'Kumush medal',       icon: '🥈', color: '#94a3b8', category: 'Musobaqa',   desc: 'Hakaton yoki musobaqada 2-o\'rin.',   howToEarn: '2-o\'rin egallang.' },
-  { slug: 'bronze-medalist',  name: 'Bronza medal',       icon: '🥉', color: '#a16207', category: 'Musobaqa',   desc: 'Hakaton yoki musobaqada 3-o\'rin.',   howToEarn: '3-o\'rin egallang.' },
-  { slug: 'top-1-student',    name: 'Eng yaxshi talaba',  icon: '⭐', color: '#0ea5e9', category: 'Akademik',   desc: 'Guruh ichida birinchi o\'rinda turish.', howToEarn: 'Semestr oxirida guruhda 1-o\'rin egallang.' },
-  { slug: 'gpa-master',       name: 'GPA ustasi',         icon: '📚', color: '#7c3aed', category: 'Akademik',   desc: 'GPA 95% dan yuqori semestr davomida.',   howToEarn: 'GPA ≥ 95% ushlab turing.' },
-  { slug: 'mentor-helper',    name: 'Yordamchi mentor',   icon: '🤝', color: '#10b981', category: 'Faollik',    desc: 'Boshqa talabalarga doimiy yordam bergan.', howToEarn: '≥ 5 hafta mentorlang.' },
-  { slug: 'event-active',     name: 'Tadbir faollari',    icon: '🎉', color: '#db2777', category: 'Faollik',    desc: 'Tadbirlarda muntazam ishtirok.',           howToEarn: 'Semestrda 5+ tadbirda qatnashing.' },
-  { slug: 'volunteer',        name: 'Volontyor',          icon: '💚', color: '#059669', category: 'Faollik',    desc: 'Volontyorlik faoliyatida ishtirok.',       howToEarn: '≥ 20 soat volontyor ishing.' },
-  { slug: 'club-member',      name: "Klub a'zosi",        icon: '🎯', color: '#7c3aed', category: 'Faollik',    desc: "Universitet klubining faol a'zosi.",       howToEarn: "Rasmiy klubga a'zo bo'ling." },
-  { slug: 'streak-30',        name: '30 kunlik streak',   icon: '🔥', color: '#dc2626', category: 'Jamlovchi',  desc: '30 kun ketma-ket darslarga qatnashish.',   howToEarn: '30 kun 100% davomat.' },
-  { slug: 'cert-collector',   name: 'Sertifikat ustasi',  icon: '📜', color: '#0891b2', category: 'Jamlovchi',  desc: '5 ta tasdiqlangan sertifikat.',            howToEarn: '5 ta sertifikat oling va admin tasdiqlasin.' },
-  { slug: 'all-rounder',      name: 'Har tarafda',        icon: '🌟', color: '#ea580c', category: 'Jamlovchi',  desc: 'Hamma mezonlarda ≥ 80% natija.',           howToEarn: '6 ta mezonning har birida ≥ 80%.' },
-];
 
 // ── helpers ───────────────────────────────────────────────────────────────
 
@@ -115,7 +100,7 @@ export default function StudentProfile() {
           <div style={{ marginTop: 14 }}>
             <div style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-0.025em', color: T.text }}>{student.fullName}</div>
             <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              <InfoTag icon={Icons.mail} label="Email" value={`${student.fullName.toLowerCase().replace(/\s+/g, '.')}@student.pdp.uz`} />
+              <InfoTag icon={Icons.mail} label="Email" value={student.email ?? `${student.fullName.toLowerCase().replace(/\s+/g, '.')}@student.pdp.uz`} />
               <InfoTag icon={Icons.users} label="Guruh" value={student.group.name} />
               {student.group.mentor && (
                 <InfoTag icon={Icons.graduation} label="Mentor" value={student.group.mentor.fullName} />
@@ -288,7 +273,7 @@ export default function StudentProfile() {
       />
 
       {/* Badges section */}
-      <BadgesSection student={student} achievements={achievements ?? []} />
+      <BadgesSection />
     </div>
   );
 }
@@ -444,26 +429,13 @@ function CertificatesSection({ certs }: { certs: Achievement[] }) {
 
 // ── BadgesSection ──────────────────────────────────────────────────────────
 
-function BadgesSection({ student, achievements }: { student: any; achievements: any[] }) {
-  const earnedSlugs = useMemo(() => {
-    const slugs = new Set<string>();
-    const approvedTypes = new Set(achievements.filter(a => a.status === 'APPROVED').map((a: any) => a.type));
-    const approvedCount = achievements.filter(a => a.status === 'APPROVED').length;
-    const certCount = achievements.filter(a => a.status === 'APPROVED' && ['CERTIFICATE','LANGUAGE','COURSE'].includes(a.type)).length;
+function BadgesSection() {
+  const { data: badgesData, isLoading: badgesLoading } = useStudentBadges();
+  const { data: catalog, isLoading: catalogLoading } = useBadgeCatalog();
 
-    if (approvedTypes.has('HACKATHON')) slugs.add('hackathon-winner');
-    if (approvedTypes.has('MENTORING')) slugs.add('mentor-helper');
-    if (approvedTypes.has('VOLUNTEER')) slugs.add('volunteer');
-    if (student.gpa >= 95) slugs.add('gpa-master');
-    if (student.gpa >= 90) slugs.add('top-1-student');
-    if (student.attendance >= 90) slugs.add('streak-30');
-    if (certCount >= 3) slugs.add('cert-collector');
-    if (approvedCount >= 5) slugs.add('all-rounder');
-    if (approvedTypes.has('STARTUP')) slugs.add('event-active');
-    return slugs;
-  }, [student, achievements]);
-
-  const earnedCount = BADGES.filter(b => earnedSlugs.has(b.slug)).length;
+  const earnedSlugs = new Set((badgesData?.earned ?? []).map(b => b.slug));
+  const allBadges = catalog ?? [];
+  const earnedCount = allBadges.filter(b => earnedSlugs.has(b.slug)).length;
 
   return (
     <Card padding={0}>
@@ -471,40 +443,54 @@ function BadgesSection({ student, achievements }: { student: any; achievements: 
         <div>
           <div style={{ fontSize: 14, fontWeight: 600 }}>Mening badge'larim</div>
           <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>
-            <span style={{ color: T.text, fontWeight: 600 }}>{earnedCount}</span>
-            {' / '}{BADGES.length} ta badge olingan · avtomatik beriladi
+            {badgesLoading || catalogLoading ? 'Yuklanmoqda...' : (
+              <>
+                <span style={{ color: T.text, fontWeight: 600 }}>{earnedCount}</span>
+                {' / '}{allBadges.length} ta badge olingan · avtomatik beriladi
+              </>
+            )}
           </div>
         </div>
       </div>
-      <div style={{ padding: 14, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-        {BADGES.map(b => {
-          const earned = earnedSlugs.has(b.slug);
-          const tintBg = (earned ? b.color : '#94a3b8') + '1a';
-          return (
-            <Tooltip key={b.slug} content={earned ? `${b.name} · Olingan` : `${b.name} · ${b.howToEarn}`}>
-              <div
-                onMouseEnter={e => { if (earned) (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)'; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.transform = 'none'; }}
-                style={{
-                  padding: 14, border: `1px solid ${T.border}`, borderRadius: 12,
-                  background: T.white, display: 'flex', flexDirection: 'column',
-                  alignItems: 'center', textAlign: 'center', gap: 8,
-                  opacity: earned ? 1 : 0.3, filter: earned ? 'none' : 'grayscale(.6)',
-                  transition: 'opacity .15s, transform .15s', cursor: 'help', width: '100%',
-                }}
-              >
-                <div style={{ width: 56, height: 56, borderRadius: 14, background: tintBg,
-                  display: 'grid', placeItems: 'center', fontSize: 28,
-                  border: `1px solid ${(earned ? b.color : '#94a3b8')}33` }}>
-                  {b.icon}
+      {(badgesLoading || catalogLoading) ? (
+        <div style={{ padding: 14, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+          {[0,1,2,3,4,5].map(i => <Skeleton key={i} h={120} r={12} />)}
+        </div>
+      ) : (
+        <div style={{ padding: 14, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+          {allBadges.map(b => {
+            const earned = earnedSlugs.has(b.slug);
+            const earnedBadge = badgesData?.earned.find(e => e.slug === b.slug);
+            const tintBg = (earned ? b.color : '#94a3b8') + '1a';
+            return (
+              <Tooltip key={b.slug} content={earned
+                ? `${b.name} · Olingan${earnedBadge?.evidence ? ` · ${earnedBadge.evidence}` : ''}`
+                : `${b.name} · ${b.howToEarn}`
+              }>
+                <div
+                  onMouseEnter={e => { if (earned) (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.transform = 'none'; }}
+                  style={{
+                    padding: 14, border: `1px solid ${T.border}`, borderRadius: 12,
+                    background: T.white, display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', textAlign: 'center', gap: 8,
+                    opacity: earned ? 1 : 0.3, filter: earned ? 'none' : 'grayscale(.6)',
+                    transition: 'opacity .15s, transform .15s', cursor: 'help', width: '100%',
+                  }}
+                >
+                  <div style={{ width: 56, height: 56, borderRadius: 14, background: tintBg,
+                    display: 'grid', placeItems: 'center', fontSize: 28,
+                    border: `1px solid ${(earned ? b.color : '#94a3b8')}33` }}>
+                    {b.icon}
+                  </div>
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: T.text, lineHeight: 1.3 }}>{b.name}</div>
+                  <div style={{ fontSize: 10.5, color: T.textMuted }}>{earned ? 'Olingan ✓' : 'Hali olinmagan'}</div>
                 </div>
-                <div style={{ fontSize: 12.5, fontWeight: 600, color: T.text, lineHeight: 1.3 }}>{b.name}</div>
-                <div style={{ fontSize: 10.5, color: T.textMuted }}>{earned ? 'Olingan ✓' : 'Hali olinmagan'}</div>
-              </div>
-            </Tooltip>
-          );
-        })}
-      </div>
+              </Tooltip>
+            );
+          })}
+        </div>
+      )}
     </Card>
   );
 }

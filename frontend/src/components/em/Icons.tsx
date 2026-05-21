@@ -57,4 +57,6 @@ export const Icons = {
   filter:     (p: P) => <Svg {...p}><path d="M3 5h18l-7 9v6l-4-2v-4z"/></Svg>,
   info:       (p: P) => <Svg {...p}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></Svg>,
   trending:   (p: P) => <Svg {...p}><path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/></Svg>,
+  home:       (p: P) => <Svg {...p}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></Svg>,
+  bell:       (p: P) => <Svg {...p}><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></Svg>,
 };

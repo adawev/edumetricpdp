@@ -38,10 +38,37 @@ export interface Penalty {
   createdAt: string;
 }
 
+export interface LmsLog {
+  date: string;
+  time?: string;
+  status: 'attended' | 'absent';
+  reason?: string | null;
+}
+
+export interface LmsSubject {
+  subject_id?: string;
+  subject_name?: string;
+  teacher?: string;
+  subject_summary?: { total: number; attended: number; absent?: number; percentage: number };
+  logs?: LmsLog[];
+}
+
+export interface LmsData {
+  attendance_summary?: { attendance_percentage: number };
+  subjects?: LmsSubject[];
+}
+
+export interface ScoreHistoryPoint {
+  month: string;
+  score: number;
+  gpa: number;
+}
+
 export interface Student {
   id: string;
   userId: string;
   fullName: string;
+  email?: string;
   gpa: number;
   attendance: number;
   projectScore: number;
@@ -55,6 +82,7 @@ export interface Student {
   riskLevel: RiskLevel;
   paymentOverdue: boolean;
   pinnedBadge?: string | null;
+  lmsData?: LmsData | null;
   group: Group;
   penalties: Penalty[];
 }
@@ -112,6 +140,8 @@ export interface StudentBadge {
   category: string;
   description: string;
   howToEarn: string;
+  earnedAt?: string;
+  evidence?: string;
 }
 
 export interface PublicAchievement {
