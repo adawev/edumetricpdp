@@ -7,17 +7,21 @@ const prisma = new PrismaClient();
 // Demo uchun har xil senariy: yuqori ball + GPA OK → kandidat; yuqori ball lekin GPA past → ACADEMIC_FAIL;
 // to'lov muddati o'tgan; allaqachon grant berilgan; penalty + recovery
 type Scenario =
-  | 'TOP_GRANTED'        // GPA 90+, ball 90+, allaqachon GRANTED
-  | 'CANDIDATE'          // GPA 80+, ball 80+, PENDING
+  | 'TOP_GRANTED'        // GPA 88+, ball 85-95, allaqachon GRANTED
+  | 'CANDIDATE'          // GPA 84+, ball 80-93, PENDING
   | 'ACADEMIC_FAIL'      // GPA < 80, ball baribir baland
   | 'LOW_SCORE'          // GPA 80+, lekin ball < 80
   | 'PAYMENT_OVERDUE'    // to'lov kechikkan
   | 'WITH_PENALTY'       // jarima + reabilitatsiya
+  | 'DEMO_FLOW'          // mentor demo uchun: tutor/discipline 0, ball ~78 → mentor qo'ysa PENDING
   | 'RANDOM';            // qolganlari random
 
 type StudentSpec = { name: string; scenario: Scenario };
 
 const STUDENTS: StudentSpec[] = [
+  // Demo flow uchun — birinchi 2 ta talaba: mentor kirib tutor/discipline ball qo'yadi
+  { name: 'Javohir Ismoilov',       scenario: 'DEMO_FLOW' },
+  { name: 'Komila Saidova',         scenario: 'DEMO_FLOW' },
   { name: 'Madina Yusupova',        scenario: 'TOP_GRANTED' },
   { name: 'Diyorbek Adashev',       scenario: 'TOP_GRANTED' },
   { name: 'Sardorbek Tursunov',     scenario: 'CANDIDATE' },
@@ -99,9 +103,9 @@ const rand = (min: number, max: number) => min + Math.random() * (max - min);
 function scenarioFields(s: Scenario): ScoreFields {
   switch (s) {
     case 'TOP_GRANTED':
-      return { gpa: rand(96, 99), attendance: rand(98, 100), projectScore: rand(13, 15), activityScore: rand(8, 10), tutorScore: rand(4, 5), disciplineScore: rand(9, 10), employmentBonus: rand(7, 10), paymentOverdue: false };
+      return { gpa: rand(88, 94), attendance: rand(90, 96), projectScore: rand(11, 13), activityScore: rand(7, 9), tutorScore: rand(4, 4.8), disciplineScore: rand(8, 9.5), employmentBonus: rand(0, 4), paymentOverdue: false };
     case 'CANDIDATE':
-      return { gpa: rand(82, 90), attendance: rand(85, 95), projectScore: rand(11, 14), activityScore: rand(7, 10), tutorScore: rand(3.5, 5), disciplineScore: rand(8, 10), employmentBonus: rand(0, 5), paymentOverdue: false };
+      return { gpa: rand(84, 90), attendance: rand(86, 94), projectScore: rand(10, 12), activityScore: rand(6, 8), tutorScore: rand(3.5, 4.5), disciplineScore: rand(7.5, 9), employmentBonus: rand(0, 3), paymentOverdue: false };
     case 'ACADEMIC_FAIL':
       return { gpa: rand(60, 79), attendance: rand(85, 98), projectScore: rand(12, 15), activityScore: rand(8, 10), tutorScore: rand(4, 5), disciplineScore: rand(8, 10), employmentBonus: rand(5, 10), paymentOverdue: false };
     case 'LOW_SCORE':
@@ -109,7 +113,11 @@ function scenarioFields(s: Scenario): ScoreFields {
     case 'PAYMENT_OVERDUE':
       return { gpa: rand(85, 92), attendance: rand(88, 95), projectScore: rand(11, 14), activityScore: rand(6, 9), tutorScore: rand(3.5, 5), disciplineScore: rand(7, 10), employmentBonus: 0, paymentOverdue: true };
     case 'WITH_PENALTY':
-      return { gpa: rand(82, 90), attendance: rand(82, 90), projectScore: rand(10, 13), activityScore: rand(5, 8), tutorScore: rand(3, 4.5), disciplineScore: rand(6, 8), employmentBonus: rand(0, 5), paymentOverdue: false };
+      return { gpa: rand(82, 88), attendance: rand(82, 90), projectScore: rand(9, 12), activityScore: rand(5, 7), tutorScore: rand(3, 4), disciplineScore: rand(6, 8), employmentBonus: rand(0, 3), paymentOverdue: false };
+    case 'DEMO_FLOW':
+      // Mentor hali baho qo'ymagan: tutor=0, discipline=0, feedback yo'q.
+      // Asosiy ball ~78 → LOW_SCORE. Mentor tutor 5 + discipline 10 qo'shsa ~93 → PENDING.
+      return { gpa: rand(86, 90), attendance: rand(92, 96), projectScore: rand(12, 14), activityScore: rand(8, 10), tutorScore: 0, disciplineScore: 0, employmentBonus: 0, paymentOverdue: false };
     default:
       return { gpa: rand(65, 95), attendance: rand(70, 95), projectScore: rand(5, 14), activityScore: rand(2, 9), tutorScore: rand(2, 5), disciplineScore: rand(5, 10), employmentBonus: rand(0, 8), paymentOverdue: false };
   }
@@ -185,11 +193,14 @@ async function main() {
     const tutorTotal = f.tutorScore; // 0-5
     const each = tutorTotal / 5;     // teng taqsimlangan
     const jitter = () => Math.max(0, Math.min(1, each + (Math.random() - 0.5) * 0.3));
-    const tutorEval = {
-      culture: jitter(), activity: jitter(), softSkills: jitter(),
-      discipline: jitter(), dormitory: jitter(),
-      by: 'seed', at: new Date().toISOString(),
-    };
+    // DEMO_FLOW: mentor hali baho qo'ymagan — tutorEval bo'sh
+    const tutorEval = spec.scenario === 'DEMO_FLOW'
+      ? null
+      : {
+          culture: jitter(), activity: jitter(), softSkills: jitter(),
+          discipline: jitter(), dormitory: jitter(),
+          by: 'seed', at: new Date().toISOString(),
+        };
 
     const student = await prisma.student.create({
       data: {
@@ -240,15 +251,18 @@ async function main() {
 
     // Feedback — har talaba uchun o'z guruhi mentoridan, score = tutorScore.
     // Shu orqali admin va mentor paneldagi tyutor bahosi mos keladi.
+    // DEMO_FLOW: mentor hali feedback yozmagan — bu demoda mentor o'zi yozadi.
     const studentGroup = groups[i % groups.length];
-    await prisma.feedback.create({
-      data: {
-        studentId: student.id,
-        mentorId: studentGroup.mentorId,
-        text: 'Yaxshi ishlayapti, faollik ko\'rsatsa yana yaxshi natijaga erishadi.',
-        score: Math.round(f.tutorScore * 10) / 10,
-      },
-    });
+    if (spec.scenario !== 'DEMO_FLOW') {
+      await prisma.feedback.create({
+        data: {
+          studentId: student.id,
+          mentorId: studentGroup.mentorId,
+          text: 'Yaxshi ishlayapti, faollik ko\'rsatsa yana yaxshi natijaga erishadi.',
+          score: Math.round(f.tutorScore * 10) / 10,
+        },
+      });
+    }
 
     // Yutuq namunalari — har xil darajalar
     if (spec.scenario === 'TOP_GRANTED') {
@@ -305,9 +319,10 @@ async function main() {
   console.log('✅ Seed done');
   console.log('   Admin:   admin@pdp.uz / password123');
   console.log('   Mentor:  mentor1@pdp.uz / password123');
-  console.log('   Student: student1@pdp.uz / password123 (Madina, GRANTED)');
-  console.log('   Student: student6@pdp.uz / password123 (Jasur, ACADEMIC_FAIL)');
-  console.log('   Student: student10@pdp.uz / password123 (Ulug\'bek, PAYMENT_OVERDUE)');
+  console.log('   Demo flow: student1@pdp.uz (Javohir) va student2@pdp.uz (Komila) — mentor tutor/discipline qo\'ymagan, ball ~78');
+  console.log('   → mentor1@pdp.uz kirib baho qo\'ysa ~93 bo\'ladi → admin approve qiladi');
+  console.log('   Student: student3@pdp.uz / password123 (Madina, GRANTED)');
+  console.log('   Student: student8@pdp.uz / password123 (Jasur, ACADEMIC_FAIL)');
   console.log('   API key:', apiKey.key);
 }
 
