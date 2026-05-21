@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Download, Zap, ArrowRight, Check, ChevronUp, ChevronDown, Info } from 'lucide-react';
 import { api } from '@/lib/api';
 import AdminLayout from './AdminLayout';
+import { Pagination, usePagination } from '@/components/em/Primitives';
 
 type Breakdown = {
   academicPct: number; academic: number;
@@ -220,6 +221,8 @@ export default function AdminRating() {
   const midCount  = sorted.filter(x => x.riskLevel === 'MEDIUM').length;
   const highCount = sorted.filter(x => x.riskLevel === 'HIGH').length;
 
+  const pag = usePagination(sorted, 25, [q, group, course, statusF, riskF, sortKey, sortDir]);
+
   const SH = ({ k, children, align = 'right', tone, width }: {
     k: string; children: React.ReactNode; align?: string; tone?: string; width?: number;
   }) => {
@@ -432,7 +435,7 @@ export default function AdminRating() {
                   </tr>
                 </thead>
                 <tbody>
-                  {sorted.map((x, i) => {
+                  {pag.pageItems.map((x, i) => {
                     const b = x.breakdown;
                     const isSelected = !!selected[x.id];
                     const rowBg = isSelected ? '#fffbe6' : i % 2 === 0 ? '#fff' : '#fbfcfd';
@@ -528,6 +531,13 @@ export default function AdminRating() {
                 </tbody>
               </table>
             </div>
+            <Pagination
+              page={pag.page}
+              pageCount={pag.pageCount}
+              onChange={pag.setPage}
+              total={pag.total}
+              pageSize={pag.pageSize}
+            />
           </div>
         )}
 

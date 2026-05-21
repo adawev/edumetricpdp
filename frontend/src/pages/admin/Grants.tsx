@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { Trophy, XCircle, Clock, Check, ArrowLeft, RefreshCw, X, Info } from 'lucide-react';
 import { api } from '@/lib/api';
 import AdminLayout from './AdminLayout';
+import { Pagination, usePagination } from '@/components/em/Primitives';
 
 /* ─────────────────────── Theme (exact design tokens) ─────── */
 const T = {
@@ -294,6 +295,8 @@ export default function AdminGrants() {
 
   const sorted = [...allCandidates].sort((a, b) => b.grantScore - a.grantScore);
 
+  const pag = usePagination(sorted, 20, [allCandidates.length]);
+
   const stats = {
     selected: selectedIds?.size ?? 0,
     granted:  sorted.filter(s => s.grantStatus === 'GRANTED').length,
@@ -436,21 +439,21 @@ export default function AdminGrants() {
                 </tr>
               </thead>
               <tbody>
-                {sorted.map((s, i) => {
+                {pag.pageItems.map((s, i) => {
                   const isPending  = s.grantStatus === 'PENDING';
                   const isGranted  = s.grantStatus === 'GRANTED';
                   const isRejected = s.grantStatus === 'NOT_GRANTED';
                   const rowBg = isGranted ? '#f0fdf4' : isRejected ? '#fff1f2' : 'transparent';
                   const td: React.CSSProperties = {
                     padding: '12px 16px',
-                    borderBottom: i < sorted.length - 1 ? `1px solid ${T.border}` : 'none',
+                    borderBottom: i < pag.pageItems.length - 1 ? `1px solid ${T.border}` : 'none',
                     background: rowBg,
                   };
                   return (
                     <tr key={s.id}>
                       {/* # */}
                       <td style={{ ...td, textAlign: 'center', color: T.textMuted, fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>
-                        {i + 1}
+                        {pag.startIndex + i + 1}
                       </td>
                       {/* Talaba */}
                       <td style={td}>
