@@ -78,7 +78,7 @@ adminRouter.get('/penalties', async (_req, res) => {
 
 const penaltySchema = z.object({
   studentId: z.string().uuid(),
-  type: z.enum(['LIGHT', 'MEDIUM', 'HEAVY']),
+  type: z.enum(['LIGHT', 'MEDIUM', 'HEAVY', 'HEAVY_PLUS', 'HEAVY_PLUS_PLUS']),
   ball: z.number().min(0),
   reason: z.string().min(2),
 });
@@ -89,6 +89,18 @@ adminRouter.post('/penalties', async (req, res) => {
   const p = await prisma.penalty.create({ data: parsed.data });
   await recalcStudent(parsed.data.studentId);
   res.status(201).json(p);
+});
+
+adminRouter.post('/penalties/:id/assign-recovery', async (req, res) => {
+  const schema = z.object({ task: z.string().min(3) });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Invalid input' });
+  const penalty = await prisma.penalty.update({
+    where: { id: req.params.id },
+    data: { recoveryTask: parsed.data.task },
+    include: { student: { include: { group: true } } },
+  });
+  res.json(penalty);
 });
 
 adminRouter.post('/penalties/:id/recover', async (req, res) => {

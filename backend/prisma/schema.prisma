@@ -57,6 +57,8 @@ enum PenaltyType {
   LIGHT
   MEDIUM
   HEAVY
+  HEAVY_PLUS
+  HEAVY_PLUS_PLUS
 }
 
 enum AttendanceStatus {

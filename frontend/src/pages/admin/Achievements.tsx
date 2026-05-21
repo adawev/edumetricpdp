@@ -51,9 +51,9 @@ const STATUS_LABEL: Record<string, string> = {
   REJECTED: 'Rad etilgan',
 };
 const STATUS_DOT: Record<string, { bg: string; fg: string; dot: string }> = {
-  PENDING:  { bg: '#fef3c7', fg: '#92400e', dot: '#f59e0b' },
-  APPROVED: { bg: '#d1fae5', fg: '#065f46', dot: '#10b981' },
-  REJECTED: { bg: '#fee2e2', fg: '#991b1b', dot: '#ef4444' },
+  PENDING:  { bg: '#fffbeb', fg: '#92400e', dot: '#f59e0b' },
+  APPROVED: { bg: '#ecfdf5', fg: '#065f46', dot: '#10b981' },
+  REJECTED: { bg: '#fef2f2', fg: '#991b1b', dot: '#ef4444' },
 };
 
 function StatusBadge({ status }: { status: string }) {
@@ -86,6 +86,27 @@ function Avatar({ name, size = 22 }: { name: string; size?: number }) {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontSize: size * 0.38, fontWeight: 600,
     }}>{initials}</div>
+  );
+}
+
+function GhostButton({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
+  const [hov, setHov] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        padding: '6px 12px', height: 32, borderRadius: 8,
+        background: hov ? '#f8fafc' : 'transparent',
+        color: '#0f172a', border: '1px solid transparent',
+        fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
+        whiteSpace: 'nowrap', transition: 'background .12s',
+      }}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -219,6 +240,7 @@ export default function AdminAchievements() {
                   onBallChange={v => setBallMap(m => ({ ...m, [a.id]: v }))}
                   onApprove={() => handleApprove(a)}
                   onReject={() => { setRejectTarget(a); setRejectReason(''); }}
+                  onReopen={() => {}}
                   loading={reviewMutation.isPending}
                 />
               ))}
@@ -278,84 +300,88 @@ export default function AdminAchievements() {
 
 /* ── Achievement Card ── */
 function AchCard({
-  a, ball, onBallChange, onApprove, onReject, loading,
+  a, ball, onBallChange, onApprove, onReject, onReopen, loading,
 }: {
   a: Achievement;
   ball: string;
   onBallChange: (v: string) => void;
   onApprove: () => void;
   onReject: () => void;
+  onReopen: () => void;
   loading: boolean;
 }) {
   const Icon = TYPE_ICON[a.type] ?? Award;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
+    <div style={{ borderRadius: 12, border: '1px solid #e2e8f0', background: '#fff', padding: 16 }}>
 
-        {/* Top row: icon + title + date + status */}
-        <div className="flex items-start gap-3">
-          <div className="w-9 h-9 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center shrink-0">
-            <Icon className="w-4 h-4 text-slate-500" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[14px] font-semibold text-slate-900 leading-snug">{a.title}</p>
-            <div className="flex items-center gap-2 mt-1 text-[11.5px] text-slate-400">
-              <span>{TYPE_LABEL[a.type] ?? a.type}</span>
-              <span className="text-slate-300">·</span>
-              <span>{fmt(a.createdAt)}</span>
-            </div>
-          </div>
-          <StatusBadge status={a.status} />
+      {/* Top row: icon + title + date + status */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
+        <div style={{ width: 36, height: 36, borderRadius: 8, background: '#f8fafc', border: '1px solid #e2e8f0', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+          <Icon style={{ width: 16, height: 16, color: '#64748b' }} />
         </div>
-
-        {/* Student row */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 10, marginBottom: 10, borderBottom: '1px solid #e2e8f0', fontSize: 12.5 }}>
-          <Avatar name={a.student.fullName} size={22} />
-          <span style={{ fontWeight: 500, color: '#1e293b' }}>{a.student.fullName}</span>
-          <span style={{ color: '#cbd5e1' }}>·</span>
-          <span style={{ color: '#64748b' }}>{a.student.group?.name}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', margin: 0, lineHeight: 1.3 }}>{a.title}</p>
+          <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 2, display: 'flex', gap: 10, alignItems: 'center' }}>
+            <span>{TYPE_LABEL[a.type] ?? a.type}</span>
+            <span style={{ color: '#94a3b8' }}>·</span>
+            <span>{fmt(a.createdAt)}</span>
+          </div>
         </div>
+        <StatusBadge status={a.status} />
+      </div>
 
-        {/* Description */}
-        {a.description && (
-          <p className="text-[12.5px] text-slate-500 leading-relaxed line-clamp-2">{a.description}</p>
-        )}
+      {/* Student row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 10, marginBottom: 10, borderBottom: '1px solid #e2e8f0', fontSize: 12.5 }}>
+        <Avatar name={a.student.fullName} size={22} />
+        <span style={{ fontWeight: 500, color: '#0f172a' }}>{a.student.fullName}</span>
+        <span style={{ color: '#64748b' }}>·</span>
+        <span style={{ color: '#64748b' }}>{a.student.group?.name}</span>
+      </div>
 
-        {/* File preview */}
-        {a.fileUrl && (
-          <div className="flex items-center gap-2.5 p-2.5 bg-slate-50 rounded-lg border border-slate-200">
-            <div className="w-8 h-8 rounded-md bg-red-50 border border-red-100 flex items-center justify-center shrink-0">
-              <FileText className="w-3.5 h-3.5 text-red-500" />
-            </div>
-            <div className="flex-1 min-w-0 text-[12px]">
-              <p className="font-medium text-slate-700 truncate">
-                {a.fileUrl.split('/').pop() ?? 'hujjat.pdf'}
-              </p>
-              <p className="text-slate-400 text-[11px]">PDF</p>
-            </div>
-            <a
-              href={a.fileUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-1 h-7 px-2.5 rounded-md border border-slate-200 text-[11.5px] text-slate-600 hover:bg-white transition-colors shrink-0"
-            >
-              <Eye className="w-3 h-3" /> Ko'rish
-            </a>
+      {/* Description */}
+      {a.description && (
+        <p style={{ margin: '0 0 10px', fontSize: 12.5, color: '#64748b', lineHeight: 1.5 }}>{a.description}</p>
+      )}
+
+      {/* File preview */}
+      {a.fileUrl && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 10, background: '#f8fafc', borderRadius: 8, marginBottom: 12, border: '1px solid #e2e8f0' }}>
+          <div style={{ width: 32, height: 32, borderRadius: 5, background: '#fef2f2', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+            <FileText style={{ width: 14, height: 14, color: '#ef4444' }} />
           </div>
-        )}
-
-        {/* Reject reason */}
-        {a.status === 'REJECTED' && a.rejectReason && (
-          <div className="flex gap-2 p-2.5 bg-red-50 rounded-lg text-[12px] text-red-700">
-            <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0 text-red-500" />
-            <div><strong>Sabab:</strong> {a.rejectReason}</div>
+          <div style={{ flex: 1, minWidth: 0, fontSize: 12 }}>
+            <p style={{ fontWeight: 500, color: '#374151', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {a.fileUrl.split('/').pop() ?? 'hujjat.pdf'}
+            </p>
+            <p style={{ color: '#94a3b8', fontSize: 11, margin: 0 }}>PDF · 1.2 MB</p>
           </div>
-        )}
-      {/* Action row — no border-top, just padding inside card */}
+          <a
+            href={a.fileUrl}
+            target="_blank"
+            rel="noreferrer"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: 32, padding: '0 12px', borderRadius: 8, border: '1px solid transparent', background: 'transparent', fontSize: 12.5, color: '#0f172a', fontWeight: 500, cursor: 'pointer', textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}
+            onMouseEnter={e => (e.currentTarget.style.background = '#f8fafc')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          >
+            <Eye style={{ width: 13, height: 13 }} /> Ko'rish
+          </a>
+        </div>
+      )}
+
+      {/* Reject reason */}
+      {a.status === 'REJECTED' && a.rejectReason && (
+        <div style={{ padding: '8px 10px', background: '#fef2f2', borderRadius: 6, fontSize: 12, color: '#991b1b', marginBottom: 10, display: 'flex', gap: 6 }}>
+          <AlertCircle style={{ width: 13, height: 13, color: '#ef4444', marginTop: 2, flexShrink: 0 }} />
+          <div><strong>Sabab:</strong> {a.rejectReason}</div>
+        </div>
+      )}
+
+      {/* Action row */}
       {a.status === 'PENDING' ? (
-        <div className="flex items-center gap-2 mt-3">
-          <div className="flex items-center gap-1.5 flex-1">
-            <span className="text-[12px] text-slate-500 whitespace-nowrap">Ball:</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap' }}>Ball:</span>
             <input
               type="number"
               min={0}
@@ -363,36 +389,32 @@ function AchCard({
               value={ball}
               onChange={e => onBallChange(e.target.value)}
               placeholder="0–15"
-              className="w-[70px] h-7 px-2 rounded-lg border border-slate-200 text-[12.5px] text-center outline-none focus:border-slate-400 tabular-nums"
+              style={{ width: 70, height: 28, padding: '0 8px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 12.5, textAlign: 'center', outline: 'none', fontVariantNumeric: 'tabular-nums' }}
             />
           </div>
           <button
             onClick={onReject}
             disabled={loading}
-            className="flex items-center gap-1 h-7 px-3 rounded-lg border border-red-200 text-red-600 bg-red-50 text-[12px] font-medium hover:bg-red-100 disabled:opacity-50 transition-colors"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: 32, padding: '0 12px', borderRadius: 8, border: '1px solid #fecaca', background: '#fff', color: '#b91c1c', fontSize: 12.5, fontWeight: 500, cursor: 'pointer', opacity: loading ? 0.5 : 1 }}
           >
-            <X className="w-3 h-3" /> Rad etish
+            <X style={{ width: 13, height: 13 }} /> Rad etish
           </button>
           <button
             onClick={onApprove}
             disabled={loading}
-            className="flex items-center gap-1 h-7 px-3 rounded-lg bg-emerald-600 text-white text-[12px] font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: 32, padding: '0 12px', borderRadius: 8, border: 'none', background: '#10b981', color: '#fff', fontSize: 12.5, fontWeight: 500, cursor: 'pointer', opacity: loading ? 0.5 : 1 }}
           >
-            <Check className="w-3 h-3" /> Tasdiqlash
+            <Check style={{ width: 13, height: 13 }} /> Tasdiqlash
           </button>
         </div>
       ) : (
-        <div className="flex items-center justify-between mt-3">
-          {a.status === 'APPROVED' ? (
-            <span className="text-[12.5px] font-semibold text-emerald-700">
-              +{a.ball} ball qo'shildi
-            </span>
-          ) : (
-            <span className="text-[12.5px] text-slate-400">Rad etildi</span>
-          )}
-          <button className="text-[12px] text-slate-500 hover:text-slate-800 transition-colors">
-            Qaytadan ko'rib chiqish
-          </button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5, color: '#64748b' }}>
+          <span>
+            {a.status === 'APPROVED'
+              ? <span style={{ color: '#059669', fontWeight: 600 }}>+{a.ball} ball qo'shildi</span>
+              : 'Rad etildi'}
+          </span>
+          <GhostButton onClick={onReopen}>Qaytadan ko'rib chiqish</GhostButton>
         </div>
       )}
     </div>

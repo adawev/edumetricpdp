@@ -296,6 +296,14 @@ async function main() {
       const shuffled = pool.slice().sort(() => Math.random() - 0.5).slice(0, cnt);
       for (const a of shuffled) {
         const approved = Math.random() < 0.7;
+        const isRejected = !approved && Math.random() < 0.5;
+        const rejectReasons = [
+          'Sertifikat oxirgi 6 oydan eski',
+          'Tasdiqlovchi havola yoki hujjat yo\'q',
+          'Sertifikat PDP University talablariga mos emas',
+          'Yutuq allaqachon hisobga olingan',
+          'Hujjat sifati past yoki o\'qib bo\'lmaydi',
+        ];
         await prisma.achievement.create({
           data: {
             studentId: student.id,
@@ -303,8 +311,11 @@ async function main() {
             title: a.title,
             ball: a.ball,
             fileUrl: a.fileUrl ?? null,
-            status: approved ? 'APPROVED' : (Math.random() < 0.5 ? 'PENDING' : 'REJECTED'),
-            reviewedAt: approved ? new Date() : null,
+            status: approved ? 'APPROVED' : (isRejected ? 'REJECTED' : 'PENDING'),
+            rejectReason: isRejected
+              ? rejectReasons[Math.floor(Math.random() * rejectReasons.length)]
+              : null,
+            reviewedAt: approved || isRejected ? new Date() : null,
           },
         });
       }

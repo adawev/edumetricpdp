@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { AlertTriangle, Plus, X, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, Plus, X, ShieldCheck, Check } from 'lucide-react';
 import { api } from '@/lib/api';
 import AdminLayout from './AdminLayout';
 import { Pagination, usePagination } from '@/components/em/Primitives';
@@ -22,7 +22,7 @@ type StudentBasic = { id: string; fullName: string; group: Group };
 type Penalty = {
   id: string;
   studentId: string;
-  type: 'LIGHT' | 'MEDIUM' | 'HEAVY';
+  type: 'LIGHT' | 'MEDIUM' | 'HEAVY' | 'HEAVY_PLUS' | 'HEAVY_PLUS_PLUS';
   ball: number;
   reason: string;
   recovered: number;
@@ -34,15 +34,19 @@ type Penalty = {
 type StudentFull = StudentBasic & { grantScore: number; grantStatus: string };
 
 const TYPE_META = [
-  { type: 'LIGHT' as const,  label: 'Yengil',    ball: 1, desc: 'Kichik tartib buzilishi',     bg: '#fffbeb', border: '#fde68a', color: '#d97706' },
-  { type: 'MEDIUM' as const, label: "O'rtacha",   ball: 3, desc: "O'rta darajali buzilish",     bg: '#fff7ed', border: '#fdba74', color: '#ea580c' },
-  { type: 'HEAVY' as const,  label: "Og'ir",      ball: 5, desc: 'Jiddiy qoidabuzarlik',        bg: '#fef2f2', border: '#fca5a5', color: '#dc2626' },
+  { type: 'LIGHT' as const,           label: 'Yengil',     ball: 1,  desc: 'Kichik tartib buzilishi',    color: '#d97706' },
+  { type: 'MEDIUM' as const,          label: "O'rtacha",   ball: 3,  desc: "O'rta darajali buzilish",    color: '#ea580c' },
+  { type: 'HEAVY' as const,           label: "Og'ir",      ball: 5,  desc: 'Jiddiy qoidabuzarlik',       color: '#dc2626' },
+  { type: 'HEAVY_PLUS' as const,      label: "Og'ir+",     ball: 10, desc: "Og'ir qoidabuzarlik",        color: '#b91c1c' },
+  { type: 'HEAVY_PLUS_PLUS' as const, label: "Og'ir++",    ball: 15, desc: 'Eng jiddiy qoidabuzarlik',   color: '#7f1d1d' },
 ];
 
 const TYPE_BADGE: Record<string, { bg: string; color: string; label: string }> = {
-  LIGHT:  { bg: '#fffbeb', color: '#d97706', label: 'Yengil' },
-  MEDIUM: { bg: '#fff7ed', color: '#ea580c', label: "O'rtacha" },
-  HEAVY:  { bg: '#fef2f2', color: '#dc2626', label: "Og'ir" },
+  LIGHT:           { bg: '#fffbeb', color: '#d97706', label: 'Yengil' },
+  MEDIUM:          { bg: '#fff7ed', color: '#ea580c', label: "O'rtacha" },
+  HEAVY:           { bg: '#fef2f2', color: '#dc2626', label: "Og'ir" },
+  HEAVY_PLUS:      { bg: '#fef2f2', color: '#b91c1c', label: "Og'ir+" },
+  HEAVY_PLUS_PLUS: { bg: '#fef2f2', color: '#7f1d1d', label: "Og'ir++" },
 };
 
 function fmt(d: string) {
@@ -52,14 +56,18 @@ function fmt(d: string) {
 export default function AdminPenalties() {
   const qc = useQueryClient();
 
+  // New penalty form state
   const [newOpen, setNewOpen]       = useState(false);
   const [nStudentId, setNStudentId] = useState('');
-  const [nType, setNType]           = useState<'LIGHT' | 'MEDIUM' | 'HEAVY'>('LIGHT');
+  const [nType, setNType]           = useState<'LIGHT' | 'MEDIUM' | 'HEAVY' | 'HEAVY_PLUS' | 'HEAVY_PLUS_PLUS'>('LIGHT');
   const [nBall, setNBall]           = useState(1);
   const [nReason, setNReason]       = useState('');
 
-  const [recTarget, setRecTarget]   = useState<Penalty | null>(null);
-  const [recTask, setRecTask]       = useState('');
+  // Assign recovery task dialog
+  const [assignTarget, setAssignTarget] = useState<Penalty | null>(null);
+  const [assignTask, setAssignTask]     = useState('');
+
+
 
   const { data: penalties = [], isLoading } = useQuery({
     queryKey: ['admin-penalties'],
@@ -73,9 +81,9 @@ export default function AdminPenalties() {
 
   const kpi = useMemo(() => ({
     total:      penalties.length,
-    active:     penalties.filter(p => !p.recoveryDone).length,
-    inRecovery: penalties.filter(p => p.recoveryDone).length,
-    closed:     penalties.filter(p => p.recoveryDone && p.recovered >= Math.min(Math.ceil(p.ball * 0.5), 10)).length,
+    active:     penalties.filter(p => !p.recoveryTask && !p.recoveryDone).length,
+    inRecovery: penalties.filter(p => p.recoveryTask && !p.recoveryDone).length,
+    closed:     penalties.filter(p => p.recoveryDone).length,
   }), [penalties]);
 
   const createMutation = useMutation({
@@ -90,7 +98,18 @@ export default function AdminPenalties() {
     onError: () => toast.error('Xatolik yuz berdi'),
   });
 
-  const recoverMutation = useMutation({
+  const assignMutation = useMutation({
+    mutationFn: async ({ id, task }: { id: string; task: string }) =>
+      (await api.post(`/admin/penalties/${id}/assign-recovery`, { task })).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-penalties'] });
+      toast.success('Reabilitatsiya qilindi');
+      setAssignTarget(null); setAssignTask('');
+    },
+    onError: () => toast.error('Xatolik yuz berdi'),
+  });
+
+  const completeMutation = useMutation({
     mutationFn: async ({ id, task }: { id: string; task: string }) => {
       const target = penalties.find(p => p.id === id)!;
       const recovered = Math.min(Math.ceil(target.ball * 0.5), 10);
@@ -99,13 +118,12 @@ export default function AdminPenalties() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-penalties'] });
       qc.invalidateQueries({ queryKey: ['admin-students'] });
-      toast.success('Reabilitatsiya tasdiqlandi');
-      setRecTarget(null); setRecTask('');
+      toast.success("Reabilitatsiya bajarildi · Recovery ball qo'shildi");
     },
     onError: () => toast.error('Xatolik yuz berdi'),
   });
 
-  function handleTypeChange(t: 'LIGHT' | 'MEDIUM' | 'HEAVY') {
+  function handleTypeChange(t: 'LIGHT' | 'MEDIUM' | 'HEAVY' | 'HEAVY_PLUS' | 'HEAVY_PLUS_PLUS') {
     setNType(t);
     setNBall(TYPE_META.find(m => m.type === t)!.ball);
   }
@@ -156,22 +174,22 @@ export default function AdminPenalties() {
             <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 5 }}>Barcha jarimalar</p>
           </div>
           {/* Faol */}
-          <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 12, padding: '16px 20px' }}>
-            <p style={{ fontSize: 12, color: '#dc2626', fontWeight: 500, margin: '0 0 8px' }}>Faol jarimalar</p>
-            <p style={{ fontSize: 28, fontWeight: 700, color: '#dc2626', margin: 0, lineHeight: 1 }}>{kpi.active}</p>
-            <p style={{ fontSize: 11, color: '#ef4444', marginTop: 5, opacity: 0.7 }}>Reabilitatsiyasiz</p>
+          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '16px 20px' }}>
+            <p style={{ fontSize: 12, color: '#64748b', fontWeight: 500, margin: '0 0 8px' }}>Faol (recovery yo'q)</p>
+            <p style={{ fontSize: 28, fontWeight: 700, color: '#0f172a', margin: 0, lineHeight: 1 }}>{kpi.active}</p>
+            <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 5 }}>Reabilitatsiyasiz</p>
           </div>
-          {/* Reabilitatsiyada */}
-          <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 12, padding: '16px 20px' }}>
-            <p style={{ fontSize: 12, color: '#d97706', fontWeight: 500, margin: '0 0 8px' }}>Reabilitatsiyada</p>
-            <p style={{ fontSize: 28, fontWeight: 700, color: '#d97706', margin: 0, lineHeight: 1 }}>{kpi.inRecovery}</p>
-            <p style={{ fontSize: 11, color: '#f59e0b', marginTop: 5, opacity: 0.7 }}>Jarayon bajarildi</p>
+          {/* Recovery'da */}
+          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '16px 20px' }}>
+            <p style={{ fontSize: 12, color: '#64748b', fontWeight: 500, margin: '0 0 8px' }}>Recovery'da</p>
+            <p style={{ fontSize: 28, fontWeight: 700, color: '#0f172a', margin: 0, lineHeight: 1 }}>{kpi.inRecovery}</p>
+            <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 5 }}>Vazifa topshirildi</p>
           </div>
           {/* Yopilgan */}
-          <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 12, padding: '16px 20px' }}>
-            <p style={{ fontSize: 12, color: '#16a34a', fontWeight: 500, margin: '0 0 8px' }}>Yopilgan</p>
-            <p style={{ fontSize: 28, fontWeight: 700, color: '#16a34a', margin: 0, lineHeight: 1 }}>{kpi.closed}</p>
-            <p style={{ fontSize: 11, color: '#22c55e', marginTop: 5, opacity: 0.7 }}>To'liq tiklanib yopildi</p>
+          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '16px 20px' }}>
+            <p style={{ fontSize: 12, color: '#64748b', fontWeight: 500, margin: '0 0 8px' }}>Yopilgan</p>
+            <p style={{ fontSize: 28, fontWeight: 700, color: '#0f172a', margin: 0, lineHeight: 1 }}>{kpi.closed}</p>
+            <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 5 }}>To'liq tiklanib yopildi</p>
           </div>
         </div>
 
@@ -193,13 +211,13 @@ export default function AdminPenalties() {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                    <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 500, color: '#64748b', fontSize: 12 }}>Talaba</th>
-                    <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 500, color: '#64748b', fontSize: 12 }}>Tur</th>
-                    <th style={{ padding: '10px 16px', textAlign: 'right', fontWeight: 500, color: '#64748b', fontSize: 12 }}>Ball</th>
-                    <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 500, color: '#64748b', fontSize: 12 }}>Sabab</th>
-                    <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 500, color: '#64748b', fontSize: 12 }}>Sana</th>
-                    <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 500, color: '#64748b', fontSize: 12 }}>Recovery</th>
-                    <th style={{ padding: '10px 16px', width: 140 }} />
+                    <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 600, color: '#64748b', fontSize: 11.5, textTransform: 'uppercase', letterSpacing: '.04em' }}>Talaba</th>
+                    <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 600, color: '#64748b', fontSize: 11.5, textTransform: 'uppercase', letterSpacing: '.04em' }}>Tur</th>
+                    <th style={{ padding: '10px 16px', textAlign: 'right', fontWeight: 600, color: '#64748b', fontSize: 11.5, textTransform: 'uppercase', letterSpacing: '.04em' }}>Ball</th>
+                    <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 600, color: '#64748b', fontSize: 11.5, textTransform: 'uppercase', letterSpacing: '.04em' }}>Sabab</th>
+                    <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 600, color: '#64748b', fontSize: 11.5, textTransform: 'uppercase', letterSpacing: '.04em' }}>Sana</th>
+                    <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 600, color: '#64748b', fontSize: 11.5, textTransform: 'uppercase', letterSpacing: '.04em' }}>Recovery</th>
+                    <th style={{ padding: '10px 16px', width: 160 }} />
                   </tr>
                 </thead>
                 <tbody>
@@ -207,6 +225,8 @@ export default function AdminPenalties() {
                     const bg = nameToColor(p.student.fullName);
                     const ini = initials(p.student.fullName);
                     const badge = TYPE_BADGE[p.type];
+                    const isAssigned = !!p.recoveryTask && !p.recoveryDone;
+                    const isDone = p.recoveryDone;
                     return (
                       <tr key={p.id} style={{ borderTop: idx === 0 ? 'none' : '1px solid #f1f5f9' }}>
                         {/* Talaba */}
@@ -246,17 +266,27 @@ export default function AdminPenalties() {
                         </td>
                         {/* Sana */}
                         <td style={{ padding: '10px 16px', color: '#94a3b8', fontSize: 12, whiteSpace: 'nowrap' }}>{fmt(p.createdAt)}</td>
-                        {/* Recovery holat */}
+                        {/* Recovery holat — 3 state */}
                         <td style={{ padding: '10px 16px' }}>
-                          {p.recoveryDone ? (
-                            <span style={{
+                          {isDone ? (
+                            <span title={p.recoveryTask ?? ''} style={{
                               display: 'inline-flex', alignItems: 'center', gap: 4,
                               padding: '2px 8px', borderRadius: 999,
                               background: '#f0fdf4', color: '#16a34a',
                               fontSize: 11, fontWeight: 600,
                             }}>
                               <ShieldCheck style={{ width: 11, height: 11 }} />
-                              +{p.recovered} ball
+                              Bajarildi · +{p.recovered}
+                            </span>
+                          ) : isAssigned ? (
+                            <span title={p.recoveryTask ?? ''} style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 4,
+                              padding: '2px 8px', borderRadius: 999,
+                              background: '#fffbeb', color: '#d97706',
+                              fontSize: 11, fontWeight: 600, cursor: 'help',
+                            }}>
+                              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#f59e0b', flexShrink: 0 }} />
+                              Topshirildi
                             </span>
                           ) : (
                             <span style={{
@@ -266,23 +296,38 @@ export default function AdminPenalties() {
                               fontSize: 11, fontWeight: 500,
                             }}>
                               <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#cbd5e1', flexShrink: 0 }} />
-                              Yo'q
+                              Tayinlanmagan
                             </span>
                           )}
                         </td>
                         {/* Action */}
-                        <td style={{ padding: '10px 16px' }}>
-                          {!p.recoveryDone && (
+                        <td style={{ padding: '10px 16px', textAlign: 'right' }}>
+                          {!p.recoveryTask && !p.recoveryDone && (
                             <button
-                              onClick={() => { setRecTarget(p); setRecTask(''); }}
+                              onClick={() => { setAssignTarget(p); setAssignTask(''); }}
                               style={{
                                 fontSize: 12, padding: '5px 10px', borderRadius: 6,
-                                border: '1px solid #bbf7d0', color: '#16a34a',
+                                border: '1px solid #e2e8f0', color: '#374151',
                                 background: '#fff', fontWeight: 500, cursor: 'pointer',
                                 whiteSpace: 'nowrap',
                               }}
                             >
                               Reabilitatsiya
+                            </button>
+                          )}
+                          {p.recoveryTask && !p.recoveryDone && (
+                            <button
+                              onClick={() => completeMutation.mutate({ id: p.id, task: p.recoveryTask! })}
+                              disabled={completeMutation.isPending}
+                              style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 5,
+                                fontSize: 12, padding: '5px 10px', borderRadius: 6,
+                                border: 'none', background: '#10b981', color: '#fff',
+                                fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
+                              }}
+                            >
+                              <Check style={{ width: 12, height: 12 }} />
+                              Yopish
                             </button>
                           )}
                         </td>
@@ -344,24 +389,29 @@ export default function AdminPenalties() {
               <div>
                 <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: 8 }}>Jarima turi</label>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
-                  {TYPE_META.map(m => (
-                    <button
-                      key={m.type}
-                      onClick={() => handleTypeChange(m.type)}
-                      style={{
-                        padding: '10px 12px', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
-                        border: nType === m.type ? `2px solid ${m.color}` : '1px solid #e2e8f0',
-                        background: nType === m.type ? m.bg : '#fff',
-                        transition: 'all .15s', gridColumn: m.type === 'HEAVY' ? '1 / -1' : undefined,
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: nType === m.type ? m.color : '#374151' }}>{m.label}</span>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: nType === m.type ? m.color : '#94a3b8' }}>−{m.ball} ball</span>
-                      </div>
-                      <p style={{ fontSize: 11, color: '#94a3b8', margin: 0 }}>{m.desc}</p>
-                    </button>
-                  ))}
+                  {TYPE_META.map((m, i) => {
+                    const isLast = i === TYPE_META.length - 1;
+                    const selected = nType === m.type;
+                    return (
+                      <button
+                        key={m.type}
+                        onClick={() => handleTypeChange(m.type)}
+                        style={{
+                          padding: '10px 12px', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
+                          border: selected ? `2px solid ${m.color}` : '1.5px solid #e2e8f0',
+                          background: '#fff',
+                          transition: 'border-color .15s',
+                          gridColumn: isLast ? '1 / -1' : undefined,
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: selected ? m.color : '#374151' }}>{m.label}</span>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: selected ? m.color : '#94a3b8' }}>−{m.ball} ball</span>
+                        </div>
+                        <p style={{ fontSize: 11, color: '#94a3b8', margin: 0 }}>{m.desc}</p>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -402,44 +452,32 @@ export default function AdminPenalties() {
         </div>
       )}
 
-      {/* ── Recovery Modal ── */}
-      {recTarget && (
+      {/* ── Assign Recovery Modal ── */}
+      {assignTarget && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.4)' }} onClick={() => { setRecTarget(null); setRecTask(''); }} />
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.4)' }} onClick={() => { setAssignTarget(null); setAssignTask(''); }} />
           <div style={{
             position: 'relative', width: '100%', maxWidth: 480,
             background: '#fff', borderRadius: 16,
             boxShadow: '0 20px 60px rgba(0,0,0,.15)', padding: 24,
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-              <h2 style={{ fontSize: 15, fontWeight: 600, color: '#0f172a', margin: 0 }}>Reabilitatsiya</h2>
-              <button onClick={() => { setRecTarget(null); setRecTask(''); }} style={{ padding: 4, border: 'none', background: 'none', cursor: 'pointer', color: '#64748b', display: 'flex' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+              <h2 style={{ fontSize: 15, fontWeight: 600, color: '#0f172a', margin: 0 }}>Reabilitatsiya vazifasi</h2>
+              <button onClick={() => { setAssignTarget(null); setAssignTask(''); }} style={{ padding: 4, border: 'none', background: 'none', cursor: 'pointer', color: '#64748b', display: 'flex' }}>
                 <X style={{ width: 16, height: 16 }} />
               </button>
             </div>
+            <p style={{ fontSize: 13, color: '#64748b', marginBottom: 20 }}>Jarima: {assignTarget.reason}</p>
 
-            {/* Info box */}
-            <div style={{ background: '#f8fafc', borderRadius: 10, padding: '12px 16px', marginBottom: 16 }}>
-              {[
-                { label: 'Talaba', value: recTarget.student.fullName, color: '#0f172a' },
-                { label: 'Guruh', value: recTarget.student.group?.name, color: '#0f172a' },
-                { label: 'Jarima', value: `−${recTarget.ball} ball`, color: '#dc2626' },
-                { label: 'Qaytariladi', value: `+${Math.min(Math.ceil(recTarget.ball * 0.5), 10)} ball`, color: '#16a34a' },
-              ].map(row => (
-                <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 13 }}>
-                  <span style={{ color: '#64748b' }}>{row.label}</span>
-                  <span style={{ fontWeight: 600, color: row.color }}>{row.value}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Task textarea */}
             <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: 6 }}>Vazifa matni</label>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 6 }}>
+                <label style={{ fontSize: 13, fontWeight: 500, color: '#374151' }}>Vazifa matni</label>
+                <span style={{ fontSize: 12, color: '#94a3b8' }}>Bajargandan keyin recovery ball qo'shiladi</span>
+              </div>
               <textarea
-                value={recTask}
-                onChange={e => setRecTask(e.target.value)}
-                placeholder="Talaba bajarishi kerak bo'lgan vazifani kiriting..."
+                value={assignTask}
+                onChange={e => setAssignTask(e.target.value)}
+                placeholder="Masalan: Davomatni 90% gacha ko'tarish (2 hafta), barcha qarzlarni topshirish"
                 rows={4}
                 style={{
                   width: '100%', padding: '8px 12px',
@@ -448,29 +486,27 @@ export default function AdminPenalties() {
                   fontFamily: 'inherit', color: '#0f172a', boxSizing: 'border-box',
                 }}
               />
-              <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
-                Nizom bo'yicha jarima ballining 50% gacha, maksimal 10 ball qaytariladi
-              </p>
             </div>
 
             <div style={{ display: 'flex', gap: 10, marginTop: 20, justifyContent: 'flex-end' }}>
               <button
-                onClick={() => { setRecTarget(null); setRecTask(''); }}
+                onClick={() => { setAssignTarget(null); setAssignTask(''); }}
                 style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, fontWeight: 500, color: '#374151', background: '#fff', cursor: 'pointer' }}
               >
                 Bekor qilish
               </button>
               <button
-                onClick={() => recoverMutation.mutate({ id: recTarget.id, task: recTask })}
-                disabled={recoverMutation.isPending}
-                style={{ padding: '8px 16px', borderRadius: 8, border: 'none', fontSize: 13, fontWeight: 500, color: '#fff', background: '#16a34a', cursor: 'pointer', opacity: recoverMutation.isPending ? 0.5 : 1 }}
+                onClick={() => assignMutation.mutate({ id: assignTarget.id, task: assignTask })}
+                disabled={assignMutation.isPending || assignTask.trim().length < 3}
+                style={{ padding: '8px 16px', borderRadius: 8, border: 'none', fontSize: 13, fontWeight: 500, color: '#fff', background: '#0f172a', cursor: 'pointer', opacity: (assignMutation.isPending || assignTask.trim().length < 3) ? 0.5 : 1 }}
               >
-                Tasdiqlash
+                Tayinlash
               </button>
             </div>
           </div>
         </div>
       )}
+
     </AdminLayout>
   );
 }
