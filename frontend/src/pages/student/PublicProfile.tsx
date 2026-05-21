@@ -1,95 +1,135 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { T } from '@/lib/theme';
-import { Card, Avatar, Button, Skeleton } from '@/components/em/Primitives';
+import { Card, Avatar, Button, Skeleton, Tooltip } from '@/components/em/Primitives';
 import { Icons } from '@/components/em/Icons';
 import { ErrorState } from '@/components/em/ErrorState';
-import { BadgeMedal, BADGE_RARITY_LABEL } from '@/components/em/Badges';
+import { BadgeMedal, BADGE_RARITY_LABEL, type BadgeRarity } from '@/components/em/Badges';
 import { useStudentPublic } from '@/hooks/useStudent';
-import type { GrantStatus, PublicAchievement, StudentBadge } from '@/types/student';
+import type { AchievementType, GrantStatus, PublicAchievement, StudentBadge } from '@/types/student';
 
-// ── helpers ────────────────────────────────────────────────────────────────
+// ── constants ──────────────────────────────────────────────────────────────
 
-const STATUS_COLORS: Record<GrantStatus, { bg: string; fg: string; border: string }> = {
-  GRANTED:     { bg: T.emeraldBg, fg: T.emeraldText, border: T.emerald },
-  PENDING:     { bg: T.amberBg,   fg: T.amberText,   border: T.amber },
-  NOT_GRANTED: { bg: T.redBg,     fg: T.redText,     border: T.red },
-  UNKNOWN:     { bg: T.bgSubtle,  fg: T.textMuted,   border: T.border },
+const STATUS_CFG: Record<GrantStatus, { bg: string; fg: string; label: string }> = {
+  GRANTED:     { bg: T.emeraldBg, fg: T.emeraldText, label: 'Grant berildi' },
+  PENDING:     { bg: T.amberBg,   fg: T.amberText,   label: 'Kutilmoqda' },
+  NOT_GRANTED: { bg: T.redBg,     fg: T.redText,     label: "Grant yo'q" },
+  UNKNOWN:     { bg: T.bgSubtle,  fg: T.textMuted,   label: 'Aniqlanmagan' },
 };
 
-const STATUS_LABEL: Record<GrantStatus, string> = {
-  GRANTED: 'Grant berildi', PENDING: 'Kutilmoqda',
-  NOT_GRANTED: "Grant yo'q", UNKNOWN: 'Aniqlanmagan',
-};
-
-const ACH_TYPE_LABEL: Record<string, string> = {
+const TYPE_LABEL: Record<AchievementType, string> = {
   CERTIFICATE: 'Sertifikat', HACKATHON: 'Xakaton', STARTUP: 'Startap',
   EMPLOYMENT: 'Ish', MENTORING: 'Mentoring', LANGUAGE: 'Til',
   COURSE: 'Kurs', VOLUNTEER: 'Volontyorlik', OTHER: 'Boshqa',
 };
 
+const TYPE_ICON: Record<AchievementType, (p: any) => JSX.Element> = {
+  CERTIFICATE: Icons.file, HACKATHON: Icons.flame, STARTUP: Icons.rocket,
+  EMPLOYMENT: Icons.briefcase, MENTORING: Icons.users, LANGUAGE: Icons.globe,
+  COURSE: Icons.files, VOLUNTEER: Icons.sparkles, OTHER: Icons.star,
+};
+
+const TYPE_COLOR: Record<AchievementType, string> = {
+  CERTIFICATE: '#0891b2', HACKATHON: '#dc2626', STARTUP: '#ec4899',
+  EMPLOYMENT: '#2563eb', MENTORING: '#7c3aed', LANGUAGE: '#06b6d4',
+  COURSE: '#0d9488', VOLUNTEER: '#059669', OTHER: '#64748b',
+};
+
+const RARITY_COLOR: Record<BadgeRarity, string> = {
+  legendary: '#a16207', epic: '#6d28d9', rare: '#1d4ed8', common: '#475569',
+};
+
 const fmtDate = (s: string) => {
   const d = new Date(s);
-  const m = ['Yan','Fev','Mar','Apr','May','Iyn','Iyl','Avg','Sen','Okt','Noy','Dek'];
+  const m = ['yan','fev','mar','apr','may','iyn','iyl','avg','sen','okt','noy','dek'];
   return `${d.getDate()} ${m[d.getMonth()]} ${d.getFullYear()}`;
 };
 
-// ── Achievement card ───────────────────────────────────────────────────────
+// ── Sub-components ─────────────────────────────────────────────────────────
 
-function AchievementItem({ a }: { a: PublicAchievement }) {
+function AchievementCard({ a }: { a: PublicAchievement }) {
+  const Icon = TYPE_ICON[a.type] ?? Icons.award;
+  const color = TYPE_COLOR[a.type] ?? T.textMuted;
+  const isImg = a.fileUrl && /\.(png|jpe?g|webp|gif)$/i.test(a.fileUrl);
+
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: 12,
-      padding: '10px 14px', borderRadius: 8,
-      background: T.bgSubtle, border: `1px solid ${T.border}`,
+      display: 'flex', alignItems: 'stretch', gap: 0,
+      borderRadius: 10, overflow: 'hidden',
+      border: `1px solid ${T.border}`, background: T.white,
     }}>
-      <div style={{
-        width: 34, height: 34, borderRadius: 8, background: T.white,
-        display: 'grid', placeItems: 'center', flexShrink: 0,
-        border: `1px solid ${T.border}`,
-      }}>
-        {Icons.award({ size: 16, stroke: T.textMuted })}
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13.5, fontWeight: 500, color: T.text,
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {a.title}
+      {/* Preview / icon block */}
+      {isImg ? (
+        <a href={a.fileUrl!} target="_blank" rel="noreferrer"
+           style={{ width: 88, flexShrink: 0, background: T.bg, display: 'block' }}>
+          <img src={a.fileUrl!} alt={a.title}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+        </a>
+      ) : (
+        <div style={{ width: 56, flexShrink: 0, background: color + '12',
+          display: 'grid', placeItems: 'center', borderRight: `1px solid ${T.border}` }}>
+          <Icon size={20} stroke={color} />
         </div>
-        <div style={{ fontSize: 12, color: T.textSubtle, marginTop: 2 }}>
-          {ACH_TYPE_LABEL[a.type] ?? a.type} · {fmtDate(a.createdAt)}
-        </div>
-      </div>
-      {a.ball > 0 && (
-        <span style={{ fontSize: 13, fontWeight: 700, color: T.emerald, flexShrink: 0 }}>
-          +{a.ball}
-        </span>
       )}
+
+      {/* Content */}
+      <div style={{ flex: 1, minWidth: 0, padding: '12px 14px',
+        display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13.5, fontWeight: 600, color: T.text, lineHeight: 1.3,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {a.title}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+            <span style={{
+              fontSize: 10.5, fontWeight: 600, padding: '2px 7px', borderRadius: 4,
+              background: color + '15', color, textTransform: 'uppercase', letterSpacing: '.05em',
+            }}>{TYPE_LABEL[a.type]}</span>
+            <span style={{ fontSize: 11.5, color: T.textSubtle }}>{fmtDate(a.createdAt)}</span>
+            {a.fileUrl && !isImg && (
+              <a href={a.fileUrl} target="_blank" rel="noreferrer"
+                 style={{ fontSize: 11.5, color: T.blue, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                {Icons.link({ size: 11, stroke: T.blue })} Fayl
+              </a>
+            )}
+          </div>
+          {a.description && (
+            <div style={{ fontSize: 12, color: T.textMuted, marginTop: 5, lineHeight: 1.45,
+              display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+              {a.description}
+            </div>
+          )}
+        </div>
+        {a.ball > 0 && (
+          <div style={{ flexShrink: 0, textAlign: 'right' }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: T.emerald, lineHeight: 1 }}>+{a.ball}</div>
+            <div style={{ fontSize: 10, color: T.textSubtle, marginTop: 2 }}>ball</div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-// ── Badge section ──────────────────────────────────────────────────────────
-
-function BadgeSection({ badges }: { badges: StudentBadge[] }) {
-  if (!badges.length) return null;
+function BadgeTile({ b }: { b: StudentBadge }) {
+  const rc = RARITY_COLOR[b.rarity as BadgeRarity];
   return (
-    <Card padding={20}>
-      <div style={{ fontSize: 14, fontWeight: 600, color: T.text, marginBottom: 16 }}>
-        Badge'lar ({badges.length})
-      </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
-        {badges.map(b => (
-          <div key={b.slug} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, width: 64 }}>
-            <BadgeMedal badge={b as any} size={52} />
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: T.text, lineHeight: 1.3 }}>{b.name}</div>
-              <div style={{ fontSize: 9.5, color: T.textSubtle, marginTop: 2 }}>
-                {BADGE_RARITY_LABEL[b.rarity] ?? b.rarity}
-              </div>
-            </div>
+    <Tooltip content={`${b.name} · ${BADGE_RARITY_LABEL[b.rarity as BadgeRarity]}${b.description ? ' — ' + b.description : ''}`}>
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+        padding: 12, borderRadius: 12, border: `1px solid ${b.color}33`,
+        background: `linear-gradient(180deg, ${b.color}10 0%, ${T.white} 100%)`,
+        cursor: 'help', minWidth: 0,
+      }}>
+        <BadgeMedal badge={b as any} size={56} />
+        <div style={{ textAlign: 'center', minWidth: 0, width: '100%' }}>
+          <div style={{ fontSize: 12.5, fontWeight: 600, color: T.text, lineHeight: 1.2,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</div>
+          <div style={{ fontSize: 9.5, fontWeight: 700, color: rc, marginTop: 3, letterSpacing: '.08em' }}>
+            {BADGE_RARITY_LABEL[b.rarity as BadgeRarity].toUpperCase()}
           </div>
-        ))}
+        </div>
       </div>
-    </Card>
+    </Tooltip>
   );
 }
 
@@ -103,94 +143,90 @@ export default function StudentPublicProfile() {
   if (isLoading) return <PublicProfileSkeleton />;
   if (isError) return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <Button variant="ghost" size="sm" icon={Icons.arrowRight({ size: 14, stroke: T.textMuted, style: { transform: 'rotate(180deg)' } })}
-        onClick={() => navigate(-1)}>
-        Orqaga
-      </Button>
+      <BackButton onClick={() => navigate(-1)} />
       <ErrorState onRetry={refetch} />
     </div>
   );
   if (!data) return null;
 
-  const sc = STATUS_COLORS[data.grantStatus];
+  const sc = STATUS_CFG[data.grantStatus];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 680 }}>
-      {/* Back button */}
-      <button onClick={() => navigate(-1)} style={{
-        display: 'inline-flex', alignItems: 'center', gap: 6,
-        fontSize: 13, color: T.textMuted, background: 'none', border: 0,
-        cursor: 'pointer', padding: 0, fontFamily: 'inherit',
-      }}
-      onMouseEnter={e => (e.currentTarget.style.color = T.text)}
-      onMouseLeave={e => (e.currentTarget.style.color = T.textMuted)}
-      >
-        {Icons.arrowRight({ size: 14, stroke: 'currentColor', style: { transform: 'rotate(180deg)' } })}
-        Orqaga
-      </button>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 920 }}>
+      <BackButton onClick={() => navigate(-1)} />
 
-      {/* Identity card */}
-      <Card padding={24}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
-          <Avatar name={data.fullName} size={64} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 20, fontWeight: 700, color: T.text, letterSpacing: '-0.02em' }}>
-              {data.fullName}
-            </div>
-            <div style={{ display: 'flex', gap: 10, marginTop: 6, flexWrap: 'wrap' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, color: T.textMuted }}>
-                {Icons.graduation({ size: 13, stroke: T.textMuted })}
-                {data.group} · {data.course}-kurs
-              </span>
-            </div>
-            {/* Grant status inline */}
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              marginTop: 10, padding: '5px 12px', borderRadius: 999,
-              background: sc.bg, border: `1px solid ${sc.border}`,
-            }}>
-              <span style={{ fontSize: 12.5, fontWeight: 600, color: sc.fg }}>
-                {STATUS_LABEL[data.grantStatus]}
-              </span>
-            </div>
+      {/* Identity card with banner */}
+      <Card padding={0} style={{ overflow: 'hidden' }}>
+        {/* Banner */}
+        <div style={{ height: 80, background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+          position: 'relative' }}>
+          <div style={{ position: 'absolute', inset: 0,
+            backgroundImage: `linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px)`,
+            backgroundSize: '24px 24px' }} />
+          <div style={{ position: 'absolute', top: 14, right: 18 }}>
+            <span style={{
+              padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600,
+              background: sc.bg, color: sc.fg,
+            }}>{sc.label}</span>
           </div>
         </div>
 
-        {/* Stats row */}
-        <div style={{
-          display: 'flex', gap: 0, marginTop: 20, paddingTop: 20,
-          borderTop: `1px solid ${T.border}`,
-        }}>
-          <StatCell label="Grant ball" value={`${data.grantScore}`} accent={T.text} border />
-          <StatCell label="Universitetda" value={`#${data.rank.university}`}
-            sub={`/ ${data.rank.total} talaba`} />
+        <div style={{ padding: '0 28px 22px' }}>
+          <Avatar name={data.fullName} size={84}
+            style={{ border: `4px solid ${T.white}`, fontSize: 28, marginTop: -42,
+              boxShadow: '0 4px 12px rgba(15,23,42,.08)', position: 'relative', zIndex: 2 }} />
+          <div style={{ marginTop: 14, display: 'flex', justifyContent: 'space-between',
+            alignItems: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-0.025em', color: T.text }}>
+                {data.fullName}
+              </div>
+              <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <InfoTag icon={Icons.users} label="Guruh" value={data.group} />
+                <InfoTag icon={Icons.cal} label="Kurs" value={`${data.course}-kurs`} />
+              </div>
+            </div>
+
+            {/* Quick stats */}
+            <div style={{ display: 'flex', gap: 10 }}>
+              <StatTile label="Ball" value={String(data.grantScore)} accent={T.text} />
+              <StatTile label="Reyting" value={`#${data.rank.university}`}
+                sub={`/ ${data.rank.total}`} accent={T.blue} />
+              <StatTile label="Badge" value={String(data.badges.length)} accent="#7c3aed" />
+            </div>
+          </div>
         </div>
       </Card>
 
-      {/* Achievements */}
-      {data.achievements.length > 0 && (
-        <Card padding={20}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: T.text, marginBottom: 14 }}>
-            Tasdiqlangan yutuqlar ({data.achievements.length})
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {data.achievements.map(a => (
-              <AchievementItem key={a.id} a={a} />
-            ))}
+      {/* Badges */}
+      {data.badges.length > 0 && (
+        <Card padding={0}>
+          <SectionHeader title="Badge'lar" sub={`${data.badges.length} ta tasdiqlangan`} />
+          <div style={{ padding: 14, display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12 }}>
+            {data.badges.map(b => <BadgeTile key={b.slug} b={b} />)}
           </div>
         </Card>
       )}
 
-      {/* Badges */}
-      <BadgeSection badges={data.badges} />
+      {/* Achievements */}
+      {data.achievements.length > 0 && (
+        <Card padding={0}>
+          <SectionHeader title="Tasdiqlangan yutuqlar" sub={`${data.achievements.length} ta`} />
+          <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {data.achievements.map(a => <AchievementCard key={a.id} a={a} />)}
+          </div>
+        </Card>
+      )}
 
-      {/* Empty state for both */}
+      {/* Empty state */}
       {data.achievements.length === 0 && data.badges.length === 0 && (
         <div style={{
-          padding: '40px 24px', textAlign: 'center',
-          border: `1px dashed ${T.border}`, borderRadius: 12,
+          padding: '48px 24px', textAlign: 'center',
+          border: `1px dashed ${T.border}`, borderRadius: 12, background: T.white,
         }}>
-          <div style={{ fontSize: 14, color: T.textMuted }}>
+          {Icons.award({ size: 36, stroke: T.border })}
+          <div style={{ fontSize: 14, color: T.textMuted, marginTop: 10 }}>
             Hali tasdiqlangan yutuq yoki badge yo'q
           </div>
         </div>
@@ -201,49 +237,77 @@ export default function StudentPublicProfile() {
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
-function StatCell({ label, value, sub, accent, border }: {
-  label: string; value: string; sub?: string; accent?: string; border?: boolean;
+function BackButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button onClick={onClick} style={{
+      display: 'inline-flex', alignItems: 'center', gap: 6,
+      fontSize: 13, color: T.textMuted, background: 'none', border: 0,
+      cursor: 'pointer', padding: 0, fontFamily: 'inherit', alignSelf: 'flex-start',
+    }}
+    onMouseEnter={e => (e.currentTarget.style.color = T.text)}
+    onMouseLeave={e => (e.currentTarget.style.color = T.textMuted)}
+    >
+      {Icons.arrowRight({ size: 14, stroke: 'currentColor', style: { transform: 'rotate(180deg)' } })}
+      Orqaga
+    </button>
+  );
+}
+
+function InfoTag({ icon, label, value }: { icon: (p: any) => JSX.Element; label: string; value: string }) {
+  return (
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px',
+      background: T.bg, borderRadius: 7, fontSize: 12.5, color: T.text, border: `1px solid ${T.border}` }}>
+      {icon({ size: 12, stroke: T.textMuted })}
+      <span style={{ color: T.textMuted }}>{label}:</span>
+      <span style={{ fontWeight: 500 }}>{value}</span>
+    </div>
+  );
+}
+
+function StatTile({ label, value, sub, accent }: {
+  label: string; value: string; sub?: string; accent?: string;
 }) {
   return (
     <div style={{
-      flex: 1, paddingRight: border ? 20 : 0, marginRight: border ? 20 : 0,
-      borderRight: border ? `1px solid ${T.border}` : 'none',
+      padding: '10px 14px', borderRadius: 10, background: T.white,
+      border: `1px solid ${T.border}`, minWidth: 76, textAlign: 'center',
     }}>
-      <div style={{ fontSize: 11, color: T.textMuted, fontWeight: 500, textTransform: 'uppercase',
-        letterSpacing: '.04em', marginBottom: 4 }}>
+      <div style={{ fontSize: 10, color: T.textMuted, fontWeight: 600,
+        textTransform: 'uppercase', letterSpacing: '.06em' }}>
         {label}
       </div>
-      <div style={{ fontSize: 20, fontWeight: 700, color: accent ?? T.text, letterSpacing: '-0.02em', lineHeight: 1 }}>
+      <div style={{ fontSize: 18, fontWeight: 700, color: accent ?? T.text,
+        letterSpacing: '-0.02em', lineHeight: 1.1, marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
         {value}
       </div>
-      {sub && <div style={{ fontSize: 11.5, color: T.textSubtle, marginTop: 3 }}>{sub}</div>}
+      {sub && <div style={{ fontSize: 10.5, color: T.textSubtle, marginTop: 2 }}>{sub}</div>}
+    </div>
+  );
+}
+
+function SectionHeader({ title, sub }: { title: string; sub: string }) {
+  return (
+    <div style={{ padding: '14px 18px', borderBottom: `1px solid ${T.border}` }}>
+      <div style={{ fontSize: 14, fontWeight: 600 }}>{title}</div>
+      <div style={{ fontSize: 12.5, color: T.textMuted, marginTop: 2 }}>{sub}</div>
     </div>
   );
 }
 
 function PublicProfileSkeleton() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 680 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 920 }}>
       <Skeleton h={20} w={80} r={6} />
-      <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 12, padding: 24 }}>
-        <div style={{ display: 'flex', gap: 16 }}>
-          <Skeleton h={64} w={64} r={999} />
-          <div style={{ flex: 1 }}>
-            <Skeleton h={24} w={220} r={6} />
-            <Skeleton h={16} w={180} r={4} style={{ marginTop: 10 }} />
-            <Skeleton h={28} w={140} r={999} style={{ marginTop: 12 }} />
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: 20, marginTop: 20, paddingTop: 20, borderTop: `1px solid ${T.border}` }}>
-          {[0, 1, 2].map(i => (
-            <div key={i} style={{ flex: 1 }}>
-              <Skeleton h={12} w={60} r={4} />
-              <Skeleton h={22} w={50} r={4} style={{ marginTop: 6 }} />
-            </div>
-          ))}
+      <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 12, overflow: 'hidden' }}>
+        <Skeleton h={80} r={0} style={{ width: '100%' }} />
+        <div style={{ padding: '16px 28px 22px' }}>
+          <Skeleton h={84} w={84} r={999} style={{ marginTop: -42 }} />
+          <Skeleton h={24} w={260} r={8} style={{ marginTop: 14 }} />
+          <Skeleton h={16} w={380} r={6} style={{ marginTop: 10 }} />
         </div>
       </div>
       <Skeleton h={160} r={12} />
+      <Skeleton h={200} r={12} />
     </div>
   );
 }

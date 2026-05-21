@@ -55,6 +55,7 @@ export interface Student {
   riskLevel: RiskLevel;
   paymentOverdue: boolean;
   pinnedBadge?: string | null;
+  profilePublic?: boolean;
   group: Group;
   penalties: Penalty[];
 }

@@ -65,6 +65,18 @@ export function useStudentBadges() {
   });
 }
 
+export function useUpdateProfilePublic() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (profilePublic: boolean) =>
+      api.put('/students/me/profile-public', { profilePublic }).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['student', 'me'] });
+      qc.invalidateQueries({ queryKey: ['public', 'rating'] });
+    },
+  });
+}
+
 export function usePinBadge() {
   const qc = useQueryClient();
   return useMutation({

@@ -175,6 +175,22 @@ studentRouter.put('/me/pinned-badge', requireRole('STUDENT'), async (req, res) =
   res.json({ ok: true, pinnedBadge: parsed.data.slug });
 });
 
+// Profilni mehmonlar reytingida ochiq/anonim qilish
+studentRouter.put('/me/profile-public', requireRole('STUDENT'), async (req, res) => {
+  const schema = z.object({ profilePublic: z.boolean() });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Invalid input' });
+
+  const me = await prisma.student.findUnique({ where: { userId: req.user!.userId } });
+  if (!me) return res.status(404).json({ error: 'Student not found' });
+
+  await prisma.student.update({
+    where: { id: me.id },
+    data: { profilePublic: parsed.data.profilePublic },
+  });
+  res.json({ ok: true, profilePublic: parsed.data.profilePublic });
+});
+
 studentRouter.get('/me/feedbacks', requireRole('STUDENT'), async (req, res) => {
   const id = await getMyStudentId(req.user!.userId);
   if (!id) return res.status(404).json({ error: 'Student not found' });
