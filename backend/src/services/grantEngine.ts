@@ -74,8 +74,11 @@ export function calculateGrantScore(s: StudentScoreInput): ScoreBreakdown {
   };
 }
 
-export function getGrantDecision(s: StudentScoreInput, currentStatus?: GrantStatus):
-  { status: GrantStatus; reason: GrantReason; risk: RiskLevel } {
+export function getGrantDecision(
+  s: StudentScoreInput,
+  currentStatus?: GrantStatus,
+  currentReason?: GrantReason,
+): { status: GrantStatus; reason: GrantReason; risk: RiskLevel } {
 
   const { total } = calculateGrantScore(s);
 
@@ -84,24 +87,29 @@ export function getGrantDecision(s: StudentScoreInput, currentStatus?: GrantStat
   if (s.gpa < 80 || total < 60) risk = 'HIGH';
   else if (total < 80) risk = 'MEDIUM';
 
-  // To'lov muddati o'tgan
+  // To'lov muddati o'tgan — har doim override
   if (s.paymentOverdue) {
     return { status: 'NOT_GRANTED', reason: 'PAYMENT_OVERDUE', risk: 'HIGH' };
   }
 
-  // Akademik filtr (qattiq)
+  // Akademik filtr (qattiq) — har doim override
   if (s.gpa < 80) {
     return { status: 'NOT_GRANTED', reason: 'ACADEMIC_FAIL', risk: 'HIGH' };
   }
 
-  // Past ball
+  // Past ball — har doim override
   if (total < 80) {
     return { status: 'NOT_GRANTED', reason: 'LOW_SCORE', risk };
   }
 
-  // Admin allaqachon grant bergan bo'lsa, saqlab qolamiz
+  // Admin grant bergan — saqlash
   if (currentStatus === 'GRANTED') {
     return { status: 'GRANTED', reason: 'GRANTED_OK', risk };
+  }
+
+  // Admin grant revoke qilgan (GRANTED_OK reason bilan) — admin qarorini saqlash
+  if (currentStatus === 'NOT_GRANTED' && currentReason === 'GRANTED_OK') {
+    return { status: 'NOT_GRANTED', reason: 'GRANTED_OK', risk };
   }
 
   return { status: 'PENDING', reason: 'OK', risk };

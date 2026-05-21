@@ -9,9 +9,19 @@ import { calculateGrantScore } from '../services/grantEngine.js';
 export const adminRouter = Router();
 adminRouter.use(requireAuth, requireRole('ADMIN'));
 
+adminRouter.get('/groups', async (_req, res) => {
+  const groups = await prisma.group.findMany({
+    orderBy: { name: 'asc' },
+  });
+  res.json(groups);
+});
+
 adminRouter.get('/students', async (_req, res) => {
   const students = await prisma.student.findMany({
-    include: { group: true },
+    include: {
+      group: { include: { mentor: true } },
+      user: { select: { email: true } },
+    },
     orderBy: { grantScore: 'desc' },
   });
   res.json(students);
@@ -21,7 +31,7 @@ adminRouter.get('/achievements', async (req, res) => {
   const status = (req.query.status as string | undefined)?.toUpperCase();
   res.json(await prisma.achievement.findMany({
     where: status ? { status: status as any } : undefined,
-    include: { student: true },
+    include: { student: { include: { group: true } } },
     orderBy: { createdAt: 'desc' },
   }));
 });
@@ -68,7 +78,7 @@ adminRouter.get('/penalties', async (_req, res) => {
 
 const penaltySchema = z.object({
   studentId: z.string().uuid(),
-  type: z.enum(['LIGHT', 'MEDIUM', 'HEAVY']),
+  type: z.enum(['LIGHT', 'MEDIUM', 'HEAVY', 'HEAVY_PLUS', 'HEAVY_PLUS_PLUS']),
   ball: z.number().min(0),
   reason: z.string().min(2),
 });
@@ -81,36 +91,65 @@ adminRouter.post('/penalties', async (req, res) => {
   res.status(201).json(p);
 });
 
-adminRouter.post('/penalties/:id/recover', async (req, res) => {
-  const schema = z.object({ recovered: z.number().min(0) });
+adminRouter.post('/penalties/:id/assign-recovery', async (req, res) => {
+  const schema = z.object({ task: z.string().min(3) });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid input' });
   const penalty = await prisma.penalty.update({
     where: { id: req.params.id },
-    data: { recovered: parsed.data.recovered, recoveryDone: true },
+    data: { recoveryTask: parsed.data.task },
+    include: { student: { include: { group: true } } },
+  });
+  res.json(penalty);
+});
+
+adminRouter.post('/penalties/:id/recover', async (req, res) => {
+  const schema = z.object({ recovered: z.number().min(0), task: z.string().optional() });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Invalid input' });
+  const penalty = await prisma.penalty.update({
+    where: { id: req.params.id },
+    data: {
+      recovered: parsed.data.recovered,
+      recoveryTask: parsed.data.task ?? null,
+      recoveryDone: true,
+    },
   });
   await recalcStudent(penalty.studentId);
   res.json(penalty);
 });
 
+const grantInclude = {
+  group: true,
+  user: { select: { email: true } },
+} as const;
+
 adminRouter.get('/grants', async (_req, res) => {
-  const pending = await prisma.student.findMany({
-    where: { grantStatus: 'PENDING' },
-    include: { group: true },
-    orderBy: { grantScore: 'desc' },
-  });
-  const granted = await prisma.student.findMany({
-    where: { grantStatus: 'GRANTED' },
-    include: { group: true },
-    orderBy: { grantScore: 'desc' },
-  });
-  res.json({ pending, granted });
+  const [pending, granted, rejected] = await Promise.all([
+    prisma.student.findMany({ where: { grantStatus: 'PENDING' },     include: grantInclude, orderBy: { grantScore: 'desc' } }),
+    prisma.student.findMany({ where: { grantStatus: 'GRANTED' },     include: grantInclude, orderBy: { grantScore: 'desc' } }),
+    prisma.student.findMany({ where: { grantStatus: 'NOT_GRANTED' }, include: grantInclude, orderBy: { grantScore: 'desc' } }),
+  ]);
+  res.json({ pending, granted, rejected });
 });
 
 adminRouter.post('/grants/:id/grant', async (req, res) => {
   const s = await prisma.student.update({
     where: { id: req.params.id },
-    data: { grantStatus: 'GRANTED' },
+    data: { grantStatus: 'GRANTED', grantReason: 'GRANTED_OK' },
+  });
+  res.json(s);
+});
+
+adminRouter.post('/grants/:id/reject', async (req, res) => {
+  const schema = z.object({
+    reason: z.enum(['ACADEMIC_FAIL', 'LOW_SCORE', 'PAYMENT_OVERDUE']).default('LOW_SCORE'),
+  });
+  const parsed = schema.safeParse(req.body);
+  const reason = parsed.success ? parsed.data.reason : 'LOW_SCORE';
+  const s = await prisma.student.update({
+    where: { id: req.params.id },
+    data: { grantStatus: 'NOT_GRANTED', grantReason: reason },
   });
   res.json(s);
 });
@@ -118,7 +157,18 @@ adminRouter.post('/grants/:id/grant', async (req, res) => {
 adminRouter.post('/grants/:id/revoke', async (req, res) => {
   const s = await prisma.student.update({
     where: { id: req.params.id },
-    data: { grantStatus: 'NOT_GRANTED' },
+    data: { grantStatus: 'NOT_GRANTED', grantReason: 'GRANTED_OK' },
+  });
+  res.json(s);
+});
+
+adminRouter.post('/grants/:id/restore', async (req, res) => {
+  // Do NOT recalcStudent here — it would immediately re-reject low-score students.
+  // Admin explicitly chose to reconsider; preserve PENDING so they can manually grant.
+  const s = await prisma.student.update({
+    where: { id: req.params.id },
+    data: { grantStatus: 'PENDING', grantReason: 'OK' },
+    include: { group: true, user: { select: { email: true } } },
   });
   res.json(s);
 });

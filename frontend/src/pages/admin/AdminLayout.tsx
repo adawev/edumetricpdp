@@ -4,7 +4,17 @@ import { useAuth } from '@/lib/auth';
 import {
   LayoutDashboard, Star, AlertTriangle, BadgeCheck,
   Trophy, Key, LogOut, BarChart2, PanelLeftClose, Menu,
+  Search, Bell,
 } from 'lucide-react';
+
+const PAGE_LABELS: Record<string, string> = {
+  '/admin/dashboard':    'Statistika',
+  '/admin/rating':       'Reyting',
+  '/admin/achievements': 'Yutuqlar',
+  '/admin/penalties':    'Jarimalar',
+  '/admin/grants':       'Grant qarori',
+  '/admin/integrations': 'API kalitlar',
+};
 
 // Section 1: main views
 const NAV_S1 = [
@@ -170,10 +180,46 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </aside>
 
-      {/* Main */}
-      <main className="flex-1 min-w-0 overflow-auto">
-        {children}
-      </main>
+      {/* Right column */}
+      <div className="flex-1 min-w-0 flex flex-col">
+        {/* Top header */}
+        <header className="h-14 shrink-0 bg-white border-b border-slate-200 flex items-center px-5 gap-3.5">
+          {/* Breadcrumb */}
+          <div className="text-[13px] text-slate-400 flex items-center gap-1">
+            <span>Admin</span>
+            <span className="mx-1 text-slate-300">/</span>
+            <span className="text-slate-800 font-medium">
+              {PAGE_LABELS[location.pathname] ?? 'Statistika'}
+            </span>
+          </div>
+
+          {/* Search */}
+          <div className="flex-1 flex justify-end" style={{ maxWidth: 360, marginLeft: 'auto' }}>
+            <div className="relative w-full max-w-[360px]">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Qidiruv... (talaba, yutuq, hujjat)"
+                className="w-full h-8 pl-8 pr-3 rounded-lg border border-slate-200 bg-slate-50 text-[12.5px] text-slate-700 placeholder:text-slate-400 outline-none focus:border-slate-300 focus:bg-white transition-colors"
+              />
+            </div>
+          </div>
+
+          {/* Bell */}
+          <button
+            title="Bildirishnomalar"
+            className="relative w-[34px] h-[34px] shrink-0 rounded-lg border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors"
+          >
+            <Bell className="w-[15px] h-[15px]" />
+            <span className="absolute top-[6px] right-[7px] w-[7px] h-[7px] rounded-full bg-red-500 border-2 border-white" />
+          </button>
+        </header>
+
+        {/* Page content */}
+        <main className="flex-1 min-w-0 overflow-auto">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

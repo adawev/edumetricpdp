@@ -62,7 +62,7 @@ const achievementSchema = z.object({
 studentRouter.post(
   '/me/achievements',
   requireRole('STUDENT'),
-  upload.single('file'),
+  upload.single('file') as any,
   async (req, res) => {
     // Form-data bo'lsa, body string sifatida keladi; JSON bo'lsa parse qilingan
     const body = req.body ?? {};

@@ -267,37 +267,69 @@ async function main() {
     // Yutuq namunalari — har xil darajalar
     if (spec.scenario === 'TOP_GRANTED') {
       // TOP'larga ko'p yutuq — Champion + Founder + Polyglot + Collector imkoniyati
-      // NB: CERTIFICATE / LANGUAGE / COURSE seed qilinmaydi — ular fayl yuklash
-      // talab qiladi, talaba o'zi qo'shadi (admin tasdiqlaydi).
-      await prisma.achievement.create({ data: { studentId: student.id, type: 'HACKATHON', title: 'PDP Unicorn Hackathon — 1-o\'rin', ball: 7, status: 'APPROVED', reviewedAt: new Date() } });
-      await prisma.achievement.create({ data: { studentId: student.id, type: 'STARTUP',   title: 'EduMetric CRM startup', ball: 6, status: 'APPROVED', reviewedAt: new Date() } });
-      await prisma.achievement.create({ data: { studentId: student.id, type: 'MENTORING', title: '3 ta talabaga mentorlik', ball: 3, status: 'APPROVED', reviewedAt: new Date() } });
-      await prisma.achievement.create({ data: { studentId: student.id, type: 'VOLUNTEER',  title: 'ICT Week ko\'ngillisi', ball: 2, status: 'APPROVED', reviewedAt: new Date() } });
+      await prisma.achievement.create({ data: { studentId: student.id, type: 'HACKATHON',   title: 'PDP Unicorn Hackathon — 1-o\'rin', ball: 7, status: 'APPROVED', reviewedAt: new Date(), fileUrl: 'https://www.w3.org/WAI/WCAG21/Techniques/pdf/PDF1.pdf' } });
+      await prisma.achievement.create({ data: { studentId: student.id, type: 'STARTUP',     title: 'EduMetric CRM startup',            ball: 6, status: 'APPROVED', reviewedAt: new Date(), fileUrl: 'https://www.africau.edu/images/default/sample.pdf' } });
+      await prisma.achievement.create({ data: { studentId: student.id, type: 'LANGUAGE',    title: 'IELTS 7.5',                        ball: 5, status: 'APPROVED', reviewedAt: new Date(), fileUrl: 'https://www.w3.org/WAI/WCAG21/Techniques/pdf/PDF2.pdf' } });
+      await prisma.achievement.create({ data: { studentId: student.id, type: 'MENTORING',   title: '3 ta talabaga mentorlik',          ball: 3, status: 'APPROVED', reviewedAt: new Date() } });
+      await prisma.achievement.create({ data: { studentId: student.id, type: 'CERTIFICATE', title: 'AWS Cloud Practitioner',           ball: 3, status: 'APPROVED', reviewedAt: new Date(), fileUrl: 'https://www.w3.org/WAI/WCAG21/Techniques/pdf/PDF1.pdf' } });
+      await prisma.achievement.create({ data: { studentId: student.id, type: 'COURSE',      title: 'PDP Academy offline',              ball: 3, status: 'APPROVED', reviewedAt: new Date() } });
+      await prisma.achievement.create({ data: { studentId: student.id, type: 'CERTIFICATE', title: 'Google Cloud Digital Leader',      ball: 2, status: 'APPROVED', reviewedAt: new Date(), fileUrl: 'https://www.africau.edu/images/default/sample.pdf' } });
+      await prisma.achievement.create({ data: { studentId: student.id, type: 'VOLUNTEER',   title: 'ICT Week ko\'ngillisi',            ball: 2, status: 'APPROVED', reviewedAt: new Date() } });
+      // PENDING yutuq — admin ko'rsin uchun fayl bilan
+      await prisma.achievement.create({ data: { studentId: student.id, type: 'HACKATHON',   title: 'Unicorn Hackathon 2026 — finalist', ball: 0, status: 'PENDING', fileUrl: 'https://www.w3.org/WAI/WCAG21/Techniques/pdf/PDF1.pdf' } });
     } else if (spec.scenario === 'CANDIDATE') {
-      await prisma.achievement.create({ data: { studentId: student.id, type: 'HACKATHON', title: 'Ideathon 2026', ball: 3, status: 'APPROVED', reviewedAt: new Date() } });
+      // Kandidatlarga 2-3 ta
+      await prisma.achievement.create({ data: { studentId: student.id, type: 'HACKATHON',   title: 'Ideathon 2026',     ball: 3, status: 'APPROVED', reviewedAt: new Date(), fileUrl: 'https://www.africau.edu/images/default/sample.pdf' } });
+      if (i % 2 === 0) {
+        await prisma.achievement.create({ data: { studentId: student.id, type: 'CERTIFICATE', title: 'CS50 sertifikati', ball: 2, status: 'APPROVED', reviewedAt: new Date(), fileUrl: 'https://www.w3.org/WAI/WCAG21/Techniques/pdf/PDF1.pdf' } });
+      }
+      // Har kandidatga PENDING yutuq — fayl bilan
+      await prisma.achievement.create({ data: { studentId: student.id, type: 'CERTIFICATE', title: 'Google Associate Cloud Engineer', ball: 0, status: 'PENDING', fileUrl: 'https://www.w3.org/WAI/WCAG21/Techniques/pdf/PDF2.pdf' } });
     } else if (spec.scenario === 'ACADEMIC_FAIL') {
-      // Yutuq yo'q — akademik fail
+      await prisma.achievement.create({ data: { studentId: student.id, type: 'CERTIFICATE', title: 'IELTS 7.0', ball: 5, status: 'PENDING', fileUrl: 'https://www.w3.org/WAI/WCAG21/Techniques/pdf/PDF1.pdf' } });
     } else {
-      // Qolgan senariylar uchun 0-2 ta tasodifiy non-cert yutuq
-      const pool: { type: any; title: string; ball: number }[] = [
-        { type: 'HACKATHON', title: 'PDP Hackathon — finalist', ball: 4 },
-        { type: 'HACKATHON', title: 'Ideathon ishtirokchi', ball: 2 },
-        { type: 'VOLUNTEER', title: 'Open Day ko\'ngillisi', ball: 1 },
-        { type: 'MENTORING', title: 'Junior talabaga yordam', ball: 2 },
-        { type: 'STARTUP', title: 'Pet-project MVP', ball: 3 },
+      // Qolgan senariylar uchun 0-3 ta tasodifiy yutuq
+      const DEMO_URLS = [
+        'https://www.w3.org/WAI/WCAG21/Techniques/pdf/PDF1.pdf',
+        'https://www.africau.edu/images/default/sample.pdf',
+        'https://www.w3.org/WAI/WCAG21/Techniques/pdf/PDF2.pdf',
+      ];
+      const pool: { type: any; title: string; ball: number; fileUrl?: string }[] = [
+        { type: 'CERTIFICATE', title: 'CS50 sertifikati',       ball: 2, fileUrl: DEMO_URLS[0] },
+        { type: 'CERTIFICATE', title: 'AWS CCP',                ball: 3, fileUrl: DEMO_URLS[1] },
+        { type: 'LANGUAGE',    title: 'IELTS 6.5',              ball: 3, fileUrl: DEMO_URLS[2] },
+        { type: 'LANGUAGE',    title: 'CEFR B2',                ball: 2, fileUrl: DEMO_URLS[0] },
+        { type: 'HACKATHON',   title: 'PDP Hackathon — finalist', ball: 4, fileUrl: DEMO_URLS[1] },
+        { type: 'HACKATHON',   title: 'Ideathon ishtirokchi',   ball: 2 },
+        { type: 'COURSE',      title: 'Coursera ML',            ball: 2, fileUrl: DEMO_URLS[2] },
+        { type: 'VOLUNTEER',   title: 'Open Day ko\'ngillisi',  ball: 1 },
+        { type: 'MENTORING',   title: 'Junior talabaga yordam', ball: 2 },
+        { type: 'STARTUP',     title: 'Pet-project MVP',        ball: 3, fileUrl: DEMO_URLS[0] },
       ];
       const cnt = Math.floor(Math.random() * 4); // 0..3
       const shuffled = pool.slice().sort(() => Math.random() - 0.5).slice(0, cnt);
       for (const a of shuffled) {
         const approved = Math.random() < 0.7;
+        const isRejected = !approved && Math.random() < 0.5;
+        const rejectReasons = [
+          'Sertifikat oxirgi 6 oydan eski',
+          'Tasdiqlovchi havola yoki hujjat yo\'q',
+          'Sertifikat PDP University talablariga mos emas',
+          'Yutuq allaqachon hisobga olingan',
+          'Hujjat sifati past yoki o\'qib bo\'lmaydi',
+        ];
         await prisma.achievement.create({
           data: {
             studentId: student.id,
             type: a.type,
             title: a.title,
             ball: a.ball,
-            status: approved ? 'APPROVED' : (Math.random() < 0.5 ? 'PENDING' : 'REJECTED'),
-            reviewedAt: approved ? new Date() : null,
+            fileUrl: a.fileUrl ?? null,
+            status: approved ? 'APPROVED' : (isRejected ? 'REJECTED' : 'PENDING'),
+            rejectReason: isRejected
+              ? rejectReasons[Math.floor(Math.random() * rejectReasons.length)]
+              : null,
+            reviewedAt: approved || isRejected ? new Date() : null,
           },
         });
       }

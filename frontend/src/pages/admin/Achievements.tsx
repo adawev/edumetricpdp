@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import * as Tabs from '@radix-ui/react-tabs';
-import * as Dialog from '@radix-ui/react-dialog';
-import { toast } from 'sonner';
-import { Star, ExternalLink, X, CheckCircle, XCircle, FileText } from 'lucide-react';
+import {
+  Star, File, Flame, Zap, Briefcase, Users, Globe, BookOpen,
+  Heart, Award, FileText, Eye, Check, X, AlertCircle,
+} from 'lucide-react';
 import { api } from '@/lib/api';
 import AdminLayout from './AdminLayout';
-import { Pagination, usePagination } from '@/components/em/Primitives';
 
 type Achievement = {
   id: string;
@@ -19,7 +18,7 @@ type Achievement = {
   rejectReason: string | null;
   createdAt: string;
   reviewedAt: string | null;
-  student: { id: string; fullName: string };
+  student: { id: string; fullName: string; group: { name: string } };
 };
 
 const TYPE_LABEL: Record<string, string> = {
@@ -34,37 +33,100 @@ const TYPE_LABEL: Record<string, string> = {
   OTHER:       'Boshqa',
 };
 
-const TYPE_CLS: Record<string, string> = {
-  CERTIFICATE: 'bg-blue-100 text-blue-700',
-  HACKATHON:   'bg-purple-100 text-purple-700',
-  STARTUP:     'bg-emerald-100 text-emerald-700',
-  EMPLOYMENT:  'bg-teal-100 text-teal-700',
-  MENTORING:   'bg-indigo-100 text-indigo-700',
-  LANGUAGE:    'bg-orange-100 text-orange-700',
-  COURSE:      'bg-cyan-100 text-cyan-700',
-  VOLUNTEER:   'bg-pink-100 text-pink-700',
-  OTHER:       'bg-slate-100 text-slate-600',
+const TYPE_ICON: Record<string, React.ElementType> = {
+  CERTIFICATE: File,
+  HACKATHON:   Flame,
+  STARTUP:     Zap,
+  EMPLOYMENT:  Briefcase,
+  MENTORING:   Users,
+  LANGUAGE:    Globe,
+  COURSE:      BookOpen,
+  VOLUNTEER:   Heart,
+  OTHER:       Award,
 };
 
+const STATUS_LABEL: Record<string, string> = {
+  PENDING:  'Kutilmoqda',
+  APPROVED: 'Tasdiqlangan',
+  REJECTED: 'Rad etilgan',
+};
+const STATUS_DOT: Record<string, { bg: string; fg: string; dot: string }> = {
+  PENDING:  { bg: '#fffbeb', fg: '#92400e', dot: '#f59e0b' },
+  APPROVED: { bg: '#ecfdf5', fg: '#065f46', dot: '#10b981' },
+  REJECTED: { bg: '#fef2f2', fg: '#991b1b', dot: '#ef4444' },
+};
+
+function StatusBadge({ status }: { status: string }) {
+  const c = STATUS_DOT[status] ?? { bg: '#f1f5f9', fg: '#475569', dot: '#94a3b8' };
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 5,
+      padding: '2px 7px', borderRadius: 999,
+      background: c.bg, color: c.fg,
+      fontSize: 10.5, fontWeight: 500, whiteSpace: 'nowrap', flexShrink: 0,
+    }}>
+      <span style={{ width: 6, height: 6, borderRadius: 999, background: c.dot, flexShrink: 0 }} />
+      {STATUS_LABEL[status] ?? status}
+    </span>
+  );
+}
+
+const AVATAR_COLORS = ['#6366f1','#f59e0b','#10b981','#ef4444','#3b82f6','#8b5cf6','#ec4899'];
+function nameToColor(name: string): string {
+  let h = 0;
+  for (const c of name) h = (h * 31 + c.charCodeAt(0)) & 0xffffffff;
+  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
+}
+function Avatar({ name, size = 22 }: { name: string; size?: number }) {
+  const initials = name.split(' ').map(w => w[0]).filter(Boolean).join('').slice(0, 2).toUpperCase();
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: 999,
+      background: nameToColor(name), color: '#fff', flexShrink: 0,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: size * 0.38, fontWeight: 600,
+    }}>{initials}</div>
+  );
+}
+
+function GhostButton({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
+  const [hov, setHov] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        padding: '6px 12px', height: 32, borderRadius: 8,
+        background: hov ? '#f8fafc' : 'transparent',
+        color: '#0f172a', border: '1px solid transparent',
+        fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
+        whiteSpace: 'nowrap', transition: 'background .12s',
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
 function fmt(date: string) {
-  return new Date(date).toLocaleDateString('uz-UZ', {
-    year: 'numeric', month: 'short', day: 'numeric',
-  });
+  return new Date(date).toLocaleDateString('uz-UZ', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 function useAchievements(status: string) {
   return useQuery({
     queryKey: ['admin-achievements', status],
-    queryFn: async () =>
-      (await api.get<Achievement[]>('/admin/achievements', { params: { status } })).data,
+    queryFn: async () => (await api.get<Achievement[]>('/admin/achievements', { params: { status } })).data,
   });
 }
 
 export default function AdminAchievements() {
   const qc = useQueryClient();
+  const [tab, setTab] = useState<'PENDING' | 'APPROVED' | 'REJECTED'>('PENDING');
   const [rejectTarget, setRejectTarget] = useState<Achievement | null>(null);
-  const [rejectReason, setRejectReason]  = useState('');
-  const [ballMap, setBallMap] = useState<Record<string, number>>({});
+  const [rejectReason, setRejectReason] = useState('');
+  const [ballMap, setBallMap] = useState<Record<string, string>>({});
 
   const { data: pending  = [], isLoading: lPending  } = useAchievements('PENDING');
   const { data: approved = [], isLoading: lApproved } = useAchievements('APPROVED');
@@ -73,17 +135,14 @@ export default function AdminAchievements() {
   const reviewMutation = useMutation({
     mutationFn: async ({ id, body }: { id: string; body: object }) =>
       (await api.patch(`/admin/achievements/${id}`, body)).data,
-    onSuccess: (_data, { body }: { id: string; body: any }) => {
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-achievements'] });
       qc.invalidateQueries({ queryKey: ['admin-students'] });
-      if (body.status === 'APPROVED') toast.success('Yutuq tasdiqlandi');
-      else toast.success('Yutuq rad etildi');
     },
-    onError: () => toast.error('Xatolik yuz berdi'),
   });
 
   function handleApprove(a: Achievement) {
-    const ball = ballMap[a.id] ?? 0;
+    const ball = parseInt(ballMap[a.id] ?? '0') || 0;
     reviewMutation.mutate({ id: a.id, body: { status: 'APPROVED', ball } });
   }
 
@@ -91,323 +150,273 @@ export default function AdminAchievements() {
     if (!rejectTarget) return;
     reviewMutation.mutate({
       id: rejectTarget.id,
-      body: { status: 'REJECTED', rejectReason: rejectReason.trim() || 'Sabab ko\'rsatilmadi' },
+      body: { status: 'REJECTED', rejectReason: rejectReason.trim() || "Sabab ko'rsatilmadi" },
     });
     setRejectTarget(null);
     setRejectReason('');
   }
 
-  function setBall(id: string, val: number) {
-    setBallMap(m => ({ ...m, [id]: Math.max(0, Math.min(15, val)) }));
-  }
+  const tabs = [
+    { id: 'PENDING'  as const, label: 'Kutilmoqda',   count: pending.length },
+    { id: 'APPROVED' as const, label: 'Tasdiqlangan', count: approved.length },
+    { id: 'REJECTED' as const, label: 'Rad etilgan',  count: rejected.length },
+  ];
+
+  const activeList = tab === 'PENDING' ? pending : tab === 'APPROVED' ? approved : rejected;
+  const isLoading  = tab === 'PENDING' ? lPending : tab === 'APPROVED' ? lApproved : lRejected;
 
   return (
     <AdminLayout>
-      <div className="p-6 space-y-5">
+      <div className="p-6 space-y-4">
+
+        {/* Page header */}
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Yutuqlar</h1>
-          <p className="text-sm text-muted-foreground mt-1">Talabalar yuborgan yutuqlarni ko'rib chiqish</p>
+          <h1 className="text-[22px] font-semibold text-slate-900 tracking-tight">Yutuqlarni tasdiqlash</h1>
+          <p className="text-[13.5px] text-slate-500 mt-1">
+            Talabalar tomonidan kiritilgan sertifikat, hakaton, ish va boshqa yutuqlar
+          </p>
         </div>
 
-        <Tabs.Root defaultValue="PENDING" className="space-y-5">
-          <Tabs.List className="flex gap-1 bg-slate-100 p-1 rounded-lg w-fit">
-            <TabTrigger value="PENDING" label="Kutilayotgan" count={pending.length} />
-            <TabTrigger value="APPROVED" label="Tasdiqlangan" count={approved.length} />
-            <TabTrigger value="REJECTED" label="Rad etilgan"  count={rejected.length} />
-          </Tabs.List>
+        {/* Tabs + content card */}
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
 
-          {/* PENDING */}
-          <Tabs.Content value="PENDING">
-            <AchievementList
-              items={pending}
-              isLoading={lPending}
-              emptyText="Kutilayotgan yutuq yo'q"
-              renderCard={a => (
-                <PendingCard
+          {/* Tab bar */}
+          <div style={{ padding: '14px 18px', borderBottom: '1px solid #e2e8f0' }}>
+            <div style={{
+              display: 'inline-flex', padding: 3, borderRadius: 9,
+              background: '#f1f5f9', gap: 2,
+            }}>
+              {tabs.map(t => {
+                const active = tab === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => setTab(t.id)}
+                    style={{
+                      padding: '6px 12px', borderRadius: 7, border: 0,
+                      background: active ? '#fff' : 'transparent',
+                      color: active ? '#0f172a' : '#64748b',
+                      fontWeight: active ? 500 : 400, fontSize: 12.5,
+                      cursor: 'pointer', transition: 'background .12s, color .12s',
+                      boxShadow: active ? '0 1px 2px rgba(15,23,42,.04)' : 'none',
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                    }}
+                  >
+                    {t.label}
+                    {t.count != null && (
+                      <span style={{
+                        fontSize: 10.5, padding: '0 5px', borderRadius: 999,
+                        background: '#f8fafc', color: '#64748b',
+                        fontVariantNumeric: 'tabular-nums',
+                        minWidth: 16, height: 16,
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      }}>{t.count}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Content */}
+          {isLoading ? (
+            <div style={{ padding: 14, display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="h-52 rounded-xl bg-slate-100 animate-pulse" />
+              ))}
+            </div>
+          ) : activeList.length === 0 ? (
+            <div className="py-20 text-center">
+              <Award className="w-10 h-10 mx-auto text-slate-300 mb-3" />
+              <p className="text-[13px] text-slate-400">Bu bo'limda yutuq yo'q</p>
+            </div>
+          ) : (
+            <div style={{ padding: 14, display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+              {activeList.map(a => (
+                <AchCard
                   key={a.id}
-                  achievement={a}
-                  ball={ballMap[a.id] ?? 0}
-                  onBallChange={v => setBall(a.id, v)}
+                  a={a}
+                  ball={ballMap[a.id] ?? ''}
+                  onBallChange={v => setBallMap(m => ({ ...m, [a.id]: v }))}
                   onApprove={() => handleApprove(a)}
-                  onReject={() => setRejectTarget(a)}
+                  onReject={() => { setRejectTarget(a); setRejectReason(''); }}
+                  onReopen={() => {}}
                   loading={reviewMutation.isPending}
                 />
-              )}
-            />
-          </Tabs.Content>
-
-          {/* APPROVED */}
-          <Tabs.Content value="APPROVED">
-            <AchievementList
-              items={approved}
-              isLoading={lApproved}
-              emptyText="Tasdiqlangan yutuq yo'q"
-              renderCard={a => <ReviewedCard key={a.id} achievement={a} variant="approved" />}
-            />
-          </Tabs.Content>
-
-          {/* REJECTED */}
-          <Tabs.Content value="REJECTED">
-            <AchievementList
-              items={rejected}
-              isLoading={lRejected}
-              emptyText="Rad etilgan yutuq yo'q"
-              renderCard={a => <ReviewedCard key={a.id} achievement={a} variant="rejected" />}
-            />
-          </Tabs.Content>
-        </Tabs.Root>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Reject Dialog */}
-      <Dialog.Root open={!!rejectTarget} onOpenChange={open => { if (!open) { setRejectTarget(null); setRejectReason(''); } }}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-black/40 z-40" />
-          <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-xl shadow-xl z-50 p-6 focus:outline-none">
-            <div className="flex items-center justify-between mb-4">
-              <Dialog.Title className="font-semibold text-slate-900">Yutuqni rad etish</Dialog.Title>
-              <button onClick={() => setRejectTarget(null)} className="p-1.5 rounded-md hover:bg-slate-100">
-                <X className="w-4 h-4" />
+      {/* Reject dialog */}
+      {rejectTarget && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}
+          onClick={() => setRejectTarget(null)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ width: 520, maxWidth: 'calc(100vw - 40px)', background: '#fff', borderRadius: 12, boxShadow: '0 20px 60px rgba(15,23,42,.25)', display: 'flex', flexDirection: 'column' }}
+          >
+            {/* Header */}
+            <div style={{ padding: '18px 22px 4px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 600, color: '#0f172a' }}>Yutuqni rad etish</div>
+                <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>
+                  "{rejectTarget.title}" — sababni kiriting, talaba ko'radi.
+                </div>
+              </div>
+              <button onClick={() => setRejectTarget(null)} style={{ width: 28, height: 28, border: 0, background: 'transparent', color: '#64748b', cursor: 'pointer', borderRadius: 6, display: 'grid', placeItems: 'center' }}>
+                <X size={16} />
               </button>
             </div>
-
-            {rejectTarget && (
-              <p className="text-sm text-muted-foreground mb-4">
-                <span className="font-medium text-slate-700">{rejectTarget.student.fullName}</span>
-                {' — '}
-                {rejectTarget.title}
-              </p>
-            )}
-
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
-              Rad etish sababi
-            </label>
-            <textarea
-              value={rejectReason}
-              onChange={e => setRejectReason(e.target.value)}
-              placeholder="Sabab kiriting..."
-              rows={3}
-              className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 resize-none"
-            />
-
-            <div className="flex gap-3 mt-5 justify-end">
-              <button
-                onClick={() => setRejectTarget(null)}
-                className="px-4 py-2 rounded-md border text-sm font-medium hover:bg-slate-50"
-              >
+            {/* Body */}
+            <div style={{ padding: 18 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Rad etish sababi</div>
+              <textarea
+                value={rejectReason}
+                onChange={e => setRejectReason(e.target.value)}
+                rows={4}
+                placeholder="Masalan: Sertifikat oxirgi 6 oydan eski yoki tasdiqlovchi havola yo'q"
+                style={{ width: '100%', borderRadius: 8, border: '1px solid #e2e8f0', padding: '8px 12px', fontSize: 13, color: '#0f172a', outline: 'none', resize: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+              />
+            </div>
+            {/* Footer */}
+            <div style={{ padding: '12px 18px', borderTop: '1px solid #e2e8f0', background: '#f8fafc', display: 'flex', justifyContent: 'flex-end', gap: 8, borderRadius: '0 0 12px 12px' }}>
+              <button onClick={() => setRejectTarget(null)} style={{ height: 32, padding: '0 14px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', fontSize: 12.5, fontWeight: 500, cursor: 'pointer', color: '#0f172a' }}>
                 Bekor qilish
               </button>
-              <button
-                onClick={handleRejectConfirm}
-                disabled={reviewMutation.isPending}
-                className="px-4 py-2 rounded-md bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50"
-              >
-                Rad etish
+              <button onClick={handleRejectConfirm} disabled={reviewMutation.isPending} style={{ height: 32, padding: '0 14px', borderRadius: 8, border: 0, background: '#ef4444', color: '#fff', fontSize: 12.5, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, opacity: reviewMutation.isPending ? 0.6 : 1 }}>
+                <X size={13} /> Rad etish
               </button>
             </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }
 
-/* ── Tab trigger ─────────────────────────────────────────── */
-function TabTrigger({ value, label, count }: { value: string; label: string; count: number }) {
-  return (
-    <Tabs.Trigger
-      value={value}
-      className="group flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium text-slate-500 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm transition-all"
-    >
-      {label}
-      {count > 0 && (
-        <span className="bg-slate-200 group-data-[state=active]:bg-slate-900 group-data-[state=active]:text-white text-xs font-semibold px-1.5 py-0.5 rounded-full tabular-nums">
-          {count}
-        </span>
-      )}
-    </Tabs.Trigger>
-  );
-}
-
-/* ── Achievement list wrapper ────────────────────────────── */
-function AchievementList({
-  items, isLoading, emptyText, renderCard,
+/* ── Achievement Card ── */
+function AchCard({
+  a, ball, onBallChange, onApprove, onReject, onReopen, loading,
 }: {
-  items: Achievement[];
-  isLoading: boolean;
-  emptyText: string;
-  renderCard: (a: Achievement) => React.ReactNode;
-}) {
-  if (isLoading) {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="h-48 rounded-xl bg-slate-100 animate-pulse" />
-        ))}
-      </div>
-    );
-  }
-  if (items.length === 0) {
-    return (
-      <div className="text-center py-20 border-2 border-dashed rounded-xl">
-        <Star className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
-        <p className="text-muted-foreground text-sm">{emptyText}</p>
-      </div>
-    );
-  }
-  return <PaginatedAchievementGrid items={items} renderCard={renderCard} />;
-}
-
-function PaginatedAchievementGrid({
-  items, renderCard,
-}: {
-  items: Achievement[];
-  renderCard: (a: Achievement) => React.ReactNode;
-}) {
-  const pag = usePagination(items, 12, [items.length]);
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {pag.pageItems.map(renderCard)}
-      </div>
-      <Pagination page={pag.page} pageCount={pag.pageCount} onChange={pag.setPage} total={pag.total} pageSize={pag.pageSize} style={{ borderTop: 0, padding: 0, background: 'transparent' }} />
-    </div>
-  );
-}
-
-/* ── Pending card ────────────────────────────────────────── */
-function PendingCard({
-  achievement: a, ball, onBallChange, onApprove, onReject, loading,
-}: {
-  achievement: Achievement;
-  ball: number;
-  onBallChange: (v: number) => void;
+  a: Achievement;
+  ball: string;
+  onBallChange: (v: string) => void;
   onApprove: () => void;
   onReject: () => void;
+  onReopen: () => void;
   loading: boolean;
 }) {
+  const Icon = TYPE_ICON[a.type] ?? Award;
+
   return (
-    <div className="bg-white rounded-xl border flex flex-col">
-      <div className="p-4 flex-1 space-y-2">
-        <div className="flex items-start justify-between gap-2">
-          <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${TYPE_CLS[a.type] ?? TYPE_CLS.OTHER}`}>
-            {TYPE_LABEL[a.type] ?? a.type}
-          </span>
-          <span className="text-xs text-muted-foreground">{fmt(a.createdAt)}</span>
+    <div style={{ borderRadius: 12, border: '1px solid #e2e8f0', background: '#fff', padding: 16 }}>
+
+      {/* Top row: icon + title + date + status */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
+        <div style={{ width: 36, height: 36, borderRadius: 8, background: '#f8fafc', border: '1px solid #e2e8f0', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+          <Icon style={{ width: 16, height: 16, color: '#64748b' }} />
         </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', margin: 0, lineHeight: 1.3 }}>{a.title}</p>
+          <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 2, display: 'flex', gap: 10, alignItems: 'center' }}>
+            <span>{TYPE_LABEL[a.type] ?? a.type}</span>
+            <span style={{ color: '#94a3b8' }}>·</span>
+            <span>{fmt(a.createdAt)}</span>
+          </div>
+        </div>
+        <StatusBadge status={a.status} />
+      </div>
 
-        <p className="font-semibold text-slate-900 text-sm leading-snug">{a.title}</p>
-        <p className="text-xs text-muted-foreground">{a.student.fullName}</p>
+      {/* Student row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 10, marginBottom: 10, borderBottom: '1px solid #e2e8f0', fontSize: 12.5 }}>
+        <Avatar name={a.student.fullName} size={22} />
+        <span style={{ fontWeight: 500, color: '#0f172a' }}>{a.student.fullName}</span>
+        <span style={{ color: '#64748b' }}>·</span>
+        <span style={{ color: '#64748b' }}>{a.student.group?.name}</span>
+      </div>
 
-        {a.description && (
-          <p className="text-xs text-slate-600 line-clamp-2">{a.description}</p>
-        )}
+      {/* Description */}
+      {a.description && (
+        <p style={{ margin: '0 0 10px', fontSize: 12.5, color: '#64748b', lineHeight: 1.5 }}>{a.description}</p>
+      )}
 
-        {a.fileUrl && (
+      {/* File preview */}
+      {a.fileUrl && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 10, background: '#f8fafc', borderRadius: 8, marginBottom: 12, border: '1px solid #e2e8f0' }}>
+          <div style={{ width: 32, height: 32, borderRadius: 5, background: '#fef2f2', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+            <FileText style={{ width: 14, height: 14, color: '#ef4444' }} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0, fontSize: 12 }}>
+            <p style={{ fontWeight: 500, color: '#374151', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {a.fileUrl.split('/').pop() ?? 'hujjat.pdf'}
+            </p>
+            <p style={{ color: '#94a3b8', fontSize: 11, margin: 0 }}>PDF · 1.2 MB</p>
+          </div>
           <a
             href={a.fileUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline mt-1"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: 32, padding: '0 12px', borderRadius: 8, border: '1px solid transparent', background: 'transparent', fontSize: 12.5, color: '#0f172a', fontWeight: 500, cursor: 'pointer', textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}
+            onMouseEnter={e => (e.currentTarget.style.background = '#f8fafc')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
           >
-            <FileText className="w-3.5 h-3.5" />
-            Fayl ko'rish
-            <ExternalLink className="w-3 h-3" />
+            <Eye style={{ width: 13, height: 13 }} /> Ko'rish
           </a>
-        )}
-      </div>
-
-      {/* Actions */}
-      <div className="border-t p-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-medium text-slate-600 shrink-0">Ball (0–15):</label>
-          <input
-            type="number"
-            min={0}
-            max={15}
-            value={ball}
-            onChange={e => onBallChange(Number(e.target.value))}
-            className="w-20 h-8 px-2 rounded-md border text-sm text-center focus:outline-none focus:ring-2 focus:ring-slate-900"
-          />
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={onApprove}
-            disabled={loading}
-            className="flex-1 flex items-center justify-center gap-1.5 h-8 rounded-md bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 disabled:opacity-50 transition-colors"
-          >
-            <CheckCircle className="w-3.5 h-3.5" /> Tasdiqlash
-          </button>
+      )}
+
+      {/* Reject reason */}
+      {a.status === 'REJECTED' && a.rejectReason && (
+        <div style={{ padding: '8px 10px', background: '#fef2f2', borderRadius: 6, fontSize: 12, color: '#991b1b', marginBottom: 10, display: 'flex', gap: 6 }}>
+          <AlertCircle style={{ width: 13, height: 13, color: '#ef4444', marginTop: 2, flexShrink: 0 }} />
+          <div><strong>Sabab:</strong> {a.rejectReason}</div>
+        </div>
+      )}
+
+      {/* Action row */}
+      {a.status === 'PENDING' ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap' }}>Ball:</span>
+            <input
+              type="number"
+              min={0}
+              max={15}
+              value={ball}
+              onChange={e => onBallChange(e.target.value)}
+              placeholder="0–15"
+              style={{ width: 70, height: 28, padding: '0 8px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 12.5, textAlign: 'center', outline: 'none', fontVariantNumeric: 'tabular-nums' }}
+            />
+          </div>
           <button
             onClick={onReject}
             disabled={loading}
-            className="flex-1 flex items-center justify-center gap-1.5 h-8 rounded-md bg-red-50 text-red-600 border border-red-200 text-xs font-semibold hover:bg-red-100 disabled:opacity-50 transition-colors"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: 32, padding: '0 12px', borderRadius: 8, border: '1px solid #fecaca', background: '#fff', color: '#b91c1c', fontSize: 12.5, fontWeight: 500, cursor: 'pointer', opacity: loading ? 0.5 : 1 }}
           >
-            <XCircle className="w-3.5 h-3.5" /> Rad etish
+            <X style={{ width: 13, height: 13 }} /> Rad etish
+          </button>
+          <button
+            onClick={onApprove}
+            disabled={loading}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: 32, padding: '0 12px', borderRadius: 8, border: 'none', background: '#10b981', color: '#fff', fontSize: 12.5, fontWeight: 500, cursor: 'pointer', opacity: loading ? 0.5 : 1 }}
+          >
+            <Check style={{ width: 13, height: 13 }} /> Tasdiqlash
           </button>
         </div>
-      </div>
-    </div>
-  );
-}
-
-/* ── Reviewed card (approved / rejected) ─────────────────── */
-function ReviewedCard({
-  achievement: a, variant,
-}: {
-  achievement: Achievement;
-  variant: 'approved' | 'rejected';
-}) {
-  return (
-    <div className={`bg-white rounded-xl border flex flex-col ${variant === 'rejected' ? 'border-red-100' : ''}`}>
-      <div className="p-4 flex-1 space-y-2">
-        <div className="flex items-start justify-between gap-2">
-          <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${TYPE_CLS[a.type] ?? TYPE_CLS.OTHER}`}>
-            {TYPE_LABEL[a.type] ?? a.type}
+      ) : (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5, color: '#64748b' }}>
+          <span>
+            {a.status === 'APPROVED'
+              ? <span style={{ color: '#059669', fontWeight: 600 }}>+{a.ball} ball qo'shildi</span>
+              : 'Rad etildi'}
           </span>
-          <span className="text-xs text-muted-foreground">
-            {a.reviewedAt ? fmt(a.reviewedAt) : fmt(a.createdAt)}
-          </span>
+          <GhostButton onClick={onReopen}>Qaytadan ko'rib chiqish</GhostButton>
         </div>
-
-        <p className="font-semibold text-slate-900 text-sm leading-snug">{a.title}</p>
-        <p className="text-xs text-muted-foreground">{a.student.fullName}</p>
-
-        {a.description && (
-          <p className="text-xs text-slate-600 line-clamp-2">{a.description}</p>
-        )}
-
-        {a.fileUrl && (
-          <a
-            href={a.fileUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
-          >
-            <FileText className="w-3.5 h-3.5" />
-            Fayl ko'rish <ExternalLink className="w-3 h-3" />
-          </a>
-        )}
-      </div>
-
-      <div className="border-t px-4 py-3">
-        {variant === 'approved' ? (
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-emerald-700 font-medium flex items-center gap-1">
-              <CheckCircle className="w-3.5 h-3.5" /> Tasdiqlangan
-            </span>
-            <span className="text-sm font-bold text-emerald-700">+{a.ball} ball</span>
-          </div>
-        ) : (
-          <div className="space-y-1">
-            <span className="text-xs text-red-600 font-medium flex items-center gap-1">
-              <XCircle className="w-3.5 h-3.5" /> Rad etilgan
-            </span>
-            {a.rejectReason && (
-              <p className="text-xs text-slate-500 italic">"{a.rejectReason}"</p>
-            )}
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }
