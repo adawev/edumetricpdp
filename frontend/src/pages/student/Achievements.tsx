@@ -171,7 +171,6 @@ function AddAchievementDialog({ open, onClose }: { open: boolean; onClose: () =>
 
         <Field label="Hujjat (ixtiyoriy)">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {/* Hidden file input — triggered imperatively to avoid label-in-dialog issues */}
             <input
               ref={fileInputRef}
               type="file"
@@ -180,7 +179,7 @@ function AddAchievementDialog({ open, onClose }: { open: boolean; onClose: () =>
               onChange={e => {
                 const f = e.target.files?.[0] ?? null;
                 set('file', f);
-                e.target.value = '';   // reset so same file can be re-selected
+                e.target.value = '';
               }}
             />
             <button

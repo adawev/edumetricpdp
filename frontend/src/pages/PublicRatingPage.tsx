@@ -81,6 +81,7 @@ export default function PublicRatingPage() {
   }, [data, q, group, course, groups]);
 
   const hasFilter = q.trim() !== '' || group !== 'all' || course !== 'all';
+  const hasGroupFilter = group !== 'all' || course !== 'all';
   const top3 = filtered.slice(0, 3);
   const rest = hasFilter ? filtered : filtered.slice(3);
   const baseRank = hasFilter ? 1 : 4;
@@ -118,11 +119,11 @@ export default function PublicRatingPage() {
                 <Input value={q} onChange={e => setQ(e.target.value)} placeholder="Talaba yoki guruh nomi..." icon={<Icons.search size={14} />} />
               </div>
               <div style={{ flex: '0 0 180px', minWidth: 150 }}>
-                <Select value={group} onChange={setGroup}
-                  options={[{ value: 'all', label: 'Barcha guruhlar' }, ...(groups?.map(g => ({ value: g.id, label: g.name })) || [])]} />
+                <Select value={group} onChange={(v) => { setGroup(v); if (v !== 'all') { const c = groups?.find(g => g.id === v)?.course; if (c !== undefined) setCourse(String(c)); } }}
+                  options={[{ value: 'all', label: 'Barcha guruhlar' }, ...((groups || []).filter(g => course === 'all' || String(g.course) === course).map(g => ({ value: g.id, label: g.name })))]} />
               </div>
               <div style={{ flex: '0 0 150px', minWidth: 130 }}>
-                <Select value={course} onChange={setCourse}
+                <Select value={course} onChange={(v) => { setCourse(v); if (group !== 'all' && v !== 'all' && String(groups?.find(g => g.id === group)?.course) !== v) setGroup('all'); }}
                   options={[{ value: 'all', label: 'Barcha kurslar' }, ...courses.map(c => ({ value: c, label: `${c}-kurs` }))]} />
               </div>
               <div style={{ marginLeft: 'auto', fontSize: 12, color: T.textMuted, whiteSpace: 'nowrap' }}>
@@ -143,7 +144,7 @@ export default function PublicRatingPage() {
               {!hasFilter && top3.length === 3 && <Top3Podium rows={top3} period={period} onClick={handleRowClick} />}
               {rest.length === 0 ? <PublicEmptyState /> : (
                 <Card padding={0}>
-                  <RatingTable rows={pag.pageItems} startIndex={baseRank + pag.startIndex} period={period} onRowClick={handleRowClick} />
+                  <RatingTable rows={pag.pageItems} startIndex={baseRank + pag.startIndex} useLocalRank={hasGroupFilter} period={period} onRowClick={handleRowClick} />
                   <Pagination page={pag.page} pageCount={pag.pageCount} onChange={pag.setPage} total={pag.total} pageSize={pag.pageSize} />
                 </Card>
               )}
@@ -326,7 +327,7 @@ function ActivityBar({ value, max }: { value: number; max: number }) {
   );
 }
 
-function RatingTable({ rows, startIndex, period, onRowClick }: { rows: Row[]; startIndex: number; period: Period; onRowClick: (id?: string) => void }) {
+function RatingTable({ rows, startIndex, useLocalRank, period, onRowClick }: { rows: Row[]; startIndex: number; useLocalRank?: boolean; period: Period; onRowClick: (id?: string) => void }) {
   const maxActivity = Math.max(1, ...rows.map(r => r.weeklyActivity ?? 0));
   const showPeriodBall = period !== 'all';
   return (
@@ -351,7 +352,7 @@ function RatingTable({ rows, startIndex, period, onRowClick }: { rows: Row[]; st
         </thead>
         <tbody>
           {rows.map((stu, i) => {
-            const rank = startIndex + i;
+            const rank = useLocalRank ? (startIndex + i) : (stu.rank ?? startIndex + i);
             return (
               <tr key={stu.id} onClick={() => onRowClick(stu.id)}
                 title={stu.lastRecalc ? `Yangilangan: ${fmtRelative(stu.lastRecalc)}` : ''}

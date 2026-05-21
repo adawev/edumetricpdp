@@ -35,7 +35,7 @@ type ParsedSubject = { name: string; teacher: string; total: number; attended: n
 
 function parseLmsSubjects(lmsData: LmsData | null | undefined): ParsedSubject[] {
   if (!lmsData?.subjects?.length) return [];
-  return lmsData.subjects.map(s => ({
+  return lmsData.subjects.map((s: LmsSubject) => ({
     name: s.subject_name ?? 'Fan',
     teacher: s.teacher ?? '—',
     total: s.subject_summary?.total ?? 0,

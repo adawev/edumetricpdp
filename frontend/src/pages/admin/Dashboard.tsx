@@ -2,11 +2,12 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
-  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip,
-  ResponsiveContainer, Legend,
+  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
+  Tooltip, CartesianGrid, ResponsiveContainer,
 } from 'recharts';
 import {
-  Users, CheckCircle, Clock, XCircle, TrendingUp, Star, AlertTriangle,
+  Users, Trophy, Clock, XCircle, BarChart2,
+  Star, AlertTriangle, BadgeCheck, ArrowRight, Download,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import AdminLayout from './AdminLayout';
@@ -20,19 +21,17 @@ type Student = {
 };
 
 type Achievement = { id: string };
+type Penalty     = { id: string; recoveryDone: boolean };
 
 const STATUS_COLORS: Record<string, string> = {
   GRANTED:     '#10b981',
   PENDING:     '#f59e0b',
   NOT_GRANTED: '#ef4444',
-  UNKNOWN:     '#94a3b8',
 };
-
 const STATUS_LABELS: Record<string, string> = {
-  GRANTED:     "Grant berildi",
-  PENDING:     "Kutilmoqda",
+  GRANTED:     'Grant berildi',
+  PENDING:     'Kutilmoqda',
   NOT_GRANTED: "Grant yo'q",
-  UNKNOWN:     "Aniqlanmagan",
 };
 
 export default function AdminDashboard() {
@@ -40,11 +39,14 @@ export default function AdminDashboard() {
     queryKey: ['admin-students'],
     queryFn: async () => (await api.get<Student[]>('/admin/students')).data,
   });
-
-  const { data: pendingAchievements = [] } = useQuery({
-    queryKey: ['admin-achievements-pending'],
+  const { data: pendingAch = [] } = useQuery({
+    queryKey: ['admin-achievements', 'PENDING'],
     queryFn: async () =>
       (await api.get<Achievement[]>('/admin/achievements', { params: { status: 'PENDING' } })).data,
+  });
+  const { data: penalties = [] } = useQuery({
+    queryKey: ['admin-penalties'],
+    queryFn: async () => (await api.get<Penalty[]>('/admin/penalties')).data,
   });
 
   const stats = useMemo(() => {
@@ -52,13 +54,8 @@ export default function AdminDashboard() {
     const granted    = students.filter(s => s.grantStatus === 'GRANTED').length;
     const pending    = students.filter(s => s.grantStatus === 'PENDING').length;
     const notGranted = students.filter(s => s.grantStatus === 'NOT_GRANTED').length;
-    const unknown    = students.filter(s => s.grantStatus === 'UNKNOWN').length;
-    const avg        = students.reduce((sum, s) => sum + s.grantScore, 0) / students.length;
-    return {
-      total: students.length,
-      granted, pending, notGranted, unknown,
-      avg: Math.round(avg * 10) / 10,
-    };
+    const avg        = Math.round(students.reduce((a, s) => a + s.grantScore, 0) / students.length);
+    return { total: students.length, granted, pending, notGranted, avg };
   }, [students]);
 
   const donutData = useMemo(() => {
@@ -67,193 +64,313 @@ export default function AdminDashboard() {
       { name: STATUS_LABELS.GRANTED,     value: stats.granted,    color: STATUS_COLORS.GRANTED },
       { name: STATUS_LABELS.PENDING,     value: stats.pending,    color: STATUS_COLORS.PENDING },
       { name: STATUS_LABELS.NOT_GRANTED, value: stats.notGranted, color: STATUS_COLORS.NOT_GRANTED },
-      { name: STATUS_LABELS.UNKNOWN,     value: stats.unknown,    color: STATUS_COLORS.UNKNOWN },
     ].filter(d => d.value > 0);
   }, [stats]);
 
-  const groupBarData = useMemo(() => {
+  const groupData = useMemo(() => {
     const map: Record<string, { total: number; count: number }> = {};
     for (const s of students) {
-      const key = s.group?.name ?? 'Noma\'lum';
-      if (!map[key]) map[key] = { total: 0, count: 0 };
-      map[key].total += s.grantScore;
-      map[key].count += 1;
+      const k = s.group?.name ?? 'Noma\'lum';
+      if (!map[k]) map[k] = { total: 0, count: 0 };
+      map[k].total += s.grantScore;
+      map[k].count++;
     }
-    return Object.entries(map)
-      .map(([name, { total, count }]) => ({
-        name,
-        ball: Math.round((total / count) * 10) / 10,
-      }))
-      .sort((a, b) => b.ball - a.ball);
+    return Object.entries(map).map(([group, { total, count }]) => ({
+      group,
+      ball: Math.round((total / count) * 10) / 10,
+    }));
   }, [students]);
+
+  const activePenalties = penalties.filter(p => !p.recoveryDone).length;
+  const total = stats?.total ?? 0;
 
   return (
     <AdminLayout>
-      <div className="p-6 space-y-6">
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-1">Tizimning umumiy ko'rinishi</p>
+      <div className="p-6 space-y-4">
+
+        {/* Page header */}
+        <div className="flex items-end justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-[22px] font-semibold text-slate-900 tracking-tight">Statistika</h1>
+            <p className="text-[13.5px] text-slate-500 mt-1">Umumiy ko'rsatkichlar va tezkor amallar</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-slate-200 bg-white text-[12.5px] font-medium text-slate-700 hover:bg-slate-50 transition-colors">
+              <Download className="w-3.5 h-3.5" /> Eksport
+            </button>
+            <Link
+              to="/admin/grants"
+              className="flex items-center gap-1.5 h-8 px-3 rounded-lg bg-slate-900 text-[12.5px] font-medium text-white hover:bg-slate-800 transition-colors"
+            >
+              <Trophy className="w-3.5 h-3.5" /> Grant qarori
+            </Link>
+          </div>
         </div>
 
-        {/* KPI Cards */}
+        {/* KPI cards — 5 col */}
         {isLoading ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
+          <div className="grid grid-cols-5 gap-3">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-28 rounded-xl bg-slate-100 animate-pulse" />
+              <div key={i} className="h-24 rounded-xl bg-slate-100 animate-pulse" />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
-            <KpiCard label="Jami talabalar" value={stats?.total ?? 0}
-              icon={<Users className="w-5 h-5 text-slate-400" />} />
-            <KpiCard label="Grant berildi" value={stats?.granted ?? 0}
-              valueClass="text-emerald-600"
-              icon={<CheckCircle className="w-5 h-5 text-emerald-500" />} />
-            <KpiCard label="Kutilmoqda" value={stats?.pending ?? 0}
-              valueClass="text-amber-600"
-              icon={<Clock className="w-5 h-5 text-amber-500" />} />
-            <KpiCard label="Grant yo'q" value={stats?.notGranted ?? 0}
-              valueClass="text-red-600"
-              icon={<XCircle className="w-5 h-5 text-red-500" />} />
-            <KpiCard label="O'rtacha ball" value={stats?.avg ?? 0}
-              icon={<TrendingUp className="w-5 h-5 text-blue-500" />} />
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
+            <KpiCard
+              label="Jami talabalar"
+              value={stats?.total ?? 0}
+              sub={`${stats?.total ?? 0} jami`}
+              icon={<Users className="w-3.5 h-3.5" />}
+            />
+            <KpiCard
+              label="Grant olganlar"
+              value={stats?.granted ?? 0}
+              sub={`${total ? Math.round((stats!.granted / total) * 100) : 0}%`}
+              trendUp
+              accent="#10b981"
+              icon={<Trophy className="w-3.5 h-3.5" />}
+            />
+            <KpiCard
+              label="Kutilmoqda"
+              value={stats?.pending ?? 0}
+              sub="ko'rib chiqilmoqda"
+              accent="#d97706"
+              icon={<Clock className="w-3.5 h-3.5" />}
+            />
+            <KpiCard
+              label="Grant yo'q"
+              value={stats?.notGranted ?? 0}
+              sub={`${total ? Math.round((stats!.notGranted / total) * 100) : 0}%`}
+              trendUp={false}
+              accent="#dc2626"
+              icon={<XCircle className="w-3.5 h-3.5" />}
+            />
+            <KpiCard
+              label="O'rtacha ball"
+              value={stats?.avg ?? 0}
+              sub="/ 100"
+              trendUp
+              icon={<BarChart2 className="w-3.5 h-3.5" />}
+            />
           </div>
         )}
 
-        {/* Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Donut — status taqsimoti */}
-          <div className="bg-white rounded-xl border p-6">
-            <h2 className="text-base font-semibold mb-4">Grant holati taqsimoti</h2>
+        {/* Charts — 1fr : 1.4fr */}
+        <div className="grid gap-3" style={{ gridTemplateColumns: '1fr 1.4fr' }}>
+          {/* Donut */}
+          <div className="bg-white rounded-xl border border-slate-200 p-5">
+            <p className="text-sm font-semibold text-slate-900">Status taqsimoti</p>
+            <p className="text-xs text-slate-400 mt-0.5 mb-4">Joriy semestr</p>
             {isLoading ? (
-              <div className="h-56 bg-slate-100 animate-pulse rounded-lg" />
-            ) : donutData.length === 0 ? (
-              <EmptyChart />
+              <div className="h-44 bg-slate-100 animate-pulse rounded-lg" />
             ) : (
-              <ResponsiveContainer width="100%" height={220}>
-                <PieChart>
-                  <Pie
-                    data={donutData}
-                    cx="50%" cy="50%"
-                    innerRadius={58} outerRadius={90}
-                    paddingAngle={3}
-                    dataKey="value"
-                  >
-                    {donutData.map((entry, i) => (
-                      <Cell key={i} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(v: number) => [`${v} talaba`]} />
-                  <Legend iconType="circle" iconSize={10} />
-                </PieChart>
-              </ResponsiveContainer>
+              <div className="flex items-center gap-5">
+                {/* Donut with center label */}
+                <div className="relative shrink-0" style={{ width: 180, height: 180 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={donutData}
+                        dataKey="value"
+                        innerRadius={56}
+                        outerRadius={84}
+                        paddingAngle={2}
+                        stroke="none"
+                      >
+                        {donutData.map((d, i) => <Cell key={i} fill={d.color} />)}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                  {/* Center text */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-[26px] font-semibold text-slate-900 tabular-nums tracking-tight leading-none">
+                      {stats?.total ?? 0}
+                    </span>
+                    <span className="text-[11px] text-slate-400 mt-0.5">talaba</span>
+                  </div>
+                </div>
+
+                {/* Legend */}
+                <div className="flex-1 space-y-2">
+                  {donutData.map((d, i) => (
+                    <div key={i} className="py-1.5">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="flex items-center gap-2 text-[12.5px] text-slate-700">
+                          <span
+                            className="w-2 h-2 rounded-[3px] shrink-0"
+                            style={{ background: d.color }}
+                          />
+                          {d.name}
+                        </span>
+                        <span className="text-[13px] font-semibold tabular-nums text-slate-900">
+                          {d.value} · {total ? Math.round((d.value / total) * 100) : 0}%
+                        </span>
+                      </div>
+                      {/* Progress bar */}
+                      <div className="h-1 bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: total ? `${(d.value / total) * 100}%` : '0%',
+                            background: d.color,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
 
-          {/* Bar — guruh bo'yicha o'rtacha ball */}
-          <div className="bg-white rounded-xl border p-6">
-            <h2 className="text-base font-semibold mb-4">Guruh bo'yicha o'rtacha ball</h2>
+          {/* Bar chart */}
+          <div className="bg-white rounded-xl border border-slate-200 p-5">
+            <p className="text-sm font-semibold text-slate-900">Guruh bo'yicha o'rtacha ball</p>
+            <p className="text-xs text-slate-400 mt-0.5 mb-3">Bahor 2026 semestri</p>
             {isLoading ? (
-              <div className="h-56 bg-slate-100 animate-pulse rounded-lg" />
-            ) : groupBarData.length === 0 ? (
-              <EmptyChart />
+              <div className="bg-slate-100 animate-pulse rounded-lg" style={{ height: 260 }} />
             ) : (
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={groupBarData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                  <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(v: number) => [`${v} ball`, "O'rtacha"]} />
-                  <Bar dataKey="ball" fill="#0f172a" radius={[4, 4, 0, 0]} maxBarSize={48} />
-                </BarChart>
-              </ResponsiveContainer>
+              <div style={{ height: 260 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={groupData} margin={{ top: 8, right: 8, left: -14, bottom: 0 }} barCategoryGap="20%">
+                    <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} />
+                    <XAxis
+                      dataKey="group"
+                      tick={{ fontSize: 11, fill: '#94a3b8' }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      domain={[0, 100]}
+                      tick={{ fontSize: 11, fill: '#94a3b8' }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        background: '#fff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: 8,
+                        fontSize: 12,
+                      }}
+                      formatter={(v: number) => [`${v} ball`, "O'rtacha"]}
+                    />
+                    <Bar dataKey="ball" radius={[6, 6, 0, 0]} maxBarSize={80}>
+                      {groupData.map((d, i) => (
+                        <Cell
+                          key={i}
+                          fill={d.ball >= 80 ? '#10b981' : d.ball >= 70 ? '#f59e0b' : '#ef4444'}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             )}
           </div>
         </div>
 
-        {/* Tezkor amallar */}
-        <div className="bg-white rounded-xl border p-6">
-          <h2 className="text-base font-semibold mb-4">Tezkor amallar</h2>
-          <div className="flex flex-wrap gap-3">
-            <QuickLink
-              to="/admin/achievements"
-              icon={<Star className="w-4 h-4 text-amber-500" />}
-              label="Kutilayotgan yutuqlar"
-              badge={pendingAchievements.length}
-              badgeClass="bg-amber-100 text-amber-700"
-            />
-            <QuickLink
-              to="/admin/grants"
-              icon={<CheckCircle className="w-4 h-4 text-emerald-500" />}
-              label="Grant qarorlar"
-              badge={stats?.pending ?? 0}
-              badgeClass="bg-emerald-100 text-emerald-700"
-            />
-            <QuickLink
-              to="/admin/penalties"
-              icon={<AlertTriangle className="w-4 h-4 text-red-500" />}
-              label="Jarimalar"
-            />
-            <QuickLink
-              to="/admin/students"
-              icon={<Users className="w-4 h-4 text-slate-500" />}
-              label="Barcha talabalar"
-            />
-          </div>
+        {/* Quick actions — 3 col */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <QuickCard
+            to="/admin/achievements"
+            iconBg="bg-amber-50"
+            iconColor="text-amber-600"
+            icon={<Star className="w-5 h-5" />}
+            title="Kutilayotgan yutuqlar"
+            desc="Tasdiqlash kerak"
+            badge={pendingAch.length}
+          />
+          <QuickCard
+            to="/admin/grants"
+            iconBg="bg-emerald-50"
+            iconColor="text-emerald-600"
+            icon={<BadgeCheck className="w-5 h-5" />}
+            title="Grant qarori paneli"
+            desc="Slot taqsimoti"
+            arrow
+          />
+          <QuickCard
+            to="/admin/penalties"
+            iconBg="bg-red-50"
+            iconColor="text-red-600"
+            icon={<AlertTriangle className="w-5 h-5" />}
+            title="Jarima boshqaruvi"
+            desc={`${activePenalties} ta faol`}
+            arrow
+          />
         </div>
       </div>
     </AdminLayout>
   );
 }
 
+/* ── KPI Card ─────────────────────────────────────────── */
 function KpiCard({
-  label, value, icon, valueClass = 'text-slate-900',
+  label, value, sub, trendUp, accent, icon,
 }: {
   label: string;
   value: number;
-  icon: React.ReactNode;
-  valueClass?: string;
+  sub?: string;
+  trendUp?: boolean | null;
+  accent?: string;
+  icon?: React.ReactNode;
 }) {
   return (
-    <div className="bg-white rounded-xl border p-5">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-xs text-muted-foreground font-medium leading-tight">{label}</p>
-        {icon}
+    <div className="bg-white rounded-xl border border-slate-200 p-4">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[11.5px] font-medium text-slate-500 leading-tight">{label}</span>
+        <span className="text-slate-400">{icon}</span>
       </div>
-      <p className={`text-3xl font-bold tabular-nums ${valueClass}`}>{value}</p>
+      <p
+        className="text-[28px] font-semibold tabular-nums leading-none tracking-tight"
+        style={{ color: accent ?? '#0f172a' }}
+      >
+        {value}
+      </p>
+      {sub && (
+        <p className="text-[11.5px] mt-1.5 tabular-nums"
+          style={{ color: trendUp === true ? '#10b981' : trendUp === false ? '#ef4444' : '#94a3b8' }}
+        >
+          {sub}
+        </p>
+      )}
     </div>
   );
 }
 
-function QuickLink({
-  to, icon, label, badge = 0, badgeClass = '',
+/* ── Quick action card ────────────────────────────────── */
+function QuickCard({
+  to, iconBg, iconColor, icon, title, desc, badge, arrow,
 }: {
   to: string;
+  iconBg: string;
+  iconColor: string;
   icon: React.ReactNode;
-  label: string;
+  title: string;
+  desc: string;
   badge?: number;
-  badgeClass?: string;
+  arrow?: boolean;
 }) {
   return (
     <Link
       to={to}
-      className="flex items-center gap-2 px-4 py-2.5 rounded-lg border bg-white hover:bg-slate-50 transition-colors text-sm font-medium text-slate-700"
+      className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-4 hover:border-slate-300 hover:shadow-sm transition-all cursor-pointer"
     >
-      {icon}
-      {label}
-      {badge > 0 && (
-        <span className={`ml-1 text-xs font-semibold px-2 py-0.5 rounded-full ${badgeClass}`}>
+      <div className={`w-11 h-11 rounded-[10px] ${iconBg} ${iconColor} flex items-center justify-center shrink-0`}>
+        {icon}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[13.5px] font-semibold text-slate-900 leading-tight">{title}</p>
+        <p className="text-[12px] text-slate-400 mt-0.5">{desc}</p>
+      </div>
+      {badge != null && badge > 0 ? (
+        <span className="bg-amber-100 text-amber-700 text-xs font-bold px-2 py-0.5 rounded-full tabular-nums shrink-0">
           {badge}
         </span>
-      )}
+      ) : arrow ? (
+        <ArrowRight className="w-4 h-4 text-slate-400 shrink-0" />
+      ) : null}
     </Link>
-  );
-}
-
-function EmptyChart() {
-  return (
-    <div className="h-56 flex items-center justify-center text-sm text-muted-foreground">
-      Ma'lumot yo'q
-    </div>
   );
 }
