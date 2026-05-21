@@ -85,7 +85,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const initials = user?.email?.[0]?.toUpperCase() ?? 'A';
 
   return (
-    <div className="flex min-h-screen bg-[#f8fafc]">
+    <div className="flex h-screen overflow-hidden bg-[#f8fafc]">
       {/* Sidebar */}
       <aside
         className={`flex flex-col bg-white border-r border-slate-200 shrink-0 transition-all duration-200 ${

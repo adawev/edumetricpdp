@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Download, Zap, ArrowRight, Check, ChevronUp, ChevronDown, Info } from 'lucide-react';
+import { Download, Zap, ArrowRight, Check, ChevronUp, ChevronDown, Info, Maximize2, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import AdminLayout from './AdminLayout';
 
@@ -142,6 +142,14 @@ export default function AdminRating() {
   const [sortKey, setSortKey] = useState('total');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [selected, setSelected] = useState<Record<string, boolean>>({});
+  const [fullscreen, setFullscreen] = useState(false);
+
+  useEffect(() => {
+    if (!fullscreen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setFullscreen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [fullscreen]);
 
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ['admin-rating'],
@@ -360,11 +368,58 @@ export default function AdminRating() {
             <p className="text-sm text-slate-400">Talaba topilmadi</p>
           </div>
         ) : (
+          <div style={fullscreen ? {
+            position: 'fixed', inset: 0, zIndex: 60,
+            background: 'rgba(15,23,42,.5)',
+            display: 'flex', flexDirection: 'column', padding: 16,
+          } : {}}>
           <div
-            className="bg-white rounded-xl border border-slate-200 overflow-hidden"
-            style={{ paddingBottom: selectedCount > 0 ? 72 : 0 }}
+            style={fullscreen ? {
+              flex: 1, background: '#fff', borderRadius: 12, overflow: 'hidden',
+              display: 'flex', flexDirection: 'column', minHeight: 0,
+              boxShadow: '0 24px 64px rgba(15,23,42,.35)',
+              paddingBottom: 0,
+            } : {
+              background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', overflow: 'hidden',
+              paddingBottom: selectedCount > 0 ? 72 : 0,
+            }}
           >
-            <div style={{ overflow: 'auto', maxHeight: 'calc(100vh - 300px)' }}>
+            {/* Table info-bar */}
+            <div style={{
+              padding: fullscreen ? '12px 18px' : '8px 14px',
+              borderBottom: '1px solid #e2e8f0',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+              background: fullscreen ? '#fff' : '#f8fafc',
+              fontSize: 12, color: '#64748b', flexShrink: 0,
+            }}>
+              {fullscreen ? (
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>Reyting spreadsheet</div>
+                  <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 2 }}>
+                    {sorted.length} ta talaba · Esc bilan yopiladi
+                  </div>
+                </div>
+              ) : (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                  <Info style={{ width: 11, height: 11, verticalAlign: 'middle', flexShrink: 0 }} />
+                  Gorizontal scroll mavjud · ustun nomiga bosib tartiblang
+                </span>
+              )}
+              <button
+                onClick={() => setFullscreen(f => !f)}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  height: 32, padding: '0 12px', borderRadius: 8,
+                  border: '1px solid #e2e8f0', background: '#fff',
+                  fontSize: 12.5, fontWeight: 500, color: '#374151', cursor: 'pointer',
+                }}
+              >
+                {fullscreen
+                  ? <><X style={{ width: 13, height: 13 }} /> Yopish</>
+                  : <><Maximize2 style={{ width: 12, height: 12 }} /> Kengaytirish</>}
+              </button>
+            </div>
+            <div style={{ overflow: 'auto', maxHeight: fullscreen ? 'none' : 'calc(100vh - 300px)', flex: fullscreen ? 1 : undefined, minHeight: 0 }}>
               <table style={{
                 borderCollapse: 'separate', borderSpacing: 0,
                 fontSize: 12, width: '100%', fontVariantNumeric: 'tabular-nums',
@@ -529,6 +584,7 @@ export default function AdminRating() {
               </table>
             </div>
           </div>
+          </div>
         )}
 
         {/* Fixed bottom action bar */}
@@ -626,6 +682,7 @@ export default function AdminRating() {
           </>
         )}
       </div>
+
     </AdminLayout>
   );
 }
