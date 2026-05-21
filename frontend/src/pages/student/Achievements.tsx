@@ -263,10 +263,19 @@ export default function StudentAchievements() {
               return (
                 <div key={a.id} style={{ padding: '16px 18px', display: 'flex', alignItems: 'flex-start', gap: 14,
                   borderBottom: i < pag.pageItems.length - 1 ? `1px solid ${T.border}` : 'none' }}>
-                  <div style={{ width: 40, height: 40, borderRadius: 9, background: T.bg,
-                    border: `1px solid ${T.border}`, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-                    {(TYPE_ICON[a.type] ?? Icons.award)({ size: 17, stroke: T.textMuted })}
-                  </div>
+                  {a.fileUrl && /\.(png|jpe?g|webp|gif)$/i.test(a.fileUrl) ? (
+                    <a href={a.fileUrl} target="_blank" rel="noreferrer"
+                       style={{ width: 56, height: 56, borderRadius: 9, overflow: 'hidden',
+                         border: `1px solid ${T.border}`, flexShrink: 0, display: 'block', background: T.bg }}>
+                      <img src={a.fileUrl} alt={a.title}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    </a>
+                  ) : (
+                    <div style={{ width: 40, height: 40, borderRadius: 9, background: T.bg,
+                      border: `1px solid ${T.border}`, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                      {(TYPE_ICON[a.type] ?? Icons.award)({ size: 17, stroke: T.textMuted })}
+                    </div>
+                  )}
 
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>

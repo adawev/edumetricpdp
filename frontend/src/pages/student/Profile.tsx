@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { T } from '@/lib/theme';
 import { Card, Avatar, Button, Skeleton, Dialog, Field, Input, Select, Tooltip } from '@/components/em/Primitives';
 import { Icons } from '@/components/em/Icons';
@@ -12,7 +13,6 @@ import { BadgeMedal, BADGE_RARITY_LABEL, type BadgeDef, type EarnedBadge, type B
 const RARITY_COLOR: Record<BadgeRarity, string> = {
   legendary: '#a16207', epic: '#6d28d9', rare: '#1d4ed8', common: '#475569',
 };
-import { toast } from 'sonner';
 
 // ── constants ─────────────────────────────────────────────────────────────
 
@@ -73,14 +73,9 @@ export default function StudentProfile() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
       {/* Page title */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 12, marginBottom: 4 }}>
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: T.text, letterSpacing: '-0.02em', margin: 0 }}>Mening profilim</h1>
-          <p style={{ fontSize: 13, color: T.textMuted, marginTop: 4 }}>Shaxsiy ma&apos;lumotlar va batafsil ball ko&apos;rsatkichlari</p>
-        </div>
-        <Button variant="outline" size="sm" icon={Icons.edit({ size: 13, stroke: T.textMuted })}>
-          Tahrirlash
-        </Button>
+      <div style={{ marginBottom: 4 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: T.text, letterSpacing: '-0.02em', margin: 0 }}>Mening profilim</h1>
+        <p style={{ fontSize: 13, color: T.textMuted, marginTop: 4 }}>Shaxsiy ma&apos;lumotlar va batafsil ball ko&apos;rsatkichlari</p>
       </div>
 
       {/* Profile header card */}
