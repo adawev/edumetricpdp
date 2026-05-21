@@ -19,6 +19,8 @@ services:
       JWT_SECRET: change-me-in-prod
       PORT: 3001
       NODE_ENV: production
+    volumes:
+      - uploads:/app/uploads
     depends_on:
       - db
     ports:
@@ -46,3 +48,4 @@ services:
 
 volumes:
   pgdata:
+  uploads:
