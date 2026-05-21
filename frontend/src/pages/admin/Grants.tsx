@@ -1,11 +1,11 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Trophy, XCircle, Clock, Check, ArrowLeft, RefreshCw, X, Info } from 'lucide-react';
+import { Trophy, XCircle, Clock, Check, ArrowLeft, RefreshCw, X, Users, Search } from 'lucide-react';
 import { api } from '@/lib/api';
 import AdminLayout from './AdminLayout';
-import { Pagination, usePagination } from '@/components/em/Primitives';
+import { Pagination, usePagination, Select, Input } from '@/components/em/Primitives';
 
 /* ─────────────────────── Theme (exact design tokens) ─────── */
 const T = {
@@ -248,63 +248,63 @@ function Dlg({
   );
 }
 
+type StatusFilter = 'ALL' | 'PENDING' | 'GRANTED' | 'NOT_GRANTED';
+
 /* ══════════════════════════════════════════════════════════════ */
 export default function AdminGrants() {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
 
   const [rejectDialog, setRejectDialog] = useState<Student | null>(null);
   const [rejectReason, setRejectReason] = useState<'ACADEMIC_FAIL' | 'LOW_SCORE' | 'PAYMENT_OVERDUE'>('LOW_SCORE');
   const [confirmFinal, setConfirmFinal] = useState(false);
 
-  const selectedIds = useMemo(() => {
-    const p = searchParams.get('selected');
-    if (p) return new Set(p.split(',').filter(Boolean));
-    const stored = sessionStorage.getItem('em_grant_session');
-    return stored ? new Set(stored.split(',').filter(Boolean)) : null;
-  }, [searchParams]);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
+  const [groupFilter, setGroupFilter] = useState('ALL');
 
-  const hasSelection = !!(selectedIds && selectedIds.size > 0);
-
-  /* ── Queries ── */
+  /* ── Query — barcha nomzodlar ── */
   const { data, isLoading } = useQuery({
     queryKey: ['admin-grants'],
     queryFn: async () => (await api.get<GrantsData>('/admin/grants')).data,
   });
-  const { data: allStudents = [] } = useQuery({
-    queryKey: ['admin-students'],
-    queryFn: async () => (await api.get<Student[]>('/admin/students')).data,
-  });
 
-  /* ── Working set — always selectedIds if present, else all ── */
+  /* ── Barcha nomzod talabalar ── */
   const allCandidates = useMemo(() => {
     const pending  = data?.pending  ?? [];
     const granted  = data?.granted  ?? [];
     const rejected = data?.rejected ?? [];
-    const combined = [...pending, ...granted, ...rejected];
+    return [...pending, ...granted, ...rejected];
+  }, [data]);
 
-    if (selectedIds && selectedIds.size > 0) {
-      const map = new Map(combined.map(s => [s.id, s]));
-      return [...selectedIds]
-        .map(id => map.get(id) ?? allStudents.find(s => s.id === id))
-        .filter(Boolean) as Student[];
-    }
-    return combined;
-  }, [data, allStudents, selectedIds]);
+  /* ── Guruh ro'yxati (filtr uchun) ── */
+  const groupOptions = useMemo(() => {
+    const names = [...new Set(allCandidates.map(s => s.group?.name).filter(Boolean))].sort();
+    return [{ value: 'ALL', label: 'Barcha guruhlar' }, ...names.map(n => ({ value: n, label: n }))];
+  }, [allCandidates]);
 
-  const sorted = [...allCandidates].sort((a, b) => b.grantScore - a.grantScore);
+  /* ── Filtrlangan + saralangan ro'yxat ── */
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return allCandidates
+      .filter(s => statusFilter === 'ALL' || s.grantStatus === statusFilter)
+      .filter(s => groupFilter === 'ALL' || s.group?.name === groupFilter)
+      .filter(s => !q || s.fullName.toLowerCase().includes(q) || (s.user?.email ?? '').toLowerCase().includes(q))
+      .sort((a, b) => b.grantScore - a.grantScore);
+  }, [allCandidates, search, statusFilter, groupFilter]);
 
-  const pag = usePagination(sorted, 20, [allCandidates.length]);
+  const hasFilter = statusFilter !== 'ALL' || groupFilter !== 'ALL' || search.trim() !== '';
 
+  const pag = usePagination(filtered, 20, [filtered.length]);
+
+  /* ── Statistika — har doim umumiy (filtrdan mustaqil) ── */
   const stats = {
-    selected: selectedIds?.size ?? 0,
-    granted:  sorted.filter(s => s.grantStatus === 'GRANTED').length,
-    rejected: sorted.filter(s => s.grantStatus === 'NOT_GRANTED').length,
-    pending:  sorted.filter(s => s.grantStatus === 'PENDING').length,
+    total:    allCandidates.length,
+    granted:  (data?.granted  ?? []).length,
+    rejected: (data?.rejected ?? []).length,
+    pending:  (data?.pending  ?? []).length,
   };
-
-  const totalGranted = (data?.granted ?? []).length;
+  const totalGranted = stats.granted;
 
   /* ── Mutations ── */
   const inv = () => {
@@ -330,7 +330,7 @@ export default function AdminGrants() {
               Grant qarori
             </h1>
             <p style={{ margin: '4px 0 0', color: T.textMuted, fontSize: 13.5 }}>
-              <span style={{ fontWeight: 500, color: T.text }}>{sorted.length}</span> ta nomzod talaba ·{' '}
+              Jami <span style={{ fontWeight: 600, color: T.text }}>{stats.total}</span> ta nomzod talaba ·{' '}
               <span>slot </span>
               <span style={{ color: T.emeraldDeep, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{totalGranted}</span>
               <span style={{ color: T.textMuted }}>/</span>
@@ -350,10 +350,10 @@ export default function AdminGrants() {
         {/* ── 4 Stat tiles ────────────────────────────── */}
         {!isLoading && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 14 }}>
-            <StatTile label="Tanlangan"     value={stats.selected} accent={T.text}        icon={<Check   size={14} color={T.textMuted}  />} />
-            <StatTile label="Grant berildi" value={stats.granted}  accent={T.emeraldDeep} icon={<Trophy  size={14} color={T.emerald}    />} bg={T.emeraldBg} />
-            <StatTile label="Rad etildi"    value={stats.rejected} accent={T.redDeep}     icon={<XCircle size={14} color={T.red}        />} bg={T.redBg} />
-            <StatTile label="Kutilmoqda"    value={stats.pending}  accent={T.amberDeep}   icon={<Clock   size={14} color={T.amber}      />} bg={T.amberBg} />
+            <StatTile label="Jami talaba"    value={stats.total}    accent={T.text}        icon={<Users   size={14} color={T.textMuted}  />} />
+            <StatTile label="Grant berildi"  value={stats.granted}  accent={T.emeraldDeep} icon={<Trophy  size={14} color={T.emerald}    />} bg={T.emeraldBg} />
+            <StatTile label="Rad etildi"     value={stats.rejected} accent={T.redDeep}     icon={<XCircle size={14} color={T.red}        />} bg={T.redBg} />
+            <StatTile label="Kutilmoqda"     value={stats.pending}  accent={T.amberDeep}   icon={<Clock   size={14} color={T.amber}      />} bg={T.amberBg} />
           </div>
         )}
 
@@ -362,34 +362,56 @@ export default function AdminGrants() {
           background: T.white, border: `1px solid ${T.border}`,
           borderRadius: 12, padding: 12, marginBottom: 12,
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-
-            {!hasSelection && (
-              <div style={{ fontSize: 12.5, color: T.textMuted, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Info size={13} />
-                Hech kim tanlanmagan.{' '}
-                <span
-                  onClick={() => navigate('/admin/rating')}
-                  style={{ color: T.text, textDecoration: 'underline', textUnderlineOffset: 2, cursor: 'pointer' }}
-                >Reyting</span>{' '}
-                sahifasidan kandidatlarni belgilang.
-              </div>
-            )}
-
-            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10, fontSize: 12.5 }}>
-              <span style={{ color: T.textMuted }}>Slot</span>
-              <div style={{ width: 140, height: 6, background: T.bgSubtle, borderRadius: 999, overflow: 'hidden' }}>
-                <div style={{
-                  width: `${Math.min((totalGranted / SLOTS) * 100, 100)}%`,
-                  height: '100%', background: T.emerald, transition: 'width .3s',
-                }} />
-              </div>
-              <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
-                <span style={{ color: T.emeraldDeep }}>{totalGranted}</span>
-                <span style={{ color: T.textMuted, fontWeight: 400 }}> / {SLOTS}</span>
-              </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12.5, justifyContent: 'flex-end' }}>
+            <span style={{ color: T.textMuted }}>Slot</span>
+            <div style={{ width: 140, height: 6, background: T.bgSubtle, borderRadius: 999, overflow: 'hidden' }}>
+              <div style={{
+                width: `${Math.min((totalGranted / SLOTS) * 100, 100)}%`,
+                height: '100%', background: T.emerald, transition: 'width .3s',
+              }} />
             </div>
+            <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+              <span style={{ color: T.emeraldDeep }}>{totalGranted}</span>
+              <span style={{ color: T.textMuted, fontWeight: 400 }}> / {SLOTS}</span>
+            </span>
           </div>
+        </div>
+
+        {/* ── Filtrlar ─────────────────────────────────── */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
+          <div style={{ width: 260 }}>
+            <Input
+              size="sm"
+              placeholder="Talaba ismi yoki email..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              icon={<Search size={14} />}
+            />
+          </div>
+          <div style={{ width: 180 }}>
+            <Select
+              size="sm"
+              value={statusFilter}
+              onChange={v => setStatusFilter(v as StatusFilter)}
+              options={[
+                { value: 'ALL',         label: 'Barcha holatlar' },
+                { value: 'PENDING',     label: 'Kutilmoqda' },
+                { value: 'GRANTED',     label: 'Grant berildi' },
+                { value: 'NOT_GRANTED', label: "Grant yo'q" },
+              ]}
+            />
+          </div>
+          <div style={{ width: 180 }}>
+            <Select size="sm" value={groupFilter} onChange={setGroupFilter} options={groupOptions} />
+          </div>
+          {hasFilter && (
+            <Btn variant="ghost" icon={<X size={12} />} onClick={() => { setSearch(''); setStatusFilter('ALL'); setGroupFilter('ALL'); }}>
+              Tozalash
+            </Btn>
+          )}
+          <span style={{ marginLeft: 'auto', fontSize: 12.5, color: T.textMuted }}>
+            {filtered.length} ta natija
+          </span>
         </div>
 
         {/* ── Table card ───────────────────────────────── */}
@@ -400,21 +422,27 @@ export default function AdminGrants() {
                 <div key={i} style={{ height: 52, borderRadius: 8, background: T.bgSubtle }} />
               ))}
             </div>
-          ) : sorted.length === 0 ? (
+          ) : filtered.length === 0 ? (
             /* Empty state */
             <div style={{ padding: '48px 24px', textAlign: 'center', color: T.textMuted, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
               <div style={{ width: 56, height: 56, borderRadius: 999, background: T.bgSubtle, display: 'grid', placeItems: 'center', marginBottom: 12 }}>
                 <Trophy size={26} color={T.textSubtle} />
               </div>
-              <div style={{ fontSize: 14.5, fontWeight: 600, color: T.text }}>Nomzodlar yo'q</div>
+              <div style={{ fontSize: 14.5, fontWeight: 600, color: T.text }}>
+                {hasFilter ? 'Natija topilmadi' : "Nomzodlar yo'q"}
+              </div>
               <div style={{ fontSize: 13, marginTop: 4, maxWidth: 360 }}>
-                Reyting sahifasiga qaytib kandidatlarni tanlang yoki 'Barcha nomzodlar' rejimiga o'ting
+                {hasFilter
+                  ? 'Filtrlarni o\'zgartiring yoki tozalang.'
+                  : 'Hali nomzod talabalar yo\'q — reyting hisoblangach bu yerda paydo bo\'ladi.'}
               </div>
-              <div style={{ marginTop: 14 }}>
-                <Btn variant="primary" icon={<ArrowLeft size={13} />} onClick={() => navigate('/admin/rating')}>
-                  Reytingga qaytish
-                </Btn>
-              </div>
+              {hasFilter && (
+                <div style={{ marginTop: 14 }}>
+                  <Btn variant="outline" icon={<X size={12} />} onClick={() => { setSearch(''); setStatusFilter('ALL'); setGroupFilter('ALL'); }}>
+                    Filtrlarni tozalash
+                  </Btn>
+                </div>
+              )}
             </div>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
@@ -523,6 +551,19 @@ export default function AdminGrants() {
           )}
         </div>
 
+        {/* ── Pagination ───────────────────────────────── */}
+        {!isLoading && filtered.length > 0 && (
+          <div style={{ marginTop: 12 }}>
+            <Pagination
+              page={pag.page}
+              pageCount={pag.pageCount}
+              onChange={pag.setPage}
+              total={filtered.length}
+              pageSize={20}
+            />
+          </div>
+        )}
+
       </div>
 
       {/* ── Reject dialog ──────────────────────────────── */}
@@ -577,7 +618,6 @@ export default function AdminGrants() {
           <>
             <Btn variant="outline" onClick={() => setConfirmFinal(false)}>Bekor qilish</Btn>
             <Btn variant="primary" icon={<Check size={14} />} onClick={() => {
-              sessionStorage.removeItem('em_grant_session');
               setConfirmFinal(false);
               toast.success(`Qaror yakunlandi — ${totalGranted} ta grant berildi`);
             }}>Tasdiqlash</Btn>
@@ -586,10 +626,11 @@ export default function AdminGrants() {
       >
         <div style={{ padding: '8px 0', display: 'flex', gap: 24, fontSize: 13 }}>
           {[
-            { l: 'Slot',        v: SLOTS,                                          c: T.text        },
-            { l: 'Berildi',     v: totalGranted,                                   c: T.emeraldDeep },
-            { l: "Bo'sh",       v: Math.max(0, SLOTS - totalGranted),              c: T.text        },
-            { l: 'Rad etilgan', v: (data?.rejected ?? []).length,                  c: T.redDeep     },
+            { l: 'Jami talaba', v: stats.total,                       c: T.text        },
+            { l: 'Berildi',     v: totalGranted,                      c: T.emeraldDeep },
+            { l: "Bo'sh slot",  v: Math.max(0, SLOTS - totalGranted), c: T.text        },
+            { l: 'Rad etilgan', v: stats.rejected,                    c: T.redDeep     },
+            { l: 'Kutilmoqda',  v: stats.pending,                     c: T.amberDeep   },
           ].map((it, i) => (
             <div key={i}>
               <div style={{ color: T.textMuted, marginBottom: 2 }}>{it.l}</div>
