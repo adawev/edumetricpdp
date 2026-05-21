@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Download, Zap, ArrowRight, Check, ChevronUp, ChevronDown, Info } from 'lucide-react';
+import { Download, Zap, ArrowRight, Check, ChevronUp, ChevronDown, Info, Maximize2, Minimize2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import AdminLayout from './AdminLayout';
 import { Pagination, usePagination } from '@/components/em/Primitives';
@@ -143,6 +143,7 @@ export default function AdminRating() {
   const [sortKey, setSortKey] = useState('total');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [selected, setSelected] = useState<Record<string, boolean>>({});
+  const [expanded, setExpanded] = useState(false);
 
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ['admin-rating'],
@@ -158,7 +159,7 @@ export default function AdminRating() {
     if (q.trim()) list = list.filter(r => r.fullName.toLowerCase().includes(q.toLowerCase()));
     if (group   !== 'all') list = list.filter(r => r.group === group);
     if (course  !== 'all') list = list.filter(r => r.group.split('-')[1] === course);
-    if (statusF !== 'all') list = list.filter(r => r.grantStatus === statusF || r.grantReason === statusF);
+    if (statusF !== 'all') list = list.filter(r => r.grantStatus === statusF);
     if (riskF   !== 'all') list = list.filter(r => r.riskLevel === riskF);
     return list;
   }, [rows, q, group, course, statusF, riskF]);
@@ -216,6 +217,18 @@ export default function AdminRating() {
     window.addEventListener('pageshow', fn);
     return () => window.removeEventListener('pageshow', fn);
   }, []);
+
+  // Fullscreen: esc to close + lock body scroll
+  useEffect(() => {
+    if (!expanded) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setExpanded(false); };
+    window.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
+    };
+  }, [expanded]);
 
   const lowCount  = sorted.filter(x => x.riskLevel === 'LOW').length;
   const midCount  = sorted.filter(x => x.riskLevel === 'MEDIUM').length;
@@ -314,8 +327,6 @@ export default function AdminRating() {
               <option value="GRANTED">Grant berildi</option>
               <option value="PENDING">Kutilmoqda</option>
               <option value="NOT_GRANTED">Grant yo'q</option>
-              <option value="ACADEMIC_FAIL">Akademik fail</option>
-              <option value="LOW_SCORE">Ball past</option>
             </select>
             <select
               value={riskF}
@@ -345,9 +356,6 @@ export default function AdminRating() {
               <span className="w-2.5 h-2.5 rounded-[2px] bg-red-500 inline-block" />
               {highCount} ta yuqori xavf
             </span>
-            <span className="ml-auto flex items-center gap-1.5">
-              <Info className="w-3 h-3" /> Ustun nomiga bosib tartiblang · gorizontal scroll faollashgan
-            </span>
           </div>
         )}
 
@@ -364,14 +372,57 @@ export default function AdminRating() {
           </div>
         ) : (
           <div
-            className="bg-white rounded-xl border border-slate-200 overflow-hidden"
-            style={{ paddingBottom: selectedCount > 0 ? 72 : 0 }}
+            className="bg-white border border-slate-200 overflow-hidden"
+            style={{
+              borderRadius: expanded ? 0 : 12,
+              paddingBottom: selectedCount > 0 ? 72 : 0,
+              ...(expanded
+                ? { position: 'fixed', inset: 0, zIndex: 60, display: 'flex', flexDirection: 'column' }
+                : {}),
+            }}
           >
-            <div style={{ overflow: 'auto', maxHeight: 'calc(100vh - 300px)' }}>
+            {/* Toolbar */}
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              gap: 12, padding: '9px 14px', borderBottom: '1px solid #e2e8f0', background: '#fff',
+            }}>
+              <span style={{ fontSize: 11.5, color: '#94a3b8', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <Info className="w-3 h-3" /> Gorizontal scroll mavjud · ustun nomiga bosib tartiblang
+              </span>
+              <button
+                onClick={() => setExpanded(v => !v)}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  height: 30, padding: '0 12px', borderRadius: 8,
+                  border: '1px solid #e2e8f0', background: '#fff',
+                  fontSize: 12, fontWeight: 500, color: '#0f172a', cursor: 'pointer',
+                  flexShrink: 0,
+                }}
+              >
+                {expanded
+                  ? <Minimize2 style={{ width: 13, height: 13 }} />
+                  : <Maximize2 style={{ width: 13, height: 13 }} />}
+                {expanded ? 'Yopish' : 'Kengaytirish'}
+              </button>
+            </div>
+            <div style={{
+              overflow: 'auto',
+              maxHeight: expanded ? 'none' : 'calc(100vh - 300px)',
+              flex: expanded ? 1 : undefined,
+              minHeight: expanded ? 0 : undefined,
+            }}>
               <table style={{
                 borderCollapse: 'separate', borderSpacing: 0,
-                fontSize: 12, width: '100%', fontVariantNumeric: 'tabular-nums',
+                fontSize: 12, width: 1616, tableLayout: 'fixed',
+                fontVariantNumeric: 'tabular-nums',
               }}>
+                <colgroup>
+                  {[38, 44, 220, 100, 110,
+                    48, 54, 48, 54, 48, 54, 48, 54, 48, 54, 48, 54,
+                    70, 76, 80, 86, 80, 100].map((w, i) => (
+                    <col key={i} style={{ width: w }} />
+                  ))}
+                </colgroup>
                 <thead>
                   {/* Group header row */}
                   <tr style={{ position: 'sticky', top: 0, zIndex: 4 }}>
@@ -385,7 +436,7 @@ export default function AdminRating() {
                       />
                     </th>
                     <th rowSpan={2} style={thSticky({ width: 44, left: 38, zIndex: 6, textAlign: 'center' })}>#</th>
-                    <th rowSpan={2} style={thSticky({ minWidth: 200, left: 82, zIndex: 6, textAlign: 'left', cursor: 'pointer' })}
+                    <th rowSpan={2} style={thSticky({ width: 220, left: 82, zIndex: 6, textAlign: 'left', cursor: 'pointer' })}
                       onClick={() => setSort('name')}
                     >
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
@@ -393,10 +444,10 @@ export default function AdminRating() {
                         {sortKey === 'name' && (sortDir === 'desc' ? <ChevronDown className="w-2.5 h-2.5" /> : <ChevronUp className="w-2.5 h-2.5" />)}
                       </span>
                     </th>
-                    <th rowSpan={2} style={thSticky({ width: 100, textAlign: 'left', cursor: 'pointer' })}
+                    <th rowSpan={2} style={thSticky({ width: 100, left: 302, zIndex: 6, textAlign: 'left', cursor: 'pointer' })}
                       onClick={() => setSort('group')}
                     >Guruh</th>
-                    <th rowSpan={2} style={thSticky({ width: 110, textAlign: 'left' })}>Status</th>
+                    <th rowSpan={2} style={thSticky({ width: 110, left: 402, zIndex: 6, textAlign: 'left' })}>Status</th>
                     <th colSpan={2} style={thGroup(TONE_AC)}>Academic <span style={{ color: '#94a3b8', fontWeight: 500 }}>· max 40</span></th>
                     <th colSpan={2} style={thGroup(TONE_AT)}>Attendance <span style={{ color: '#94a3b8', fontWeight: 500 }}>· max 20</span></th>
                     <th colSpan={2} style={thGroup(TONE_AS)}>Assignment <span style={{ color: '#94a3b8', fontWeight: 500 }}>· max 15</span></th>
@@ -464,16 +515,16 @@ export default function AdminRating() {
                           {x.rank}
                         </td>
                         {/* Name with avatar */}
-                        <td style={{ ...tdSticky(82), minWidth: 200, textAlign: 'left' }}>
+                        <td style={{ ...tdSticky(82), width: 220, textAlign: 'left' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <Avatar name={x.fullName} size={24} />
                             <span style={{ fontWeight: 500, color: '#0f172a', fontSize: 12.5 }}>{x.fullName}</span>
                           </div>
                         </td>
                         {/* Group */}
-                        <td style={{ ...td, width: 100, textAlign: 'left', color: '#64748b' }}>{x.group}</td>
+                        <td style={{ ...tdSticky(302), width: 100, textAlign: 'left', color: '#64748b' }}>{x.group}</td>
                         {/* Status */}
-                        <td style={{ ...td, width: 110, textAlign: 'left' }}>
+                        <td style={{ ...tdSticky(402), width: 110, textAlign: 'left' }}>
                           <span className={`inline-flex px-1.5 py-0.5 rounded text-[11px] font-medium ${STATUS_CLS[x.grantStatus] ?? STATUS_CLS.UNKNOWN}`}>
                             {STATUS_LABEL[x.grantStatus] ?? x.grantStatus}
                           </span>
@@ -558,7 +609,7 @@ export default function AdminRating() {
               width: 'max-content',
               minWidth: 520,
               maxWidth: 'calc(100vw - 320px)',
-              zIndex: 50,
+              zIndex: 70,
               background: '#0f172a',
               color: '#fff',
               borderRadius: 14,
