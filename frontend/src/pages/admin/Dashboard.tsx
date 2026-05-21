@@ -8,6 +8,7 @@ import {
 import {
   Users, Trophy, Clock, XCircle, BarChart2,
   Star, AlertTriangle, BadgeCheck, ArrowRight, Download, RefreshCw,
+  Briefcase, Languages, Code2, Rocket, Award, BookOpen, Heart,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import AdminLayout from './AdminLayout';
@@ -17,10 +18,12 @@ type Student = {
   fullName: string;
   grantScore: number;
   grantStatus: 'GRANTED' | 'NOT_GRANTED' | 'PENDING' | 'UNKNOWN';
+  employmentBonus?: number;
   group: { id: string; name: string; course: number };
 };
 type Group = { id: string; name: string; course: number };
 type Achievement = { id: string };
+type ApprovedAchievement = { id: string; studentId: string; type: string; title: string };
 type Penalty = { id: string; recoveryDone: boolean };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -65,6 +68,11 @@ export default function AdminDashboard() {
     queryFn: async () =>
       (await api.get<Achievement[]>('/admin/achievements', { params: { status: 'PENDING' } })).data,
   });
+  const { data: approvedAch = [] } = useQuery({
+    queryKey: ['admin-achievements', 'APPROVED'],
+    queryFn: async () =>
+      (await api.get<ApprovedAchievement[]>('/admin/achievements', { params: { status: 'APPROVED' } })).data,
+  });
   const { data: penalties = [] } = useQuery({
     queryKey: ['admin-penalties'],
     queryFn: async () => (await api.get<Penalty[]>('/admin/penalties')).data,
@@ -106,6 +114,25 @@ export default function AdminDashboard() {
       return { group, ball: d ? Math.round((d.total / d.count) * 10) / 10 : 0 };
     });
   }, [students, allGroups]);
+
+  const achStats = useMemo(() => {
+    const byType: Record<string, Set<string>> = {};
+    const ielts = new Set<string>();
+    for (const a of approvedAch) {
+      (byType[a.type] ??= new Set()).add(a.studentId);
+      if (/ielts/i.test(a.title)) ielts.add(a.studentId);
+    }
+    return {
+      employed:    students.filter(s => (s.employmentBonus ?? 0) > 0).length,
+      ielts:       ielts.size,
+      hackathon:   byType['HACKATHON']?.size ?? 0,
+      startup:     byType['STARTUP']?.size ?? 0,
+      certificate: byType['CERTIFICATE']?.size ?? 0,
+      mentoring:   byType['MENTORING']?.size ?? 0,
+      course:      byType['COURSE']?.size ?? 0,
+      volunteer:   byType['VOLUNTEER']?.size ?? 0,
+    };
+  }, [approvedAch, students]);
 
   const activePenalties = penalties.filter(p => !p.recoveryDone).length;
   const total = stats?.total ?? 0;
@@ -319,6 +346,32 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {/* Talabalar statistikasi */}
+        <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <p className="text-sm font-semibold text-slate-900">Talabalar statistikasi</p>
+          <p className="text-xs text-slate-400 mt-0.5 mb-4">
+            Ish bilan ta'minlanish va tasdiqlangan yutuqlar bo'yicha
+          </p>
+          {isLoading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="h-[88px] rounded-lg bg-slate-100 animate-pulse" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              <StatItem icon={<Briefcase className="w-3.5 h-3.5" />}  label="Ish bilan ta'minlangan" value={achStats.employed}    total={total} color="#2563eb" />
+              <StatItem icon={<Languages className="w-3.5 h-3.5" />}  label="IELTS sertifikati"       value={achStats.ielts}       total={total} color="#0891b2" />
+              <StatItem icon={<Code2 className="w-3.5 h-3.5" />}      label="Hakaton"                 value={achStats.hackathon}   total={total} color="#7c3aed" />
+              <StatItem icon={<Rocket className="w-3.5 h-3.5" />}     label="Startup"                 value={achStats.startup}     total={total} color="#db2777" />
+              <StatItem icon={<Award className="w-3.5 h-3.5" />}      label="Sertifikat"              value={achStats.certificate} total={total} color="#d97706" />
+              <StatItem icon={<Users className="w-3.5 h-3.5" />}      label="Mentorlik"               value={achStats.mentoring}   total={total} color="#059669" />
+              <StatItem icon={<BookOpen className="w-3.5 h-3.5" />}   label="Kurs"                    value={achStats.course}      total={total} color="#0d9488" />
+              <StatItem icon={<Heart className="w-3.5 h-3.5" />}      label="Ko'ngilli"               value={achStats.volunteer}   total={total} color="#e11d48" />
+            </div>
+          )}
+        </div>
+
         {/* Quick actions */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <QuickCard
@@ -394,6 +447,37 @@ function KpiCard({
           {trend}
         </p>
       )}
+    </div>
+  );
+}
+
+/* ── Stat item ────────────────────────────────────────── */
+function StatItem({
+  icon, label, value, total, color,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  total: number;
+  color: string;
+}) {
+  const pct = total ? Math.round((value / total) * 100) : 0;
+  return (
+    <div className="rounded-lg border border-slate-200 p-3">
+      <div className="flex items-center gap-2 mb-2">
+        <span
+          className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+          style={{ background: `${color}14`, color }}
+        >
+          {icon}
+        </span>
+        <span className="text-[11.5px] font-medium text-slate-500 leading-tight">{label}</span>
+      </div>
+      <div className="flex items-baseline gap-1">
+        <span className="text-[22px] font-semibold text-slate-900 tabular-nums leading-none">{value}</span>
+        <span className="text-[11px] text-slate-400 tabular-nums">/ {total}</span>
+      </div>
+      <p className="text-[11px] text-slate-400 mt-1 tabular-nums">{pct}% talabalar</p>
     </div>
   );
 }
