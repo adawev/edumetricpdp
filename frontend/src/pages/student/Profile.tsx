@@ -83,9 +83,6 @@ export default function StudentProfile() {
         </Button>
       </div>
 
-      {/* Visibility toggle */}
-      <VisibilityCard initial={!!student.profilePublic} />
-
       {/* Profile header card */}
       <Card padding={0} style={{ overflow: 'hidden', position: 'relative' }}>
         {/* Dark banner */}
@@ -116,6 +113,9 @@ export default function StudentProfile() {
               )}
             </div>
           </div>
+
+          {/* Visibility row */}
+          <VisibilityRow initial={!!student.profilePublic} />
         </div>
       </Card>
 
@@ -300,9 +300,9 @@ function InfoTag({ icon, label, value }: { icon: (p: any) => JSX.Element; label:
   );
 }
 
-// ── VisibilityCard ─────────────────────────────────────────────────────────
+// ── VisibilityRow ──────────────────────────────────────────────────────────
 
-function VisibilityCard({ initial }: { initial: boolean }) {
+function VisibilityRow({ initial }: { initial: boolean }) {
   const [on, setOn] = useState(initial);
   const { mutateAsync, isPending } = useUpdateProfilePublic();
 
@@ -311,9 +311,7 @@ function VisibilityCard({ initial }: { initial: boolean }) {
     setOn(next);
     try {
       await mutateAsync(next);
-      toast.success(next
-        ? "Profil mehmonlarga ko'rinadi — ism va guruh ochiq"
-        : "Profil anonim — mehmonlar faqat 'A. K.' ko'radi");
+      toast.success(next ? "Mehmonlarga ochiq" : "Mehmonlardan yashirildi");
     } catch (err: any) {
       setOn(on);
       toast.error(err?.response?.data?.error ?? 'Xatolik');
@@ -321,37 +319,21 @@ function VisibilityCard({ initial }: { initial: boolean }) {
   };
 
   return (
-    <Card padding={0}>
-      <div style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14 }}>
-        <div style={{ width: 36, height: 36, borderRadius: 9, background: on ? T.emeraldBg : T.bgSubtle,
-          display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-          {(on ? Icons.eye : Icons.eyeOff)({ size: 16, stroke: on ? T.emerald : T.textMuted })}
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: T.text }}>
-            Mehmon reytingida ko'rinish
-          </div>
-          <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>
-            {on
-              ? "To'liq ism va guruh ochiq — mehmonlar profilingizni ko'radi"
-              : "Anonim — mehmonlarda faqat bosh harflar (masalan, 'A. K.')"}
-          </div>
-        </div>
-        <button onClick={toggle} disabled={isPending} aria-pressed={on}
-          style={{
-            position: 'relative', width: 44, height: 24, borderRadius: 999,
-            background: on ? T.emerald : T.borderStrong, border: 'none',
-            cursor: isPending ? 'wait' : 'pointer', transition: 'background .15s',
-            opacity: isPending ? 0.6 : 1, flexShrink: 0,
-          }}>
-          <span style={{
-            position: 'absolute', top: 2, left: on ? 22 : 2,
-            width: 20, height: 20, borderRadius: 999, background: '#fff',
-            transition: 'left .15s', boxShadow: '0 1px 3px rgba(0,0,0,.2)',
-          }} />
-        </button>
-      </div>
-    </Card>
+    <div style={{
+      marginTop: 14, paddingTop: 14, borderTop: `1px solid ${T.border}`,
+      display: 'flex', alignItems: 'center', gap: 10, fontSize: 12.5,
+    }}>
+      {(on ? Icons.eye : Icons.eyeOff)({ size: 13, stroke: on ? T.emerald : T.textMuted })}
+      <span style={{ color: T.textMuted }}>
+        {on
+          ? "Mehmon reytingida to'liq ism va guruh ochiq"
+          : "Mehmon reytingida anonim (faqat bosh harflar)"}
+      </span>
+      <Button variant="ghost" size="sm" onClick={toggle} disabled={isPending}
+        style={{ marginLeft: 'auto', color: on ? T.red : T.emerald }}>
+        {on ? "Yashirish" : "Ochish"}
+      </Button>
+    </div>
   );
 }
 
