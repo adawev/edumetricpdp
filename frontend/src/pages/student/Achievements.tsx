@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { T } from '@/lib/theme';
 import { Card, Button, Input, Select, Field, Dialog, Skeleton, Tooltip, Pagination, usePagination, Tabs } from '@/components/em/Primitives';
 import { Icons } from '@/components/em/Icons';
@@ -88,6 +88,7 @@ function AddAchievementDialog({ open, onClose }: { open: boolean; onClose: () =>
   const { mutateAsync, isPending } = useCreateAchievement();
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) =>
     setForm(f => ({ ...f, [k]: v }));
@@ -140,9 +141,15 @@ function AddAchievementDialog({ open, onClose }: { open: boolean; onClose: () =>
       }
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <Field label="Yutuq turi" htmlFor="ach-type">
-          <Select value={form.type} onChange={v => set('type', v as AchievementType)} options={TYPE_OPTIONS} />
-        </Field>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <Field label="Yutuq turi" htmlFor="ach-type">
+            <Select value={form.type} onChange={v => set('type', v as AchievementType)} options={TYPE_OPTIONS} />
+          </Field>
+          <Field label="Sana" htmlFor="ach-date">
+            <Input id="ach-date" type="date" value={new Date().toISOString().slice(0, 10)}
+              onChange={() => {}} readOnly />
+          </Field>
+        </div>
 
         <Field label="Nomi" htmlFor="ach-title"
           hint={<span style={{ color: errors.title ? T.red : T.textSubtle }}>{form.title.length} / 100</span>}>
@@ -162,20 +169,46 @@ function AddAchievementDialog({ open, onClose }: { open: boolean; onClose: () =>
               outline: 'none', color: T.text, background: T.white, boxSizing: 'border-box' }} />
         </Field>
 
-        <Field label="Hujjat (ixtiyoriy)" htmlFor="ach-file">
+        <Field label="Hujjat (ixtiyoriy)">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <label style={{
-              display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px',
-              border: `1.5px dashed ${form.file ? T.emerald : T.border}`,
-              borderRadius: 8, cursor: 'pointer', fontSize: 13.5,
-              color: form.file ? T.emeraldText : T.textMuted,
-              background: form.file ? T.emeraldBg : T.bgSubtle,
-            }}>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.png,.jpg,.jpeg"
+              style={{ display: 'none' }}
+              onChange={e => {
+                const f = e.target.files?.[0] ?? null;
+                set('file', f);
+                e.target.value = '';
+              }}
+            />
+            <button
+              type="button"
+              onClick={e => { e.stopPropagation(); fileInputRef.current?.click(); }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px',
+                border: `1.5px dashed ${form.file ? T.emerald : T.border}`,
+                borderRadius: 8, cursor: 'pointer', fontSize: 13.5,
+                color: form.file ? T.emeraldText : T.textMuted,
+                background: form.file ? T.emeraldBg : T.bgSubtle,
+                fontFamily: 'inherit', width: '100%', textAlign: 'left',
+                transition: 'border-color .15s, background .15s',
+              }}
+            >
               {Icons.upload({ size: 15, stroke: form.file ? T.emerald : T.textMuted })}
-              {form.file ? form.file.name : 'Fayl tanlang (PDF, rasm)'}
-              <input type="file" id="ach-file" accept=".pdf,.png,.jpg,.jpeg" style={{ display: 'none' }}
-                onChange={e => set('file', e.target.files?.[0] ?? null)} />
-            </label>
+              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {form.file ? form.file.name : 'Fayl tanlang (PDF, rasm — max 5 MB)'}
+              </span>
+              {form.file && (
+                <span
+                  role="button"
+                  onClick={ev => { ev.stopPropagation(); set('file', null); }}
+                  style={{ color: T.textSubtle, fontSize: 12, flexShrink: 0, padding: '0 4px' }}
+                >
+                  {Icons.x({ size: 13, stroke: T.textSubtle })}
+                </span>
+              )}
+            </button>
             {!form.file && (
               <Input value={form.fileUrl} onChange={e => set('fileUrl', e.target.value)}
                 placeholder="Yoki URL kiriting (https://...)"

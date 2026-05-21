@@ -2,8 +2,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import type {
   StudentMeResponse, Achievement, Feedback, Rankings, AchievementType,
-  StudentPublicProfile, PublicRatingRow, StudentBadge,
+  StudentPublicProfile, PublicRatingRow, StudentBadge, ScoreHistoryPoint,
 } from '@/types/student';
+
+export function useBadgeCatalog() {
+  return useQuery<StudentBadge[]>({
+    queryKey: ['badges', 'catalog'],
+    queryFn: () => api.get('/public/badges/catalog').then(r => r.data),
+    staleTime: 5 * 60_000,
+  });
+}
 
 export function useStudentMe() {
   return useQuery<StudentMeResponse>({
@@ -86,6 +94,14 @@ export function usePinBadge() {
       qc.invalidateQueries({ queryKey: ['student', 'badges'] });
       qc.invalidateQueries({ queryKey: ['student', 'me'] });
     },
+  });
+}
+
+export function useScoreHistory() {
+  return useQuery<ScoreHistoryPoint[]>({
+    queryKey: ['student', 'score-history'],
+    queryFn: () => api.get('/students/me/score-history').then(r => r.data),
+    staleTime: 60_000,
   });
 }
 

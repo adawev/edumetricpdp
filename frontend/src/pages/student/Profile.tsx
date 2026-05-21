@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { T } from '@/lib/theme';
 import { Card, Avatar, Button, Skeleton, Dialog, Field, Input, Select, Tooltip } from '@/components/em/Primitives';
 import { Icons } from '@/components/em/Icons';
-import { useStudentMe, useAchievements, useCreateAchievement, useStudentBadges, useUpdateProfilePublic } from '@/hooks/useStudent';
+import { useStudentMe, useAchievements, useCreateAchievement, useStudentBadges, useBadgeCatalog, useUpdateProfilePublic } from '@/hooks/useStudent';
 import { ErrorState } from '@/components/em/ErrorState';
 import type { GrantStatus, AchievementType, Achievement } from '@/types/student';
 import { api } from '@/lib/api';
@@ -101,6 +101,7 @@ export default function StudentProfile() {
           <div style={{ marginTop: 14 }}>
             <div style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-0.025em', color: T.text }}>{student.fullName}</div>
             <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              <InfoTag icon={Icons.mail} label="Email" value={student.email ?? `${student.fullName.toLowerCase().replace(/\s+/g, '.')}@student.pdp.uz`} />
               <InfoTag icon={Icons.users} label="Guruh" value={student.group.name} />
               <InfoTag icon={Icons.cal} label="Kurs" value={`${student.group.course}-kurs`} />
               {student.group.mentor && (
@@ -499,14 +500,6 @@ function CertificatesSection({ certs }: { certs: Achievement[] }) {
 // ── BadgesSection ──────────────────────────────────────────────────────────
 // Unified catalog (same 6 badges as guest /public/rating). Earned set
 // computed by backend — no hardcoded data.
-
-function useBadgeCatalog() {
-  return useQuery<BadgeDef[]>({
-    queryKey: ['public', 'badges', 'catalog'],
-    queryFn: () => api.get('/public/badges/catalog').then(r => r.data),
-    staleTime: 5 * 60_000,
-  });
-}
 
 function BadgesSection() {
   const { data: catalog } = useBadgeCatalog();

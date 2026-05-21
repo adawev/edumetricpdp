@@ -19,7 +19,11 @@ async function getMyStudentId(userId: string) {
 studentRouter.get('/me', requireRole('STUDENT'), async (req, res) => {
   const student = await prisma.student.findUnique({
     where: { userId: req.user!.userId },
-    include: { group: { include: { mentor: true } }, penalties: true },
+    include: {
+      group: { include: { mentor: true } },
+      penalties: true,
+      user: { select: { email: true } },
+    },
   });
   if (!student) return res.status(404).json({ error: 'Student not found' });
 
@@ -37,7 +41,8 @@ studentRouter.get('/me', requireRole('STUDENT'), async (req, res) => {
     employmentBonus: student.employmentBonus,
   });
 
-  res.json({ student, breakdown });
+  const { user, ...studentData } = student;
+  res.json({ student: { ...studentData, email: user.email }, breakdown });
 });
 
 studentRouter.get('/me/achievements', requireRole('STUDENT'), async (req, res) => {
@@ -189,6 +194,55 @@ studentRouter.put('/me/profile-public', requireRole('STUDENT'), async (req, res)
     data: { profilePublic: parsed.data.profilePublic },
   });
   res.json({ ok: true, profilePublic: parsed.data.profilePublic });
+});
+
+// 6 oylik ball o'sish tarixi (growth chart uchun)
+studentRouter.get('/me/score-history', requireRole('STUDENT'), async (req, res) => {
+  const me = await prisma.student.findUnique({ where: { userId: req.user!.userId } });
+  if (!me) return res.status(404).json({ error: 'Student not found' });
+
+  const snapshots = await prisma.scoreSnapshot.findMany({
+    where: { studentId: me.id },
+    orderBy: { createdAt: 'asc' },
+    take: 200,
+  });
+
+  const months = ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyn', 'Iyl', 'Avg', 'Sen', 'Okt', 'Noy', 'Dek'];
+
+  // Real snapshot'larni oyma-oy guruhlaymiz
+  const byMonth: Record<string, { month: string; score: number; gpa: number }> = {};
+  for (const snap of snapshots) {
+    const d = new Date(snap.createdAt);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    byMonth[key] = { month: months[d.getMonth()], score: snap.score, gpa: snap.gpa };
+  }
+
+  // Joriy oyni har doim qo'shamiz (real snapshot bo'lmasa ham)
+  const now = new Date();
+  const curKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  if (!byMonth[curKey]) {
+    byMonth[curKey] = {
+      month: months[now.getMonth()],
+      score: parseFloat(me.grantScore.toFixed(1)),
+      gpa: parseFloat(me.gpa.toFixed(1)),
+    };
+  }
+
+  // Oxirgi 6 oyni qaytaramiz; ma'lumot bo'lmagan oylar uchun joriy qiymatni ishlatamiz
+  const result: { month: string; score: number; gpa: number }[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    result.push(
+      byMonth[key] ?? {
+        month: months[d.getMonth()],
+        score: parseFloat(me.grantScore.toFixed(1)),
+        gpa: parseFloat(me.gpa.toFixed(1)),
+      },
+    );
+  }
+
+  res.json(result);
 });
 
 studentRouter.get('/me/feedbacks', requireRole('STUDENT'), async (req, res) => {
