@@ -45,7 +45,7 @@ export default function PublicAboutPage() {
 
   return (
     <PublicChrome>
-      <div style={{ padding: '44px 32px 0' }}>
+      <div className="px-4 pt-8 sm:px-8 sm:pt-11">
         <div style={{ maxWidth: 1080, margin: '0 auto' }}>
           <div style={{ marginBottom: 36 }}>
             <h1 style={{ fontSize: 36, fontWeight: 700, margin: 0, letterSpacing: '-0.035em', lineHeight: 1.05, color: T.text }}>
@@ -81,7 +81,7 @@ export default function PublicAboutPage() {
             <h2 style={{ fontSize: 22, fontWeight: 600, margin: 0, letterSpacing: '-0.02em' }}>6 ta asosiy mezon</h2>
             <span style={{ fontSize: 13, color: T.textMuted }}>Jami: <strong style={{ color: T.text }}>100 ball</strong></span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14, marginBottom: 40 }}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5" style={{ marginBottom: 40 }}>
             {criteria.map((c, i) => (
               <Card key={i} padding={20}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
@@ -111,7 +111,7 @@ export default function PublicAboutPage() {
             <h2 style={{ fontSize: 22, fontWeight: 600, margin: 0, letterSpacing: '-0.02em' }}>Bonus va jarima</h2>
             <span style={{ fontSize: 13, color: T.textMuted }}>Asosiy 100 balga qo'shimcha</span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 24 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3" style={{ marginBottom: 24 }}>
             {bonuses.map((b, i) => (
               <div key={i} style={{ padding: 18, background: b.bg, border: `1px solid ${b.bd}`, borderRadius: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
@@ -133,7 +133,7 @@ export default function PublicAboutPage() {
               <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,.55)', marginBottom: 12 }}>
                 Yakuniy formula
               </div>
-              <code style={{ display: 'block', fontFamily: 'JetBrains Mono, monospace', fontSize: 13.5, lineHeight: 1.75, color: '#a7f3d0', letterSpacing: '.01em' }}>
+              <code style={{ display: 'block', fontFamily: 'JetBrains Mono, monospace', fontSize: 13.5, lineHeight: 1.75, color: '#a7f3d0', letterSpacing: '.01em', overflowX: 'auto' }}>
                 final_score = (Akademik + Davomat + Loyihalar + Activity + Tyutor + Intizom)<br />
                 {'                '} − Penalty + Recovery + Employment
               </code>

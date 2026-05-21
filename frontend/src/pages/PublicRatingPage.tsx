@@ -87,7 +87,7 @@ export default function PublicRatingPage() {
 
   return (
     <PublicChrome loginModal={{ open: showLoginModal, onClose: () => setShowLoginModal(false) }}>
-      <div style={{ padding: '44px 32px 0' }}>
+      <div className="px-4 pt-8 sm:px-8 sm:pt-11">
         <div style={{ maxWidth: 1080, margin: '0 auto' }}>
           <div style={{ marginBottom: 28, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
             <div>

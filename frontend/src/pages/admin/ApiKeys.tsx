@@ -74,7 +74,7 @@ export default function AdminApiKeys() {
 
   return (
     <AdminLayout>
-      <div className="p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
@@ -196,7 +196,7 @@ export default function AdminApiKeys() {
       <Dialog.Root open={newOpen} onOpenChange={o => { setNewOpen(o); if (!o) setNewName(''); }}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 bg-black/40 z-40" />
-          <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-xl shadow-xl z-50 p-6 focus:outline-none">
+          <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] max-w-md bg-white rounded-xl shadow-xl z-50 p-6 focus:outline-none">
             <div className="flex items-center justify-between mb-5">
               <Dialog.Title className="font-semibold text-slate-900">Yangi API kalit</Dialog.Title>
               <button onClick={() => setNewOpen(false)} className="p-1.5 rounded-md hover:bg-slate-100">
@@ -239,7 +239,7 @@ export default function AdminApiKeys() {
       <Dialog.Root open={!!createdKey} onOpenChange={o => !o && setCreatedKey(null)}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 bg-black/40 z-40" />
-          <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-xl shadow-xl z-50 p-6 focus:outline-none">
+          <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] max-w-md bg-white rounded-xl shadow-xl z-50 p-6 focus:outline-none">
             <div className="flex items-center justify-between mb-4">
               <Dialog.Title className="font-semibold text-slate-900">Kalit yaratildi</Dialog.Title>
               <button onClick={() => setCreatedKey(null)} className="p-1.5 rounded-md hover:bg-slate-100">
@@ -386,12 +386,12 @@ function EndpointExample({
 }) {
   return (
     <div className="border rounded-xl overflow-hidden">
-      <div className="flex items-center gap-3 px-4 py-2.5 bg-slate-50 border-b">
+      <div className="flex items-center flex-wrap gap-x-3 gap-y-1.5 px-4 py-2.5 bg-slate-50 border-b">
         <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
           {method}
         </span>
-        <code className="text-xs font-mono text-slate-700">{path}</code>
-        <span className="text-xs text-muted-foreground ml-auto">{desc}</span>
+        <code className="text-xs font-mono text-slate-700 break-all">{path}</code>
+        <span className="text-xs text-muted-foreground ml-auto hidden sm:block">{desc}</span>
         <button
           onClick={() => copyText(`${method} ${path}`, 'Nusxalandi')}
           className="p-1 rounded text-slate-400 hover:text-slate-700 transition-colors"

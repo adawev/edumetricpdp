@@ -170,7 +170,7 @@ export default function AdminAchievements() {
 
   return (
     <AdminLayout>
-      <div className="p-6 space-y-4">
+      <div className="p-4 sm:p-6 space-y-4">
 
         {/* Page header */}
         <div>
@@ -223,7 +223,7 @@ export default function AdminAchievements() {
 
           {/* Content */}
           {isLoading ? (
-            <div style={{ padding: 14, display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 p-3.5">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="h-52 rounded-xl bg-slate-100 animate-pulse" />
               ))}
@@ -235,7 +235,7 @@ export default function AdminAchievements() {
             </div>
           ) : (
             <>
-              <div style={{ padding: 14, display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 p-3.5">
                 {pag.pageItems.map(a => (
                   <AchCard
                     key={a.id}

@@ -172,7 +172,7 @@ export default function AdminStudents() {
 
   return (
     <AdminLayout>
-      <div className="p-6 space-y-4">
+      <div className="p-4 sm:p-6 space-y-4">
 
         {/* Page header */}
         <div className="flex items-end justify-between flex-wrap gap-3">
@@ -194,7 +194,7 @@ export default function AdminStudents() {
 
         {/* Filter panel */}
         <div className="bg-white rounded-xl border border-slate-200 p-3">
-          <div className="grid gap-2.5" style={{ gridTemplateColumns: '2fr 1fr 1fr 1.4fr' }}>
+          <div className="grid gap-2.5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
             <input
               type="text"
               value={q}
@@ -394,7 +394,8 @@ export default function AdminStudents() {
         />
       )}
       <div style={{
-        position: 'fixed', right: 0, top: 0, bottom: 0, width: 520,
+        position: 'fixed', right: 0, top: 0, bottom: 0,
+        width: 'min(520px, 100vw)',
         background: '#fff', zIndex: 50,
         boxShadow: '-12px 0 40px rgba(15,23,42,.12)',
         transform: openStu ? 'translateX(0)' : 'translateX(100%)',

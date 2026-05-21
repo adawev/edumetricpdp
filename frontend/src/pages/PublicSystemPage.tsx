@@ -48,7 +48,7 @@ export default function PublicSystemPage() {
 
   return (
     <PublicChrome>
-      <div style={{ padding: '44px 32px 0' }}>
+      <div className="px-4 pt-8 sm:px-8 sm:pt-11">
         <div style={{ maxWidth: 1080, margin: '0 auto' }}>
 
           {/* Hero */}
@@ -101,7 +101,7 @@ export default function PublicSystemPage() {
               <Arrow label="JWT auth · rolga qarab" up />
 
               {/* Frontend roles */}
-              <div style={{ width: '100%', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginTop: 4 }}>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5" style={{ width: '100%', marginTop: 4 }}>
                 {[
                   { l: 'Student', d: 'Profil · yutuq · feedback', i: <Icons.user size={16} stroke="#2563eb" />, c: '#2563eb', b: '#eff6ff' },
                   { l: 'Mentor', d: 'Guruh · feedback · intizom', i: <Icons.users size={16} stroke="#7c3aed" />, c: '#7c3aed', b: '#f5f3ff' },
@@ -126,7 +126,7 @@ export default function PublicSystemPage() {
             <h2 style={{ fontSize: 22, fontWeight: 600, margin: 0, letterSpacing: '-0.02em' }}>Texnologiyalar — nega tanlandi</h2>
             <span style={{ fontSize: 13, color: T.textMuted }}>Butun stack — TypeScript</span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14, marginBottom: 40 }}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5" style={{ marginBottom: 40 }}>
             {stack.map((s, i) => (
               <Card key={i} padding={20}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
@@ -171,7 +171,7 @@ export default function PublicSystemPage() {
 
           {/* Design decisions */}
           <h2 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 14px', letterSpacing: '-0.02em' }}>Asosiy texnik qarorlar</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 32 }}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3" style={{ marginBottom: 32 }}>
             {decisions.map((d, i) => (
               <Card key={i} padding={18}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 8 }}>

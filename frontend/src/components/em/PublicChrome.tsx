@@ -24,16 +24,18 @@ export function PublicChrome({ children, loginModal }: { children: ReactNode; lo
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: T.bg }}>
-      <header style={{
-        position: 'sticky', top: 0, zIndex: 20, height: 64, flexShrink: 0,
-        background: 'rgba(255,255,255,.85)', backdropFilter: 'blur(10px)',
-        borderBottom: `1px solid ${T.border}`,
-        display: 'flex', alignItems: 'center', padding: '0 32px', justifyContent: 'space-between', gap: 16,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 24, minWidth: 0 }}>
+      <header
+        className="px-4 sm:px-8"
+        style={{
+          position: 'sticky', top: 0, zIndex: 20, height: 64, flexShrink: 0,
+          background: 'rgba(255,255,255,.85)', backdropFilter: 'blur(10px)',
+          borderBottom: `1px solid ${T.border}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+        }}>
+        <div className="gap-3 sm:gap-6" style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
           <Link to="/public/rating" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
             <BrandMark size={28} />
-            <BrandWord />
+            <span className="hidden sm:flex"><BrandWord /></span>
           </Link>
           <nav style={{ display: 'flex', gap: 4 }}>
             {[{ id: 'rating',  label: 'Reyting',       path: '/public/rating' },

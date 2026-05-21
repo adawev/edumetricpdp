@@ -119,7 +119,7 @@ export default function AdminDashboard() {
 
   return (
     <AdminLayout>
-      <div className="p-6 space-y-4">
+      <div className="p-4 sm:p-6 space-y-4">
 
         {/* Page header */}
         <div className="flex items-end justify-between flex-wrap gap-3">
@@ -207,7 +207,7 @@ export default function AdminDashboard() {
         )}
 
         {/* Charts */}
-        <div className="grid gap-3" style={{ gridTemplateColumns: '1fr 1.4fr' }}>
+        <div className="grid gap-3 grid-cols-1 lg:grid-cols-[1fr_1.4fr]">
           {/* Donut */}
           <div className="bg-white rounded-xl border border-slate-200 p-5">
             <p className="text-sm font-semibold text-slate-900">Status taqsimoti</p>
@@ -219,8 +219,8 @@ export default function AdminDashboard() {
                 Ma'lumot yo'q
               </div>
             ) : (
-              <div className="flex items-center gap-5">
-                <div className="relative shrink-0" style={{ width: 180, height: 180 }}>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5">
+                <div className="relative shrink-0 mx-auto sm:mx-0" style={{ width: 180, height: 180 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie

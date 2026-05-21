@@ -325,7 +325,8 @@ export const Dialog = ({ open, onClose, title, description, children, footer, si
       animation: 'em-fade-in .15s ease-out',
     }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{
-        width: widths[size], maxWidth: 'calc(100% - 40px)',
+        width: widths[size], maxWidth: 'calc(100% - 32px)',
+        maxHeight: 'calc(100vh - 32px)', overflowY: 'auto',
         background: T.white, borderRadius: 12,
         boxShadow: '0 20px 60px rgba(15,23,42,.25), 0 0 0 1px rgba(15,23,42,.05)',
         animation: 'em-pop-in .18s ease-out', display: 'flex', flexDirection: 'column',

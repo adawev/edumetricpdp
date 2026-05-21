@@ -94,7 +94,7 @@ export default function StudentProfile() {
         </div>
 
         {/* Avatar + info */}
-        <div style={{ padding: '0 28px 22px' }}>
+        <div className="px-5 sm:px-7" style={{ paddingBottom: 22 }}>
           <Avatar name={student.fullName} size={84}
             style={{ border: `4px solid ${T.white}`, fontSize: 28, marginTop: -42,
               boxShadow: '0 4px 12px rgba(15,23,42,.08)', position: 'relative', zIndex: 2 }} />
@@ -116,7 +116,7 @@ export default function StudentProfile() {
       </Card>
 
       {/* Criteria breakdown + side cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.45fr 1fr', gap: 14 }}>
+      <div className="grid grid-cols-1 lg:grid-cols-[1.45fr_1fr] gap-3.5">
 
         {/* Criteria */}
         <Card padding={0}>
@@ -398,7 +398,7 @@ function CertificatesSection({ certs }: { certs: Achievement[] }) {
           </Button>
         </div>
       ) : (
-        <div style={{ padding: 14, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-3.5">
           {certs.map(c => {
             const sc = SC[c.status] ?? SC.PENDING;
             return (
@@ -522,7 +522,7 @@ function BadgesSection() {
       </div>
       <div style={{ padding: 14 }}>
         {catalog && catalog.length > 0 ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {catalog.map(b => {
               const e = earnedMap[b.slug];
               const isEarned = !!e;
@@ -576,7 +576,7 @@ function ProfileSkeleton() {
           <Skeleton h={16} w={380} r={6} style={{ marginTop: 10 }} />
         </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1.45fr 1fr', gap: 14 }}>
+      <div className="grid grid-cols-1 lg:grid-cols-[1.45fr_1fr] gap-3.5">
         <Skeleton h={500} r={12} />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <Skeleton h={220} r={12} />

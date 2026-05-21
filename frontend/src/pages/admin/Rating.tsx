@@ -265,7 +265,7 @@ export default function AdminRating() {
 
   return (
     <AdminLayout>
-      <div className="p-6 space-y-4">
+      <div className="p-4 sm:p-6 space-y-4">
 
         {/* Page header */}
         <div className="flex items-end justify-between flex-wrap gap-3">
@@ -294,7 +294,7 @@ export default function AdminRating() {
 
         {/* Filters */}
         <div className="bg-white rounded-xl border border-slate-200 p-3">
-          <div className="grid gap-2.5" style={{ gridTemplateColumns: '1.5fr 0.9fr 0.9fr 1fr 1fr' }}>
+          <div className="grid gap-2.5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
             <input
               type="text"
               value={q}
@@ -607,8 +607,8 @@ export default function AdminRating() {
               left: '50%',
               transform: 'translateX(-50%)',
               width: 'max-content',
-              minWidth: 520,
-              maxWidth: 'calc(100vw - 320px)',
+              minWidth: 'min(520px, calc(100vw - 32px))',
+              maxWidth: 'calc(100vw - 32px)',
               zIndex: 70,
               background: '#0f172a',
               color: '#fff',
@@ -617,7 +617,8 @@ export default function AdminRating() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              gap: 24,
+              flexWrap: 'wrap',
+              gap: 16,
               boxShadow: '0 8px 40px rgba(15,23,42,.35), 0 2px 8px rgba(15,23,42,.15)',
               animation: 'em-slide-up .22s cubic-bezier(.2,.7,.3,1)',
             }}>

@@ -100,7 +100,7 @@ export default function StudentFeedbacks() {
       </div>
 
       {/* KPI cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <KpiCard label="Jami feedback"  value={feedbacks?.length ?? 0}
           icon={Icons.message} />
         <KpiCard label="O'rtacha baho"  value={avg.toFixed(1)}  sub="/ 5"
@@ -112,7 +112,7 @@ export default function StudentFeedbacks() {
 
       {/* List */}
       <Card padding={0}>
-        <div style={{ padding: '14px 18px', borderBottom: `1px solid ${T.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ padding: '14px 18px', borderBottom: `1px solid ${T.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', overflowX: 'auto' }}>
           <Tabs
             value={period}
             onChange={v => setPeriod(v as Period)}

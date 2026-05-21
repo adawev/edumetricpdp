@@ -321,10 +321,10 @@ export default function AdminGrants() {
 
   return (
     <AdminLayout>
-      <div style={{ padding: '24px 28px 32px', minHeight: '100%', display: 'flex', flexDirection: 'column', gap: 0 }}>
+      <div className="p-4 sm:p-6" style={{ minHeight: '100%', display: 'flex', flexDirection: 'column', gap: 0 }}>
 
         {/* ── Header ──────────────────────────────────── */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 18 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 18, flexWrap: 'wrap', gap: 12 }}>
           <div>
             <h1 style={{ fontSize: 22, fontWeight: 600, margin: 0, letterSpacing: '-0.02em', color: T.text }}>
               Grant qarori
@@ -349,7 +349,7 @@ export default function AdminGrants() {
 
         {/* ── 4 Stat tiles ────────────────────────────── */}
         {!isLoading && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 14 }}>
+          <div className="grid grid-cols-2 lg:grid-cols-4" style={{ gap: 10, marginBottom: 14 }}>
             <StatTile label="Jami talaba"    value={stats.total}    accent={T.text}        icon={<Users   size={14} color={T.textMuted}  />} />
             <StatTile label="Grant berildi"  value={stats.granted}  accent={T.emeraldDeep} icon={<Trophy  size={14} color={T.emerald}    />} bg={T.emeraldBg} />
             <StatTile label="Rad etildi"     value={stats.rejected} accent={T.redDeep}     icon={<XCircle size={14} color={T.red}        />} bg={T.redBg} />
@@ -445,7 +445,8 @@ export default function AdminGrants() {
               )}
             </div>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', minWidth: 720, borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ background: T.bg, borderBottom: `1px solid ${T.border}` }}>
                   {([
@@ -548,6 +549,7 @@ export default function AdminGrants() {
                 })}
               </tbody>
             </table>
+            </div>
           )}
         </div>
 
@@ -624,7 +626,7 @@ export default function AdminGrants() {
           </>
         }
       >
-        <div style={{ padding: '8px 0', display: 'flex', gap: 24, fontSize: 13 }}>
+        <div style={{ padding: '8px 0', display: 'flex', flexWrap: 'wrap', gap: 20, fontSize: 13 }}>
           {[
             { l: 'Jami talaba', v: stats.total,                       c: T.text        },
             { l: 'Berildi',     v: totalGranted,                      c: T.emeraldDeep },

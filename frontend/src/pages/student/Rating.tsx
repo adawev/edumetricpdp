@@ -97,7 +97,7 @@ export default function StudentRating() {
       </div>
 
       {/* Rank KPI cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <RankCard label="Guruh ichida"  rank={rankings.group.rank}      total={rankings.group.total}
           accent={T.blue}     icon={Icons.users}     sub={rankings.group.name ?? me.student.group.name} />
         <RankCard label="Kursda"         rank={rankings.course.rank}     total={rankings.course.total}
@@ -109,7 +109,7 @@ export default function StudentRating() {
       {/* Table card */}
       <Card padding={0}>
         <div style={{ padding: '14px 18px', borderBottom: `1px solid ${T.border}`,
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: 14, fontWeight: 600 }}>{activeTab.title}</div>
             <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>
@@ -138,7 +138,7 @@ function RatingSkeleton() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div><Skeleton h={28} w={200} r={8} /><Skeleton h={16} w={260} r={6} style={{ marginTop: 8 }} /></div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[0, 1, 2].map(i => <Skeleton key={i} h={110} r={12} />)}
       </div>
       <Skeleton h={400} r={12} />

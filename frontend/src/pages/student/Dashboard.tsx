@@ -226,7 +226,7 @@ export default function StudentDashboard() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
       {/* Page title */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: T.text, letterSpacing: '-0.02em', margin: 0 }}>
             Salom, {student.fullName.split(' ')[0]} 👋
@@ -249,7 +249,7 @@ export default function StudentDashboard() {
       </div>
 
       {/* KPI cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard label="Grant ball"     value={breakdown.total.toFixed(1)} sub="/ 100"
           trend={trends.score !== null
             ? trends.score > 0 ? `+${trends.score.toFixed(1)} oxirgi oyga nisbatan`
@@ -275,7 +275,7 @@ export default function StudentDashboard() {
       </div>
 
       {/* Donut chart + grant status card */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.55fr 1fr', gap: 14 }}>
+      <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-3.5">
         <Card padding={20}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
             <div>
@@ -284,8 +284,8 @@ export default function StudentDashboard() {
             </div>
             <Button variant="ghost" size="sm" icon={Icons.info({ size: 13, stroke: T.textMuted })}>Mezon ta'rifi</Button>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-            <div style={{ width: 200, height: 200, position: 'relative', flexShrink: 0 }}>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-5 sm:gap-6">
+            <div className="mx-auto sm:mx-0" style={{ width: 200, height: 200, position: 'relative', flexShrink: 0 }}>
               <ResponsiveContainer width={200} height={200}>
                 <PieChart>
                   <Pie data={pieData} dataKey="value" innerRadius={62} outerRadius={92}
@@ -368,7 +368,7 @@ export default function StudentDashboard() {
       </div>
 
       {/* Growth chart + activity feed */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.55fr 1fr', gap: 14 }}>
+      <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-3.5">
         <Card padding={20}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
             <div>
@@ -469,7 +469,7 @@ function LmsAttendanceSection({ attendance, lmsData }: { attendance: number; lms
 
   return (
     <Card padding={0}>
-      <div style={{ padding: '16px 20px', borderBottom: `1px solid ${T.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14 }}>
+      <div style={{ padding: '16px 20px', borderBottom: `1px solid ${T.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
         <div>
           <div style={{ fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 7 }}>
             {Icons.cal({ size: 14, stroke: T.textMuted })} Fanlar bo'yicha davomat
@@ -510,7 +510,7 @@ function LmsAttendanceSection({ attendance, lmsData }: { attendance: number; lms
           LMS'dan hali ma'lumot kelmagan. Integratsiya ulangach fanlar ko'rinadi.
         </div>
       )}
-      <div style={{ padding: subjects.length ? 14 : 0, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+      <div className={subjects.length ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 p-3.5' : ''}>
         {subjects.map((sub, i) => {
           const p = sub.pct;
           return (
@@ -628,14 +628,14 @@ function DashboardSkeleton() {
         <div><Skeleton h={28} w={200} r={8} /><Skeleton h={16} w={300} r={6} style={{ marginTop: 8 }} /></div>
         <Skeleton h={32} w={180} r={8} />
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[0, 1, 2, 3].map(i => <Skeleton key={i} h={96} r={12} />)}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1.55fr 1fr', gap: 14 }}>
+      <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-3.5">
         <Skeleton h={280} r={12} />
         <Skeleton h={280} r={12} />
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1.55fr 1fr', gap: 14 }}>
+      <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-3.5">
         <Skeleton h={300} r={12} />
         <Skeleton h={300} r={12} />
       </div>

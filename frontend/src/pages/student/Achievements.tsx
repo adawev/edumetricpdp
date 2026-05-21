@@ -248,7 +248,7 @@ export default function StudentAchievements() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: T.text, letterSpacing: '-0.02em', margin: 0 }}>Yutuqlar</h1>
           <p style={{ fontSize: 13, color: T.textMuted, marginTop: 4 }}>
@@ -261,7 +261,7 @@ export default function StudentAchievements() {
       </div>
 
       {/* KPI summary cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard label="Jami yutuqlar"  value={counts.ALL}       icon={Icons.award} />
         <KpiCard label="Tasdiqlangan"    value={counts.APPROVED}  accent={T.emeraldDeep} icon={Icons.check} />
         <KpiCard label="Kutilmoqda"      value={counts.PENDING}   accent={T.amberDeep}   icon={Icons.clock} />
@@ -270,7 +270,7 @@ export default function StudentAchievements() {
 
       {/* List card */}
       <Card padding={0}>
-        <div style={{ padding: '14px 18px', borderBottom: `1px solid ${T.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ padding: '14px 18px', borderBottom: `1px solid ${T.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', overflowX: 'auto' }}>
           <Tabs
             value={statusFilter}
             onChange={v => setStatusFilter(v as AchievementStatus | 'ALL')}

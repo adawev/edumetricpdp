@@ -184,7 +184,7 @@ export default function StudentPublicProfile() {
           </div>
         </div>
 
-        <div style={{ padding: '0 28px 22px' }}>
+        <div className="px-5 sm:px-7" style={{ paddingBottom: 22 }}>
           <Avatar name={data.fullName} size={84}
             style={{ border: `4px solid ${T.white}`, fontSize: 28, marginTop: -42,
               boxShadow: '0 4px 12px rgba(15,23,42,.08)', position: 'relative', zIndex: 2 }} />

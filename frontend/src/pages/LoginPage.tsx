@@ -52,9 +52,9 @@ export default function LoginPage() {
   ];
 
   return (
-    <div style={{ width: '100vw', height: '100vh', display: 'grid', gridTemplateColumns: '1fr 1fr', background: T.white }}>
+    <div className="grid grid-cols-1 lg:grid-cols-2" style={{ width: '100vw', minHeight: '100vh', background: T.white }}>
       {/* LEFT FORM */}
-      <div style={{ display: 'flex', flexDirection: 'column', padding: '40px 60px', justifyContent: 'space-between' }}>
+      <div className="px-5 py-8 sm:px-10 lg:px-[60px] lg:py-10" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 32 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <BrandMark size={32} />
           <BrandWord size="md" />
@@ -115,7 +115,7 @@ export default function LoginPage() {
       </div>
 
       {/* RIGHT BRAND PANEL */}
-      <div style={{ background: T.slate900, color: '#fff', padding: '40px 50px', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
+      <div className="hidden lg:flex" style={{ background: T.slate900, color: '#fff', padding: '40px 50px', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
         <div style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '4px 10px', border: '1px solid rgba(255,255,255,.18)', borderRadius: 999, alignSelf: 'flex-start', fontSize: 11.5, fontWeight: 500 }}>

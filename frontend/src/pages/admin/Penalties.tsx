@@ -143,10 +143,10 @@ export default function AdminPenalties() {
 
   return (
     <AdminLayout>
-      <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div className="p-4 sm:p-6" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <div>
             <h1 style={{ fontSize: 20, fontWeight: 600, color: '#0f172a', margin: 0 }}>Jarima va reabilitatsiya</h1>
             <p style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>Talabalar jarimalarini boshqaring</p>
@@ -166,7 +166,7 @@ export default function AdminPenalties() {
         </div>
 
         {/* KPI Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
           {/* Jami */}
           <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '16px 20px' }}>
             <p style={{ fontSize: 12, color: '#64748b', fontWeight: 500, margin: '0 0 8px' }}>Jami jarimalar</p>
@@ -350,7 +350,7 @@ export default function AdminPenalties() {
 
       {/* ── New Penalty Modal ── */}
       {newOpen && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.4)' }} onClick={closeNew} />
           <div style={{
             position: 'relative', width: '100%', maxWidth: 480,
@@ -454,7 +454,7 @@ export default function AdminPenalties() {
 
       {/* ── Assign Recovery Modal ── */}
       {assignTarget && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.4)' }} onClick={() => { setAssignTarget(null); setAssignTask(''); }} />
           <div style={{
             position: 'relative', width: '100%', maxWidth: 480,
