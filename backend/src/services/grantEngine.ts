@@ -82,10 +82,10 @@ export function getGrantDecision(
 
   const { total } = calculateGrantScore(s);
 
-  // Risk darajasi
+  // Risk darajasi — academic 32/36 ball = gpa 80%/90% chegarasi
   let risk: RiskLevel = 'LOW';
-  if (s.gpa < 80 || total < 60) risk = 'HIGH';
-  else if (total < 80) risk = 'MEDIUM';
+  if (s.gpa < 80 || total < 80) risk = 'HIGH';
+  else if (s.gpa < 90 || total < 90) risk = 'MEDIUM';
 
   // To'lov muddati o'tgan — har doim override
   if (s.paymentOverdue) {

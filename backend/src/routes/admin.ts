@@ -56,13 +56,13 @@ adminRouter.patch('/achievements/:id', async (req, res) => {
     },
   });
 
-  if (parsed.data.status === 'APPROVED') {
-    const approved = await prisma.achievement.findMany({
-      where: { studentId: updated.studentId, status: 'APPROVED' },
-    });
-    const activityScore = approved.reduce((s, a) => s + a.ball, 0);
-    await prisma.student.update({ where: { id: updated.studentId }, data: { activityScore } });
-  }
+  // activityScore — har doim tasdiqlangan yutuqlar yig'indisi (cap 10).
+  // Approve ham, reject ham bu yig'indini o'zgartirishi mumkin.
+  const approved = await prisma.achievement.findMany({
+    where: { studentId: updated.studentId, status: 'APPROVED' },
+  });
+  const activityScore = Math.min(approved.reduce((s, a) => s + a.ball, 0), 10);
+  await prisma.student.update({ where: { id: updated.studentId }, data: { activityScore } });
   await recalcStudent(updated.studentId);
 
   res.json(updated);

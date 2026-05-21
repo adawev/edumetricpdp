@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
+import { recalcStudent } from '../src/services/studentScore.js';
 
 const prisma = new PrismaClient();
 
@@ -124,13 +125,21 @@ function scenarioFields(s: Scenario): ScoreFields {
   }
 }
 
+// Risk — grant engine bilan bir xil: academic 32/36 ball = gpa 80%/90%
+function riskOf(gpa: number, total: number): 'LOW' | 'MEDIUM' | 'HIGH' {
+  if (gpa < 80 || total < 80) return 'HIGH';
+  if (gpa < 90 || total < 90) return 'MEDIUM';
+  return 'LOW';
+}
+
 function decide(f: ScoreFields, total: number, scenario: Scenario):
   { status: 'GRANTED' | 'PENDING' | 'NOT_GRANTED'; reason: 'OK' | 'ACADEMIC_FAIL' | 'LOW_SCORE' | 'PAYMENT_OVERDUE' | 'GRANTED_OK'; risk: 'LOW' | 'MEDIUM' | 'HIGH' } {
+  const risk = riskOf(f.gpa, total);
   if (f.paymentOverdue) return { status: 'NOT_GRANTED', reason: 'PAYMENT_OVERDUE', risk: 'HIGH' };
   if (f.gpa < 80) return { status: 'NOT_GRANTED', reason: 'ACADEMIC_FAIL', risk: 'HIGH' };
-  if (total < 80) return { status: 'NOT_GRANTED', reason: 'LOW_SCORE', risk: total < 60 ? 'HIGH' : 'MEDIUM' };
-  if (scenario === 'TOP_GRANTED') return { status: 'GRANTED', reason: 'GRANTED_OK', risk: 'LOW' };
-  return { status: 'PENDING', reason: 'OK', risk: 'LOW' };
+  if (total < 80) return { status: 'NOT_GRANTED', reason: 'LOW_SCORE', risk };
+  if (scenario === 'TOP_GRANTED') return { status: 'GRANTED', reason: 'GRANTED_OK', risk };
+  return { status: 'PENDING', reason: 'OK', risk };
 }
 
 async function main() {
@@ -279,13 +288,16 @@ async function main() {
       // PENDING yutuq — admin ko'rsin uchun fayl bilan
       await prisma.achievement.create({ data: { studentId: student.id, type: 'HACKATHON',   title: 'Unicorn Hackathon 2026 — finalist', ball: 0, status: 'PENDING', fileUrl: 'https://www.w3.org/WAI/WCAG21/Techniques/pdf/PDF1.pdf' } });
     } else if (spec.scenario === 'CANDIDATE') {
-      // Kandidatlarga 2-3 ta
-      await prisma.achievement.create({ data: { studentId: student.id, type: 'HACKATHON',   title: 'Ideathon 2026',     ball: 3, status: 'APPROVED', reviewedAt: new Date(), fileUrl: 'https://www.africau.edu/images/default/sample.pdf' } });
-      if (i % 2 === 0) {
-        await prisma.achievement.create({ data: { studentId: student.id, type: 'CERTIFICATE', title: 'CS50 sertifikati', ball: 2, status: 'APPROVED', reviewedAt: new Date(), fileUrl: 'https://www.w3.org/WAI/WCAG21/Techniques/pdf/PDF1.pdf' } });
-      }
+      // Kandidatlar — tasdiqlangan yutuqlar yig'indisi ~7 (PENDING bo'lib reytingda qoladi)
+      await prisma.achievement.create({ data: { studentId: student.id, type: 'HACKATHON',   title: 'Ideathon 2026',           ball: 3, status: 'APPROVED', reviewedAt: new Date(), fileUrl: 'https://www.africau.edu/images/default/sample.pdf' } });
+      await prisma.achievement.create({ data: { studentId: student.id, type: 'CERTIFICATE', title: 'CS50 sertifikati',         ball: 2, status: 'APPROVED', reviewedAt: new Date(), fileUrl: 'https://www.w3.org/WAI/WCAG21/Techniques/pdf/PDF1.pdf' } });
+      await prisma.achievement.create({ data: { studentId: student.id, type: 'COURSE',      title: 'PDP Academy online kurs', ball: 2, status: 'APPROVED', reviewedAt: new Date() } });
       // Har kandidatga PENDING yutuq — fayl bilan
       await prisma.achievement.create({ data: { studentId: student.id, type: 'CERTIFICATE', title: 'Google Associate Cloud Engineer', ball: 0, status: 'PENDING', fileUrl: 'https://www.w3.org/WAI/WCAG21/Techniques/pdf/PDF2.pdf' } });
+    } else if (spec.scenario === 'DEMO_FLOW') {
+      // Demo talabasi — tasdiqlangan yutuqlar ~6, approve demosida cap 10 gacha joy qoladi
+      await prisma.achievement.create({ data: { studentId: student.id, type: 'HACKATHON',   title: 'IT Hackathon ishtirokchi', ball: 3, status: 'APPROVED', reviewedAt: new Date(), fileUrl: 'https://www.w3.org/WAI/WCAG21/Techniques/pdf/PDF1.pdf' } });
+      await prisma.achievement.create({ data: { studentId: student.id, type: 'CERTIFICATE', title: 'CS50 sertifikati',         ball: 3, status: 'APPROVED', reviewedAt: new Date(), fileUrl: 'https://www.africau.edu/images/default/sample.pdf' } });
     } else if (spec.scenario === 'ACADEMIC_FAIL') {
       await prisma.achievement.create({ data: { studentId: student.id, type: 'CERTIFICATE', title: 'IELTS 7.0', ball: 5, status: 'PENDING', fileUrl: 'https://www.w3.org/WAI/WCAG21/Techniques/pdf/PDF1.pdf' } });
     } else {
@@ -336,6 +348,16 @@ async function main() {
       }
     }
 
+    // activityScore — tasdiqlangan yutuqlar yig'indisi (admin approve route bilan bir xil model, cap 10).
+    // Shusiz: keyin admin birinchi yutuqni approve qilganda activityScore qayta yozilib, ball tushib ketadi.
+    const approvedAch = await prisma.achievement.findMany({
+      where: { studentId: student.id, status: 'APPROVED' },
+    });
+    await prisma.student.update({
+      where: { id: student.id },
+      data: { activityScore: Math.min(approvedAch.reduce((s, a) => s + a.ball, 0), 10) },
+    });
+
     // Demo uchun: pinnedBadge'ni har xil qilamiz, reytingda turli ikonalar ko'rinsin.
     // Faqat TOP_GRANTED talabalar barcha 5 turdagi badge'larni topganiga ishonchimiz bor.
     if (spec.scenario === 'TOP_GRANTED') {
@@ -343,6 +365,9 @@ async function main() {
       const pinned = rotation[i % rotation.length];
       await prisma.student.update({ where: { id: student.id }, data: { pinnedBadge: pinned } });
     }
+
+    // Jarima/yutuq yaratilgandan keyin — yakuniy ball, status va riskni qayta hisoblash
+    await recalcStudent(student.id);
   }
 
   const apiKey = await prisma.apiKey.create({
