@@ -3,7 +3,7 @@ import { T } from '@/lib/theme';
 import { Card, Avatar, Button, Skeleton } from '@/components/em/Primitives';
 import { Icons } from '@/components/em/Icons';
 import { ErrorState } from '@/components/em/ErrorState';
-import { BadgeMedal, BADGE_RARITY_LABEL } from '@/components/em/Badges';
+import { BadgeGrid, BADGES_CATALOG } from '@/components/em/Badges';
 import { useStudentPublic } from '@/hooks/useStudent';
 import type { GrantStatus, PublicAchievement, StudentBadge } from '@/types/student';
 
@@ -70,24 +70,26 @@ function AchievementItem({ a }: { a: PublicAchievement }) {
 // ── Badge section ──────────────────────────────────────────────────────────
 
 function BadgeSection({ badges }: { badges: StudentBadge[] }) {
-  if (!badges.length) return null;
+  const earned = BADGES_CATALOG
+    .filter(b => badges.some(e => e.slug === b.slug))
+    .map(b => {
+      const e = badges.find(eb => eb.slug === b.slug)!;
+      return { ...b, earnedAt: (e as any).earnedAt };
+    });
+
   return (
-    <Card padding={20}>
-      <div style={{ fontSize: 14, fontWeight: 600, color: T.text, marginBottom: 16 }}>
-        Badge'lar ({badges.length})
-      </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
-        {badges.map(b => (
-          <div key={b.slug} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, width: 64 }}>
-            <BadgeMedal badge={b as any} size={52} />
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: T.text, lineHeight: 1.3 }}>{b.name}</div>
-              <div style={{ fontSize: 9.5, color: T.textSubtle, marginTop: 2 }}>
-                {BADGE_RARITY_LABEL[b.rarity] ?? b.rarity}
-              </div>
-            </div>
+    <Card padding={0}>
+      <div style={{ padding: '14px 18px', borderBottom: `1px solid ${T.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 600 }}>Badge'lar</div>
+          <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>
+            <span style={{ color: T.text, fontWeight: 600 }}>{badges.length}</span>
+            {' / '}{BADGES_CATALOG.length} ta badge olingan · avtomatik beriladi
           </div>
-        ))}
+        </div>
+      </div>
+      <div style={{ padding: 14 }}>
+        <BadgeGrid catalog={BADGES_CATALOG} earned={earned} columns={4} />
       </div>
     </Card>
   );

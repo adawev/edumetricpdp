@@ -1,11 +1,13 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   PieChart, Pie, Cell,
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
   ResponsiveContainer,
 } from 'recharts';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
 import { T, GRANT_REASON_LABEL_SHORT } from '@/lib/theme';
-import { Card, Skeleton, Tooltip } from '@/components/em/Primitives';
+import { Card, Skeleton, Tooltip, Dialog } from '@/components/em/Primitives';
 import { Icons } from '@/components/em/Icons';
 import { useStudentMe, useStudentRankings, useAchievements } from '@/hooks/useStudent';
 import { ErrorState } from '@/components/em/ErrorState';
@@ -349,7 +351,119 @@ export default function StudentDashboard() {
         </Card>
       </div>
 
+      <LmsAttendanceSection />
+
     </div>
+  );
+}
+
+// ── LMS Attendance ─────────────────────────────────────────────────────────
+
+type SubjectLogEntry = { date: string; status: 'present' | 'absent' | 'late' };
+type LmsSubject = { id: string; name: string; pct: number; total: number; present: number; absent: number; late?: number; log?: SubjectLogEntry[] };
+type LmsAttendance = { overall: number; subjects: LmsSubject[] };
+
+function LmsAttendanceSection() {
+  const [selected, setSelected] = useState<LmsSubject | null>(null);
+
+  const { data } = useQuery<LmsAttendance>({
+    queryKey: ['student-lms-attendance'],
+    queryFn: async () => (await api.get<LmsAttendance>('/students/me/lms-attendance')).data,
+  });
+
+  if (!data) return null;
+
+  const pct = data.overall;
+  const R = 52, CX = 64, CY = 64, STROKE = 9;
+  const circumference = 2 * Math.PI * R;
+  const offset = circumference * (1 - pct / 100);
+  const ringColor = pct >= 80 ? '#10b981' : pct >= 60 ? '#f59e0b' : '#ef4444';
+
+  return (
+    <>
+      <Card padding={20}>
+        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 18 }}>LMS Davomat (joriy semestr)</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 28, alignItems: 'start' }}>
+          <div style={{ position: 'relative', width: CX * 2, height: CY * 2, flexShrink: 0 }}>
+            <svg width={CX * 2} height={CY * 2}>
+              <circle cx={CX} cy={CY} r={R} fill="none" stroke="#e2e8f0" strokeWidth={STROKE} />
+              <circle cx={CX} cy={CY} r={R} fill="none" stroke={ringColor} strokeWidth={STROKE}
+                strokeDasharray={circumference} strokeDashoffset={offset}
+                strokeLinecap="round" transform={`rotate(-90 ${CX} ${CY})`}
+                style={{ transition: 'stroke-dashoffset .5s ease' }} />
+            </svg>
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontSize: 26, fontWeight: 800, color: T.text, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{pct}%</span>
+              <span style={{ fontSize: 10.5, color: T.textMuted, marginTop: 3 }}>umumiy</span>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+            {data.subjects.map(sub => {
+              const subColor = sub.pct >= 80 ? '#10b981' : sub.pct >= 60 ? '#f59e0b' : '#ef4444';
+              return (
+                <div key={sub.id} onClick={() => setSelected(sub)} style={{
+                  padding: '10px 12px', borderRadius: 10, border: `1px solid ${T.border}`,
+                  background: T.white, cursor: 'pointer', transition: 'border-color .12s, box-shadow .12s',
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = subColor; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 2px 8px rgba(15,23,42,.08)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = T.border; (e.currentTarget as HTMLDivElement).style.boxShadow = 'none'; }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: T.text, marginBottom: 7, lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub.name}</div>
+                  <ProgressBar value={sub.pct} max={100} color={subColor} height={5} />
+                  <div style={{ marginTop: 5, display: 'flex', justifyContent: 'space-between', fontSize: 11, color: T.textMuted }}>
+                    <span>{sub.present}/{sub.total}</span>
+                    <span style={{ fontWeight: 600, color: subColor }}>{sub.pct}%</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </Card>
+
+      <Dialog open={!!selected} onClose={() => setSelected(null)} title={selected?.name ?? ''} size="sm">
+        {selected && (
+          <>
+            <div style={{ display: 'flex', gap: 20, fontSize: 13, marginBottom: 14 }}>
+              <span style={{ color: T.textMuted }}>Jami: <b style={{ color: T.text }}>{selected.total}</b></span>
+              <span style={{ color: '#059669' }}>Keldi: <b>{selected.present}</b></span>
+              <span style={{ color: '#dc2626' }}>Kelmadi: <b>{selected.absent}</b></span>
+              {!!selected.late && <span style={{ color: '#d97706' }}>Kech: <b>{selected.late}</b></span>}
+            </div>
+            {selected.log && selected.log.length > 0 ? (
+              <div style={{ maxHeight: 320, overflowY: 'auto', borderRadius: 8, border: `1px solid ${T.border}` }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+                  <thead>
+                    <tr style={{ background: T.bg, position: 'sticky', top: 0 }}>
+                      <th style={{ padding: '8px 14px', textAlign: 'left', fontWeight: 600, color: T.textMuted, fontSize: 11, borderBottom: `1px solid ${T.border}` }}>Sana</th>
+                      <th style={{ padding: '8px 14px', textAlign: 'left', fontWeight: 600, color: T.textMuted, fontSize: 11, borderBottom: `1px solid ${T.border}` }}>Holat</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selected.log.map((entry, i) => (
+                      <tr key={i} style={{ borderBottom: i < selected.log!.length - 1 ? `1px solid ${T.border}` : 'none' }}>
+                        <td style={{ padding: '8px 14px', color: T.text }}>{entry.date}</td>
+                        <td style={{ padding: '8px 14px' }}>
+                          <span style={{
+                            display: 'inline-flex', padding: '2px 9px', borderRadius: 999, fontSize: 11, fontWeight: 600,
+                            background: entry.status === 'present' ? '#ecfdf5' : entry.status === 'late' ? '#fef3c7' : '#fef2f2',
+                            color:      entry.status === 'present' ? '#065f46' : entry.status === 'late' ? '#92400e' : '#991b1b',
+                          }}>
+                            {entry.status === 'present' ? 'Keldi' : entry.status === 'late' ? 'Kech keldi' : 'Kelmadi'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div style={{ color: T.textMuted, fontSize: 13, padding: '16px 0' }}>Darslik jurnali mavjud emas</div>
+            )}
+          </>
+        )}
+      </Dialog>
+    </>
   );
 }
 

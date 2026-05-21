@@ -88,6 +88,21 @@ const RARITY_STYLE: Record<BadgeRarity, RarityStyle> = {
   },
 };
 
+export const BADGES_CATALOG: BadgeDef[] = [
+  { slug: 'hackathon-winner', name: "Hakaton g'olibi",   icon: '🏆', color: '#f59e0b', rarity: 'rare',      category: 'compete',   description: "Hakatonda 1-o'rinni egallash.",           howToEarn: "Hakaton yoki musobaqada 1-o'rinni egallang." },
+  { slug: 'silver-medalist',  name: 'Kumush medal',       icon: '🥈', color: '#94a3b8', rarity: 'common',    category: 'compete',   description: "Hakaton yoki musobaqada 2-o'rin.",         howToEarn: "Musobaqada 2-o'rin egallang." },
+  { slug: 'bronze-medalist',  name: 'Bronza medal',       icon: '🥉', color: '#a16207', rarity: 'common',    category: 'compete',   description: "Hakaton yoki musobaqada 3-o'rin.",         howToEarn: "Musobaqada 3-o'rin egallang." },
+  { slug: 'top-1-student',    name: 'Eng yaxshi talaba',  icon: '⭐', color: '#0ea5e9', rarity: 'epic',      category: 'academic',  description: "Guruh ichida birinchi o'rinda turish.",    howToEarn: "Semestr oxirida guruhda 1-o'rin egallang." },
+  { slug: 'gpa-master',       name: 'GPA ustasi',         icon: '📚', color: '#7c3aed', rarity: 'rare',      category: 'academic',  description: 'GPA 95% dan yuqori semestr davomida.',     howToEarn: 'GPA ≥ 95% ushlab turing.' },
+  { slug: 'mentor-helper',    name: 'Yordamchi mentor',   icon: '🤝', color: '#10b981', rarity: 'common',    category: 'activity',  description: 'Boshqa talabalarga doimiy yordam bergan.',  howToEarn: '≥ 5 hafta mentorlang.' },
+  { slug: 'event-active',     name: 'Tadbir faollari',    icon: '🎉', color: '#db2777', rarity: 'common',    category: 'activity',  description: 'Tadbirlarda muntazam ishtirok.',            howToEarn: 'Semestrda 5+ tadbirda qatnashing.' },
+  { slug: 'volunteer',        name: 'Volontyor',          icon: '💚', color: '#059669', rarity: 'common',    category: 'activity',  description: 'Volontyorlik faoliyatida ishtirok.',         howToEarn: '≥ 20 soat volontyor ishing.' },
+  { slug: 'club-member',      name: "Klub a'zosi",        icon: '🎯', color: '#7c3aed', rarity: 'common',    category: 'activity',  description: "Universitet klubining faol a'zosi.",        howToEarn: "Rasmiy klubga a'zo bo'ling." },
+  { slug: 'streak-30',        name: '30 kunlik streak',   icon: '🔥', color: '#dc2626', rarity: 'rare',      category: 'aggregate', description: '30 kun ketma-ket darslarga qatnashish.',    howToEarn: '30 kun 100% davomat.' },
+  { slug: 'cert-collector',   name: 'Sertifikat ustasi',  icon: '📜', color: '#0891b2', rarity: 'rare',      category: 'aggregate', description: '5 ta tasdiqlangan sertifikat.',              howToEarn: '5 ta sertifikat oling va admin tasdiqlasin.' },
+  { slug: 'all-rounder',      name: 'Har tarafda',        icon: '🌟', color: '#ea580c', rarity: 'legendary', category: 'aggregate', description: 'Hamma mezonlarda ≥ 80% natija.',            howToEarn: '6 ta mezonning har birida ≥ 80%.' },
+];
+
 // =====================================================================
 // Visual medallion — rarity'ga qarab style farqlanadi
 // =====================================================================

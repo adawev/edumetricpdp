@@ -3,6 +3,7 @@ import { T } from '@/lib/theme';
 import { Card, Avatar, Button, Skeleton, Dialog, Field, Input, Select, Tooltip } from '@/components/em/Primitives';
 import { Icons } from '@/components/em/Icons';
 import { useStudentMe, useAchievements, useCreateAchievement } from '@/hooks/useStudent';
+import { BADGES_CATALOG } from '@/components/em/Badges';
 import { ErrorState } from '@/components/em/ErrorState';
 import type { GrantStatus, AchievementType, Achievement } from '@/types/student';
 import { toast } from 'sonner';
@@ -36,21 +37,6 @@ const CERT_TYPE_OPTIONS: { value: AchievementType; label: string }[] = [
   { value: 'OTHER',       label: 'Boshqa' },
 ];
 
-type BadgeDef = { slug: string; name: string; icon: string; color: string; category: string; desc: string; howToEarn: string };
-const BADGES: BadgeDef[] = [
-  { slug: 'hackathon-winner', name: "Hakaton g'olibi",   icon: '🏆', color: '#f59e0b', category: 'Musobaqa',   desc: 'Hakatonda 1-o\'rinni egallash.',      howToEarn: 'Hakaton yoki musobaqada 1-o\'rinni egallang.' },
-  { slug: 'silver-medalist',  name: 'Kumush medal',       icon: '🥈', color: '#94a3b8', category: 'Musobaqa',   desc: 'Hakaton yoki musobaqada 2-o\'rin.',   howToEarn: '2-o\'rin egallang.' },
-  { slug: 'bronze-medalist',  name: 'Bronza medal',       icon: '🥉', color: '#a16207', category: 'Musobaqa',   desc: 'Hakaton yoki musobaqada 3-o\'rin.',   howToEarn: '3-o\'rin egallang.' },
-  { slug: 'top-1-student',    name: 'Eng yaxshi talaba',  icon: '⭐', color: '#0ea5e9', category: 'Akademik',   desc: 'Guruh ichida birinchi o\'rinda turish.', howToEarn: 'Semestr oxirida guruhda 1-o\'rin egallang.' },
-  { slug: 'gpa-master',       name: 'GPA ustasi',         icon: '📚', color: '#7c3aed', category: 'Akademik',   desc: 'GPA 95% dan yuqori semestr davomida.',   howToEarn: 'GPA ≥ 95% ushlab turing.' },
-  { slug: 'mentor-helper',    name: 'Yordamchi mentor',   icon: '🤝', color: '#10b981', category: 'Faollik',    desc: 'Boshqa talabalarga doimiy yordam bergan.', howToEarn: '≥ 5 hafta mentorlang.' },
-  { slug: 'event-active',     name: 'Tadbir faollari',    icon: '🎉', color: '#db2777', category: 'Faollik',    desc: 'Tadbirlarda muntazam ishtirok.',           howToEarn: 'Semestrda 5+ tadbirda qatnashing.' },
-  { slug: 'volunteer',        name: 'Volontyor',          icon: '💚', color: '#059669', category: 'Faollik',    desc: 'Volontyorlik faoliyatida ishtirok.',       howToEarn: '≥ 20 soat volontyor ishing.' },
-  { slug: 'club-member',      name: "Klub a'zosi",        icon: '🎯', color: '#7c3aed', category: 'Faollik',    desc: "Universitet klubining faol a'zosi.",       howToEarn: "Rasmiy klubga a'zo bo'ling." },
-  { slug: 'streak-30',        name: '30 kunlik streak',   icon: '🔥', color: '#dc2626', category: 'Jamlovchi',  desc: '30 kun ketma-ket darslarga qatnashish.',   howToEarn: '30 kun 100% davomat.' },
-  { slug: 'cert-collector',   name: 'Sertifikat ustasi',  icon: '📜', color: '#0891b2', category: 'Jamlovchi',  desc: '5 ta tasdiqlangan sertifikat.',            howToEarn: '5 ta sertifikat oling va admin tasdiqlasin.' },
-  { slug: 'all-rounder',      name: 'Har tarafda',        icon: '🌟', color: '#ea580c', category: 'Jamlovchi',  desc: 'Hamma mezonlarda ≥ 80% natija.',           howToEarn: '6 ta mezonning har birida ≥ 80%.' },
-];
 
 // ── helpers ───────────────────────────────────────────────────────────────
 
@@ -453,7 +439,7 @@ function BadgesSection({ student, achievements }: { student: import('@/types/stu
     return slugs;
   }, [student, achievements]);
 
-  const earnedCount = BADGES.filter(b => earnedSlugs.has(b.slug)).length;
+  const earnedCount = BADGES_CATALOG.filter(b => earnedSlugs.has(b.slug)).length;
 
   return (
     <Card padding={0}>
@@ -462,12 +448,12 @@ function BadgesSection({ student, achievements }: { student: import('@/types/stu
           <div style={{ fontSize: 14, fontWeight: 600 }}>Mening badge'larim</div>
           <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>
             <span style={{ color: T.text, fontWeight: 600 }}>{earnedCount}</span>
-            {' / '}{BADGES.length} ta badge olingan · avtomatik beriladi
+            {' / '}{BADGES_CATALOG.length} ta badge olingan · avtomatik beriladi
           </div>
         </div>
       </div>
       <div style={{ padding: 14, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-        {BADGES.map(b => {
+        {BADGES_CATALOG.map(b => {
           const earned = earnedSlugs.has(b.slug);
           const tintBg = (earned ? b.color : '#94a3b8') + '1a';
           return (

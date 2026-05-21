@@ -37,10 +37,10 @@ const STATUS_CLS: Record<string, string> = {
   UNKNOWN:     'bg-slate-100 text-slate-600',
 };
 const RISK_LABEL: Record<string, string> = { LOW: 'Past', MEDIUM: "O'rta", HIGH: 'Yuqori' };
-const RISK_CLS: Record<string, string> = {
-  LOW:    'bg-emerald-100 text-emerald-700',
-  MEDIUM: 'bg-amber-100 text-amber-700',
-  HIGH:   'bg-red-100 text-red-600',
+const RISK_SOLID: Record<string, string> = {
+  LOW:    '#10b981',
+  MEDIUM: '#f59e0b',
+  HIGH:   '#ef4444',
 };
 
 // Section tone colors
@@ -514,7 +514,11 @@ export default function AdminRating() {
                         </td>
                         {/* Risk */}
                         <td style={{ ...td, width: 100, textAlign: 'left' }}>
-                          <span className={`inline-flex px-1.5 py-0.5 rounded text-[11px] font-medium ${RISK_CLS[x.riskLevel] ?? ''}`}>
+                          <span style={{
+                            display: 'inline-flex', padding: '2px 8px', borderRadius: 4,
+                            background: RISK_SOLID[x.riskLevel] ?? '#94a3b8', color: '#fff',
+                            fontSize: 11, fontWeight: 600, letterSpacing: '.01em',
+                          }}>
                             {RISK_LABEL[x.riskLevel] ?? x.riskLevel}
                           </span>
                         </td>

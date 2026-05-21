@@ -327,20 +327,33 @@ function ActivityBar({ value, max }: { value: number; max: number }) {
   );
 }
 
+const RISK_SOLID: Record<string, { bg: string; label: string }> = {
+  LOW:    { bg: '#10b981', label: 'Past'   },
+  MEDIUM: { bg: '#f59e0b', label: "O'rta"  },
+  HIGH:   { bg: '#ef4444', label: 'Yuqori' },
+};
+const RISK_ICON: Record<string, (p: any) => JSX.Element> = {
+  HIGH:   (p) => <Icons.alert  {...p} />,
+  MEDIUM: (p) => <Icons.clock  {...p} />,
+  LOW:    (p) => <Icons.check  {...p} />,
+};
+
 function RatingTable({ rows, startIndex, useLocalRank, period, onRowClick }: { rows: Row[]; startIndex: number; useLocalRank?: boolean; period: Period; onRowClick: (id?: string) => void }) {
   const maxActivity = Math.max(1, ...rows.map(r => r.weeklyActivity ?? 0));
   const showPeriodBall = period !== 'all';
   return (
     <div style={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 720 }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 820 }}>
         <thead>
           <tr style={{ background: T.bg }}>
             {[
-              { l: '#', a: 'center', w: 56 },
-              { l: 'Ism', a: 'left' },
-              { l: 'Guruh', a: 'left', w: 140 },
-              { l: 'Faollik', a: 'left', w: 130 },
-              { l: 'Ball', a: 'right', w: 100 },
+              { l: '#',       a: 'center', w: 56 },
+              { l: 'Ism',     a: 'left' },
+              { l: 'Guruh',   a: 'left',   w: 130 },
+              { l: 'Faollik', a: 'left',   w: 120 },
+              { l: 'Ball',    a: 'right',  w: 90 },
+              { l: 'Holat',   a: 'left',   w: 120 },
+              { l: 'Risk',    a: 'left',   w: 90 },
             ].map((h, i) => (
               <th key={i} style={{
                 textAlign: h.a as any, padding: '11px 16px', fontSize: 11.5,
@@ -365,7 +378,6 @@ function RatingTable({ rows, startIndex, useLocalRank, period, onRowClick }: { r
                 <td className="em-hov" style={{ padding: '12px 16px', textAlign: 'center', color: T.textMuted, fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>{rank}</td>
                 <td className="em-hov" style={{ padding: '12px 16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    {/* Badge: avatardan oldin, kichik */}
                     <span style={{ width: 22, display: 'inline-flex', justifyContent: 'center' }}>
                       <BadgeRowMark badge={stu.badge} count={stu.badgeCount} size={22} />
                     </span>
@@ -389,6 +401,23 @@ function RatingTable({ rows, startIndex, useLocalRank, period, onRowClick }: { r
                 </td>
                 <td className="em-hov" style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontSize: 14, letterSpacing: '-0.01em' }}>
                   {(showPeriodBall ? (stu.periodBall ?? 0) : stu.grantScore).toFixed(1)}
+                </td>
+                <td className="em-hov" style={{ padding: '12px 16px' }}>
+                  <HolatBadge status={stu.grantStatus} />
+                </td>
+                <td style={{
+                  padding: '10px 16px',
+                  background: RISK_SOLID[stu.riskLevel]?.bg ?? 'transparent',
+                  color: RISK_SOLID[stu.riskLevel] ? '#fff' : T.textSubtle,
+                  fontSize: 12, fontWeight: 600, letterSpacing: '.02em',
+                  borderBottom: i < rows.length - 1 ? '1px solid rgba(0,0,0,.1)' : 'none',
+                }}>
+                  {RISK_SOLID[stu.riskLevel] ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                      {RISK_ICON[stu.riskLevel]?.({ size: 12, stroke: '#fff', strokeWidth: 2.5 })}
+                      {RISK_SOLID[stu.riskLevel].label}
+                    </span>
+                  ) : '—'}
                 </td>
               </tr>
             );

@@ -430,7 +430,7 @@ export default function AdminGrants() {
                       textAlign: h.a,
                       padding: '11px 16px', fontSize: 11.5, fontWeight: 600,
                       color: T.textMuted, textTransform: 'uppercase',
-                      letterSpacing: '.04em', width: h.w,
+                      letterSpacing: '.04em', width: (h as any).w,
                     }}>{h.l}</th>
                   ))}
                 </tr>
