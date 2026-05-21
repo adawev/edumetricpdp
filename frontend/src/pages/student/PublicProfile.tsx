@@ -119,14 +119,14 @@ function BadgeTile({ b }: { b: StudentBadge }) {
   return (
     <Tooltip content={`${b.name} · ${BADGE_RARITY_LABEL[b.rarity as BadgeRarity]}${b.description ? ' — ' + b.description : ''}`}>
       <div style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-        padding: 12, borderRadius: 12, border: `1px solid ${b.color}33`,
-        background: `linear-gradient(180deg, ${b.color}10 0%, ${T.white} 100%)`,
+        display: 'flex', alignItems: 'center', gap: 12,
+        padding: '10px 12px', borderRadius: 10,
+        border: `1px solid ${T.border}`, background: T.white,
         cursor: 'help', minWidth: 0,
       }}>
-        <BadgeMedal badge={b as any} size={56} />
-        <div style={{ textAlign: 'center', minWidth: 0, width: '100%' }}>
-          <div style={{ fontSize: 12.5, fontWeight: 600, color: T.text, lineHeight: 1.2,
+        <BadgeMedal badge={b as any} size={44} />
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: T.text, lineHeight: 1.2,
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</div>
           <div style={{ fontSize: 9.5, fontWeight: 700, color: rc, marginTop: 3, letterSpacing: '.08em' }}>
             {BADGE_RARITY_LABEL[b.rarity as BadgeRarity].toUpperCase()}
@@ -216,7 +216,7 @@ export default function StudentPublicProfile() {
         <Card padding={0}>
           <SectionHeader title="Badge'lar" sub={`${data.badges.length} ta tasdiqlangan`} />
           <div style={{ padding: 14, display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12 }}>
+            gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
             {data.badges.map(b => <BadgeTile key={b.slug} b={b} />)}
           </div>
         </Card>
