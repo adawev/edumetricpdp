@@ -5,6 +5,7 @@ import { Icons } from '@/components/em/Icons';
 import { ErrorState } from '@/components/em/ErrorState';
 import { BadgeMedal, BADGE_RARITY_LABEL, type BadgeRarity } from '@/components/em/Badges';
 import { useStudentPublic } from '@/hooks/useStudent';
+import { assetUrl } from '@/lib/api';
 import type { AchievementType, GrantStatus, PublicAchievement, StudentBadge } from '@/types/student';
 import { useAuth } from '@/lib/auth';
 import StudentLayout from '@/components/layout/StudentLayout';
@@ -63,9 +64,9 @@ function AchievementCard({ a }: { a: PublicAchievement }) {
     }}>
       {/* Preview / icon block */}
       {isImg ? (
-        <a href={a.fileUrl!} target="_blank" rel="noreferrer"
+        <a href={assetUrl(a.fileUrl)} target="_blank" rel="noreferrer"
            style={{ width: 88, flexShrink: 0, background: T.bg, display: 'block' }}>
-          <img src={a.fileUrl!} alt={a.title}
+          <img src={assetUrl(a.fileUrl)} alt={a.title}
             style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
         </a>
       ) : (
@@ -90,7 +91,7 @@ function AchievementCard({ a }: { a: PublicAchievement }) {
             }}>{TYPE_LABEL[a.type]}</span>
             <span style={{ fontSize: 11.5, color: T.textSubtle }}>{fmtDate(a.createdAt)}</span>
             {a.fileUrl && !isImg && (
-              <a href={a.fileUrl} target="_blank" rel="noreferrer"
+              <a href={assetUrl(a.fileUrl)} target="_blank" rel="noreferrer"
                  style={{ fontSize: 11.5, color: T.blue, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
                 {Icons.link({ size: 11, stroke: T.blue })} Fayl
               </a>

@@ -4,6 +4,7 @@ import { Card, Button, Input, Select, Field, Dialog, Skeleton, Tooltip, Paginati
 import { Icons } from '@/components/em/Icons';
 import { useAchievements, useCreateAchievement } from '@/hooks/useStudent';
 import { ErrorState } from '@/components/em/ErrorState';
+import { assetUrl } from '@/lib/api';
 import type { AchievementType, AchievementStatus } from '@/types/student';
 import { toast } from 'sonner';
 
@@ -297,10 +298,10 @@ export default function StudentAchievements() {
                 <div key={a.id} style={{ padding: '16px 18px', display: 'flex', alignItems: 'flex-start', gap: 14,
                   borderBottom: i < pag.pageItems.length - 1 ? `1px solid ${T.border}` : 'none' }}>
                   {a.fileUrl && /\.(png|jpe?g|webp|gif)$/i.test(a.fileUrl) ? (
-                    <a href={a.fileUrl} target="_blank" rel="noreferrer"
+                    <a href={assetUrl(a.fileUrl)} target="_blank" rel="noreferrer"
                        style={{ width: 56, height: 56, borderRadius: 9, overflow: 'hidden',
                          border: `1px solid ${T.border}`, flexShrink: 0, display: 'block', background: T.bg }}>
-                      <img src={a.fileUrl} alt={a.title}
+                      <img src={assetUrl(a.fileUrl)} alt={a.title}
                         style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                     </a>
                   ) : (
@@ -330,7 +331,7 @@ export default function StudentAchievements() {
                         {Icons.cal({ size: 12, stroke: T.textSubtle })} {fmtDate(a.createdAt)}
                       </span>
                       {a.fileUrl && (
-                        <a href={a.fileUrl} target="_blank" rel="noreferrer"
+                        <a href={assetUrl(a.fileUrl)} target="_blank" rel="noreferrer"
                           style={{ fontSize: 12, color: T.blue, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                           {Icons.link({ size: 12, stroke: T.blue })} Fayl
                         </a>

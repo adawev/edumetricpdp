@@ -7,7 +7,7 @@ import { Icons } from '@/components/em/Icons';
 import { useStudentMe, useAchievements, useCreateAchievement, useStudentBadges, useBadgeCatalog, useUpdateProfilePublic } from '@/hooks/useStudent';
 import { ErrorState } from '@/components/em/ErrorState';
 import type { GrantStatus, AchievementType, Achievement } from '@/types/student';
-import { api } from '@/lib/api';
+import { api, assetUrl } from '@/lib/api';
 import { BadgeMedal, BADGE_RARITY_LABEL, type BadgeDef, type EarnedBadge, type BadgeRarity } from '@/components/em/Badges';
 
 const RARITY_COLOR: Record<BadgeRarity, string> = {
@@ -410,10 +410,10 @@ function CertificatesSection({ certs }: { certs: Achievement[] }) {
                   const isImg = c.fileUrl && /\.(png|jpe?g|webp|gif)$/i.test(c.fileUrl);
                   if (isImg) {
                     return (
-                      <a href={c.fileUrl!} target="_blank" rel="noreferrer"
+                      <a href={assetUrl(c.fileUrl)} target="_blank" rel="noreferrer"
                          style={{ display: 'block', height: 80, borderRadius: 8, marginBottom: 10,
                            border: `1px solid ${T.border}`, overflow: 'hidden', background: T.bg }}>
-                        <img src={c.fileUrl!} alt={c.title}
+                        <img src={assetUrl(c.fileUrl)} alt={c.title}
                           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                       </a>
                     );
@@ -425,7 +425,7 @@ function CertificatesSection({ certs }: { certs: Achievement[] }) {
                     </div>
                   );
                   return c.fileUrl ? (
-                    <a href={c.fileUrl} target="_blank" rel="noreferrer" style={{ display: 'block' }}>{inner}</a>
+                    <a href={assetUrl(c.fileUrl)} target="_blank" rel="noreferrer" style={{ display: 'block' }}>{inner}</a>
                   ) : inner;
                 })()}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 6, marginBottom: 4 }}>

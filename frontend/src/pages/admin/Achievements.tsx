@@ -4,7 +4,7 @@ import {
   Star, File, Flame, Zap, Briefcase, Users, Globe, BookOpen,
   Heart, Award, FileText, Eye, Check, X, AlertCircle,
 } from 'lucide-react';
-import { api } from '@/lib/api';
+import { api, assetUrl } from '@/lib/api';
 import AdminLayout from './AdminLayout';
 import { Pagination, usePagination } from '@/components/em/Primitives';
 
@@ -369,7 +369,7 @@ function AchCard({
             <p style={{ color: '#94a3b8', fontSize: 11, margin: 0 }}>PDF · 1.2 MB</p>
           </div>
           <a
-            href={a.fileUrl}
+            href={assetUrl(a.fileUrl)}
             target="_blank"
             rel="noreferrer"
             style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: 32, padding: '0 12px', borderRadius: 8, border: '1px solid transparent', background: 'transparent', fontSize: 12.5, color: '#0f172a', fontWeight: 500, cursor: 'pointer', textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}

@@ -1,7 +1,12 @@
 import axios from 'axios';
 
-const apiBase = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '') + '/api';
+const apiOrigin = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '');
+const apiBase = apiOrigin + '/api';
 export const api = axios.create({ baseURL: apiBase });
+
+// Yuklangan fayllar backend domenida turadi — nisbiy /uploads/... yo'lni absolyutga aylantiradi.
+export const assetUrl = (u?: string | null): string =>
+  u && u.startsWith('/uploads/') ? apiOrigin + u : (u ?? '');
 
 api.interceptors.request.use(config => {
   const token = localStorage.getItem('em_token');
