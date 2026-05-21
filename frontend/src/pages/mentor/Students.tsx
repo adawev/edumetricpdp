@@ -2,14 +2,15 @@ import { useMemo, useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  Search, ChevronRight, MessageSquare, Save, BookOpen,
-  ChevronUp, ChevronDown, Award,
+  Search, ChevronRight, MessageSquare, Save, BookOpen, Award,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { Sheet } from '@/components/Sheet';
 import { TableSkeleton, ErrorState } from '@/components/States';
 import { statusBadge, riskBadge, type GrantStatus, type GrantReason, type RiskLevel } from '@/lib/grantLabels';
+import { T } from '@/lib/theme';
+import { StudentsTable, NameCell, StatusPill, ScoreCell, RankCell, type Column } from '@/components/em/StudentsTable';
 
 type Student = {
   id: string;
@@ -45,6 +46,13 @@ const STATUS_TABS = [
   { value: 'PENDING',     label: 'Kutilmoqda' },
   { value: 'NOT_GRANTED', label: "Grant yo'q" },
 ];
+
+const STATUS_THEME: Record<GrantStatus, { bg: string; fg: string }> = {
+  GRANTED:     { bg: T.emeraldBg, fg: T.emeraldText },
+  PENDING:     { bg: T.amberBg,   fg: T.amberText },
+  NOT_GRANTED: { bg: T.redBg,     fg: T.redText },
+  UNKNOWN:     { bg: T.bgSubtle,  fg: T.textMuted },
+};
 
 // ── Avatar ────────────────────────────────────────────────────────────────────
 const AVATAR_COLORS = [
@@ -306,12 +314,28 @@ export default function MentorStudents() {
   );
   useEffect(() => { setPage(1); }, [query, statusFilter, groupFilter]);
 
-  function SortIcon({ k }: { k: SortKey }) {
-    if (sortKey !== k) return <ChevronUp className="w-3 h-3 opacity-20" />;
-    return sortDir === 'desc'
-      ? <ChevronDown className="w-3 h-3 text-slate-700" />
-      : <ChevronUp    className="w-3 h-3 text-slate-700" />;
-  }
+  const tableColumns: Column<Student>[] = [
+    { key: 'rank', label: '#', align: 'center', width: 56,
+      render: (_r, { index }) => <RankCell rank={(currentPage - 1) * PAGE_SIZE + index + 1} /> },
+    { key: 'fullName', label: 'Talaba', sortable: true,
+      render: r => <NameCell name={r.fullName} email={r.email} /> },
+    { key: 'group', label: 'Guruh', width: 120,
+      render: r => <span style={{ color: T.textMuted }}>{groupNameById.get(r.groupId) ?? '—'}</span> },
+    { key: 'gpa', label: 'GPA', align: 'right', sortable: true, width: 80,
+      render: r => <ScoreCell value={`${r.gpa.toFixed(0)}%`} danger={r.gpa < 80} /> },
+    { key: 'attendance', label: 'Davomat', align: 'right', sortable: true, width: 100,
+      render: r => <ScoreCell value={`${r.attendance.toFixed(0)}%`} danger={r.attendance < 75} muted={!(r.attendance < 75)} /> },
+    { key: 'grantScore', label: 'Ball', align: 'right', sortable: true, width: 80,
+      render: r => <ScoreCell value={r.grantScore.toFixed(0)} /> },
+    { key: 'status', label: 'Status', width: 160,
+      render: r => {
+        const st = statusBadge(r.grantStatus, r.grantReason);
+        const sc = STATUS_THEME[r.grantStatus];
+        return <StatusPill bg={sc.bg} fg={sc.fg} label={st.text} />;
+      } },
+    { key: '_chev', label: '', width: 32,
+      render: () => <ChevronRight className="w-4 h-4" style={{ color: T.textSubtle }} /> },
+  ];
 
   const counts = {
     ALL:         allStudents.length,
@@ -393,95 +417,14 @@ export default function MentorStudents() {
 
       {filtered.length > 0 && (
         <div className="bg-white rounded-xl border overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 border-b">
-                <tr>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wide w-8">#</th>
-
-                  {/* Sortable: Name */}
-                  <th
-                    onClick={() => toggleSort('fullName')}
-                    className="px-4 py-3 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wide cursor-pointer select-none hover:text-slate-700"
-                  >
-                    <span className="inline-flex items-center gap-1">Talaba <SortIcon k="fullName" /></span>
-                  </th>
-
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Guruh</th>
-
-                  {/* Sortable: GPA */}
-                  <th
-                    onClick={() => toggleSort('gpa')}
-                    className="px-4 py-3 text-right text-[11px] font-semibold text-muted-foreground uppercase tracking-wide cursor-pointer select-none hover:text-slate-700"
-                  >
-                    <span className="inline-flex items-center justify-end gap-1">GPA <SortIcon k="gpa" /></span>
-                  </th>
-
-                  {/* Sortable: Attendance */}
-                  <th
-                    onClick={() => toggleSort('attendance')}
-                    className="px-4 py-3 text-right text-[11px] font-semibold text-muted-foreground uppercase tracking-wide cursor-pointer select-none hover:text-slate-700"
-                  >
-                    <span className="inline-flex items-center justify-end gap-1">Davomat <SortIcon k="attendance" /></span>
-                  </th>
-
-                  {/* Sortable: Score */}
-                  <th
-                    onClick={() => toggleSort('grantScore')}
-                    className="px-4 py-3 text-right text-[11px] font-semibold text-muted-foreground uppercase tracking-wide cursor-pointer select-none hover:text-slate-700"
-                  >
-                    <span className="inline-flex items-center justify-end gap-1">Ball <SortIcon k="grantScore" /></span>
-                  </th>
-
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
-                  <th className="w-8" />
-                </tr>
-              </thead>
-              <tbody>
-                {paginated.map((s, i) => {
-                  const st = statusBadge(s.grantStatus, s.grantReason);
-                  return (
-                    <tr
-                      key={s.id}
-                      onClick={() => setSelectedId(s.id)}
-                      className="border-t hover:bg-slate-50 transition-colors cursor-pointer"
-                    >
-                      <td className="px-4 py-3 text-muted-foreground tabular-nums text-xs">{(currentPage - 1) * PAGE_SIZE + i + 1}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2.5">
-                          <Avatar name={s.fullName} size={30} />
-                          <div>
-                            <div className="font-medium text-[13.5px]">{s.fullName}</div>
-                            {s.email && (
-                              <div className="text-[11px] text-muted-foreground">{s.email}</div>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground text-[13px]">{groupNameById.get(s.groupId) ?? '—'}</td>
-                      <td className={`px-4 py-3 text-right tabular-nums text-[13px] font-medium ${s.gpa < 80 ? 'text-red-600' : ''}`}>
-                        {s.gpa.toFixed(0)}%
-                      </td>
-                      <td className={`px-4 py-3 text-right tabular-nums text-[13px] ${s.attendance < 75 ? 'text-red-600' : ''}`}>
-                        {s.attendance.toFixed(0)}%
-                      </td>
-                      <td className="px-4 py-3 text-right font-bold tabular-nums text-[13.5px]">
-                        {s.grantScore.toFixed(0)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex px-2 py-0.5 rounded text-[11.5px] font-medium border ${st.cls}`}>
-                          {st.text}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground">
-                        <ChevronRight className="w-4 h-4" />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <StudentsTable
+            columns={tableColumns}
+            rows={paginated}
+            onRowClick={s => setSelectedId(s.id)}
+            sortKey={sortKey}
+            sortDir={sortDir}
+            onSort={k => toggleSort(k as SortKey)}
+          />
 
           {pageCount > 1 && (
             <div className="flex items-center justify-between px-4 py-3 border-t bg-slate-50">

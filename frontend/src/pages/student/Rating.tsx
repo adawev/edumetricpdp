@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { T } from '@/lib/theme';
-import { Card, Avatar, Skeleton, Tabs } from '@/components/em/Primitives';
+import { Card, Skeleton, Tabs } from '@/components/em/Primitives';
 import { Icons } from '@/components/em/Icons';
 import { ErrorState } from '@/components/em/ErrorState';
+import { StudentsTable, NameCell, StatusPill, ScoreCell, RankCell, type Column } from '@/components/em/StudentsTable';
 import { useStudentMe, useStudentRankings, usePublicRating } from '@/hooks/useStudent';
 import type { GrantStatus, PublicRatingRow } from '@/types/student';
 
@@ -85,6 +86,22 @@ export default function StudentRating() {
 
   const myId = me.student.id;
 
+  const columns: Column<PublicRatingRow>[] = [
+    { key: 'rank', label: '#', align: 'center', width: 56,
+      render: (r, { isHighlighted }) => <RankCell rank={r.rank} isHighlighted={isHighlighted} /> },
+    { key: 'name', label: 'Talaba',
+      render: r => <NameCell name={r.fullName} isMe={r.id === myId} /> },
+    { key: 'group', label: 'Guruh', width: 110,
+      render: r => <span style={{ color: T.textMuted }}>{r.group}</span> },
+    { key: 'score', label: 'Ball', align: 'right', width: 80,
+      render: r => <ScoreCell value={r.grantScore.toFixed(1)} /> },
+    { key: 'status', label: 'Status', width: 160,
+      render: r => {
+        const sc = STATUS_COLORS[r.grantStatus];
+        return <StatusPill bg={sc.bg} fg={sc.fg} label={STATUS_LABEL[r.grantStatus]} />;
+      } },
+  ];
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
@@ -122,75 +139,13 @@ export default function StudentRating() {
             items={tabConfig.map(t => ({ id: t.id, label: t.label, count: t.rows.length }))} />
         </div>
 
-        {activeRows.length === 0 ? (
-          <div style={{ padding: '40px 18px', textAlign: 'center', color: T.textSubtle, fontSize: 13 }}>
-            Ma'lumot yuklanmoqda...
-          </div>
-        ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr style={{ background: T.bg, borderBottom: `1px solid ${T.border}` }}>
-                {[
-                  { l: '#',      a: 'center', w: 56 },
-                  { l: 'Talaba', a: 'left' },
-                  { l: 'Guruh',  a: 'left',   w: 110 },
-                  { l: 'Ball',   a: 'right',  w: 80 },
-                  { l: 'Status', a: 'left',   w: 160 },
-                ].map((h, i) => (
-                  <th key={i} style={{ textAlign: h.a as any, padding: '11px 16px', fontSize: 11.5, fontWeight: 600,
-                    color: T.textMuted, textTransform: 'uppercase', letterSpacing: '.04em', width: h.w }}>
-                    {h.l}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {activeRows.map((stu, i) => {
-                const isMe = stu.id === myId;
-                const sc = STATUS_COLORS[stu.grantStatus];
-                return (
-                  <tr key={stu.id}
-                    onClick={() => navigate(`/student/${stu.id}`)}
-                    style={{
-                      borderBottom: i < activeRows.length - 1 ? `1px solid ${T.border}` : 'none',
-                      background: isMe ? T.bgSubtle : 'transparent',
-                      cursor: 'pointer', transition: 'background .12s', position: 'relative',
-                    }}
-                    onMouseEnter={e => { if (!isMe) (e.currentTarget as HTMLTableRowElement).style.background = T.bg; }}
-                    onMouseLeave={e => { if (!isMe) (e.currentTarget as HTMLTableRowElement).style.background = 'transparent'; }}
-                  >
-                    <td style={{ padding: '12px 16px', textAlign: 'center', color: isMe ? T.text : T.textMuted,
-                      fontVariantNumeric: 'tabular-nums', fontWeight: isMe ? 700 : 500, position: 'relative' }}>
-                      {isMe && (
-                        <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: T.slate900 }} />
-                      )}
-                      {stu.rank}
-                    </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <Avatar name={stu.fullName} size={30} />
-                        <span style={{ fontWeight: isMe ? 600 : 500 }}>{stu.fullName}</span>
-                        {isMe && (
-                          <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 999,
-                            background: T.slate900, color: '#fff', fontWeight: 500 }}>Sen</span>
-                        )}
-                      </div>
-                    </td>
-                    <td style={{ padding: '12px 16px', color: T.textMuted }}>{stu.group}</td>
-                    <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 700,
-                      fontVariantNumeric: 'tabular-nums', fontSize: 14 }}>{stu.grantScore}</td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <span style={{ fontSize: 11.5, padding: '3px 9px', borderRadius: 999,
-                        background: sc.bg, color: sc.fg, fontWeight: 500 }}>
-                        {STATUS_LABEL[stu.grantStatus]}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
+        <StudentsTable
+          columns={columns}
+          rows={activeRows}
+          highlightId={myId}
+          onRowClick={r => navigate(`/student/${r.id}`)}
+          emptyMessage="Talabalar yuklanmoqda..."
+        />
       </Card>
     </div>
   );
