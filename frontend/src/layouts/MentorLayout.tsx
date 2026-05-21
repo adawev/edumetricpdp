@@ -98,7 +98,7 @@ function SidebarContent({ onNavigate, onLogout, mentorName, initials }: {
   );
 }
 
-export default function MentorLayout() {
+export default function MentorLayout({ children }: { children?: React.ReactNode } = {}) {
   const { user, clear } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -161,7 +161,7 @@ export default function MentorLayout() {
         </header>
 
         <main className="flex-1 overflow-y-auto overflow-x-hidden">
-          <Outlet />
+          {children ?? <Outlet />}
         </main>
       </div>
     </div>

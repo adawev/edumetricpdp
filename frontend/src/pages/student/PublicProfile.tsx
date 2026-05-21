@@ -1,11 +1,15 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { T } from '@/lib/theme';
-import { Card, Avatar, Button, Skeleton, Tooltip } from '@/components/em/Primitives';
+import { Card, Avatar, Skeleton, Tooltip } from '@/components/em/Primitives';
 import { Icons } from '@/components/em/Icons';
 import { ErrorState } from '@/components/em/ErrorState';
 import { BadgeMedal, BADGE_RARITY_LABEL, type BadgeRarity } from '@/components/em/Badges';
 import { useStudentPublic } from '@/hooks/useStudent';
 import type { AchievementType, GrantStatus, PublicAchievement, StudentBadge } from '@/types/student';
+import { useAuth } from '@/lib/auth';
+import StudentLayout from '@/components/layout/StudentLayout';
+import MentorLayout from '@/layouts/MentorLayout';
+import AdminLayout from '@/pages/admin/AdminLayout';
 
 // ── constants ──────────────────────────────────────────────────────────────
 
@@ -138,20 +142,29 @@ function BadgeTile({ b }: { b: StudentBadge }) {
 export default function StudentPublicProfile() {
   const { studentId } = useParams<{ studentId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { data, isLoading, isError, refetch } = useStudentPublic(studentId ?? '');
 
-  if (isLoading) return <PublicProfileSkeleton />;
+  const Chrome: React.ComponentType<{ children: React.ReactNode }> =
+    user?.role === 'MENTOR' ? MentorLayout
+    : user?.role === 'ADMIN' ? AdminLayout
+    : StudentLayout;
+
+  if (isLoading) return <Chrome><PublicProfileSkeleton /></Chrome>;
   if (isError) return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <BackButton onClick={() => navigate(-1)} />
-      <ErrorState onRetry={refetch} />
-    </div>
+    <Chrome>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <BackButton onClick={() => navigate(-1)} />
+        <ErrorState onRetry={refetch} />
+      </div>
+    </Chrome>
   );
   if (!data) return null;
 
   const sc = STATUS_CFG[data.grantStatus];
 
   return (
+    <Chrome>
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 920 }}>
       <BackButton onClick={() => navigate(-1)} />
 
@@ -232,6 +245,7 @@ export default function StudentPublicProfile() {
         </div>
       )}
     </div>
+    </Chrome>
   );
 }
 

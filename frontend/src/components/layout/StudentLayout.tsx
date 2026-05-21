@@ -27,7 +27,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/student/rating':       'Mening reytingim',
 };
 
-export default function StudentLayout() {
+export default function StudentLayout({ children }: { children?: React.ReactNode } = {}) {
   const { user, clear } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -149,7 +149,7 @@ export default function StudentLayout() {
 
         {/* Page content */}
         <main style={{ flex: 1, padding: '28px 32px', overflowY: 'auto' }}>
-          <Outlet />
+          {children ?? <Outlet />}
         </main>
       </div>
     </div>
