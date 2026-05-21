@@ -159,11 +159,11 @@ export default function AdminAchievements() {
         {/* Tabs + content card */}
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
 
-          {/* Tab bar — pill container (design-exact) */}
-          <div className="px-4 py-3 border-b border-slate-200">
+          {/* Tab bar */}
+          <div style={{ padding: '14px 18px', borderBottom: '1px solid #e2e8f0' }}>
             <div style={{
               display: 'inline-flex', padding: 3, borderRadius: 9,
-              background: '#f8fafc', gap: 2,
+              background: '#f1f5f9', gap: 2,
             }}>
               {tabs.map(t => {
                 const active = tab === t.id;
@@ -199,7 +199,7 @@ export default function AdminAchievements() {
 
           {/* Content */}
           {isLoading ? (
-            <div className="p-4 grid gap-3" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
+            <div style={{ padding: 14, display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="h-52 rounded-xl bg-slate-100 animate-pulse" />
               ))}
@@ -210,7 +210,7 @@ export default function AdminAchievements() {
               <p className="text-[13px] text-slate-400">Bu bo'limda yutuq yo'q</p>
             </div>
           ) : (
-            <div className="p-4 grid gap-3" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
+            <div style={{ padding: 14, display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
               {activeList.map(a => (
                 <AchCard
                   key={a.id}
@@ -229,47 +229,48 @@ export default function AdminAchievements() {
 
       {/* Reject dialog */}
       {rejectTarget && (
-        <>
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}
+          onClick={() => setRejectTarget(null)}
+        >
           <div
-            className="fixed inset-0 bg-black/40 z-40"
-            onClick={() => setRejectTarget(null)}
-          />
-          <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-xl shadow-xl z-50 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-slate-900">Yutuqni rad etish</h2>
-              <button onClick={() => setRejectTarget(null)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400">
-                <X className="w-4 h-4" />
+            onClick={e => e.stopPropagation()}
+            style={{ width: 520, maxWidth: 'calc(100vw - 40px)', background: '#fff', borderRadius: 12, boxShadow: '0 20px 60px rgba(15,23,42,.25)', display: 'flex', flexDirection: 'column' }}
+          >
+            {/* Header */}
+            <div style={{ padding: '18px 22px 4px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 600, color: '#0f172a' }}>Yutuqni rad etish</div>
+                <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>
+                  "{rejectTarget.title}" — sababni kiriting, talaba ko'radi.
+                </div>
+              </div>
+              <button onClick={() => setRejectTarget(null)} style={{ width: 28, height: 28, border: 0, background: 'transparent', color: '#64748b', cursor: 'pointer', borderRadius: 6, display: 'grid', placeItems: 'center' }}>
+                <X size={16} />
               </button>
             </div>
-            <p className="text-[13px] text-slate-500 mb-4">
-              <span className="font-medium text-slate-800">{rejectTarget.title}</span>
-              {' — sababni kiriting, talaba ko\'radi.'}
-            </p>
-            <label className="block text-[12.5px] font-medium text-slate-700 mb-1.5">Rad etish sababi</label>
-            <textarea
-              value={rejectReason}
-              onChange={e => setRejectReason(e.target.value)}
-              rows={4}
-              placeholder="Masalan: Sertifikat oxirgi 6 oydan eski yoki tasdiqlovchi havola yo'q"
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] text-slate-700 outline-none focus:border-slate-400 resize-none"
-            />
-            <div className="flex gap-2 mt-4 justify-end">
-              <button
-                onClick={() => setRejectTarget(null)}
-                className="h-8 px-4 rounded-lg border border-slate-200 text-[12.5px] font-medium text-slate-700 hover:bg-slate-50"
-              >
+            {/* Body */}
+            <div style={{ padding: 18 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Rad etish sababi</div>
+              <textarea
+                value={rejectReason}
+                onChange={e => setRejectReason(e.target.value)}
+                rows={4}
+                placeholder="Masalan: Sertifikat oxirgi 6 oydan eski yoki tasdiqlovchi havola yo'q"
+                style={{ width: '100%', borderRadius: 8, border: '1px solid #e2e8f0', padding: '8px 12px', fontSize: 13, color: '#0f172a', outline: 'none', resize: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+              />
+            </div>
+            {/* Footer */}
+            <div style={{ padding: '12px 18px', borderTop: '1px solid #e2e8f0', background: '#f8fafc', display: 'flex', justifyContent: 'flex-end', gap: 8, borderRadius: '0 0 12px 12px' }}>
+              <button onClick={() => setRejectTarget(null)} style={{ height: 32, padding: '0 14px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', fontSize: 12.5, fontWeight: 500, cursor: 'pointer', color: '#0f172a' }}>
                 Bekor qilish
               </button>
-              <button
-                onClick={handleRejectConfirm}
-                disabled={reviewMutation.isPending}
-                className="h-8 px-4 rounded-lg bg-red-600 text-white text-[12.5px] font-medium hover:bg-red-700 disabled:opacity-50 flex items-center gap-1.5"
-              >
-                <X className="w-3.5 h-3.5" /> Rad etish
+              <button onClick={handleRejectConfirm} disabled={reviewMutation.isPending} style={{ height: 32, padding: '0 14px', borderRadius: 8, border: 0, background: '#ef4444', color: '#fff', fontSize: 12.5, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, opacity: reviewMutation.isPending ? 0.6 : 1 }}>
+                <X size={13} /> Rad etish
               </button>
             </div>
           </div>
-        </>
+        </div>
       )}
     </AdminLayout>
   );
@@ -308,11 +309,11 @@ function AchCard({
         </div>
 
         {/* Student row */}
-        <div className="flex items-center gap-2 py-2.5 border-y border-slate-100 text-[12.5px]">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 10, marginBottom: 10, borderBottom: '1px solid #e2e8f0', fontSize: 12.5 }}>
           <Avatar name={a.student.fullName} size={22} />
-          <span className="font-medium text-slate-800">{a.student.fullName}</span>
-          <span className="text-slate-300">·</span>
-          <span className="text-slate-400">{a.student.group?.name}</span>
+          <span style={{ fontWeight: 500, color: '#1e293b' }}>{a.student.fullName}</span>
+          <span style={{ color: '#cbd5e1' }}>·</span>
+          <span style={{ color: '#64748b' }}>{a.student.group?.name}</span>
         </div>
 
         {/* Description */}
